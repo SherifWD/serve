@@ -28,7 +28,7 @@ class KDSController extends Controller
     ])
     ->where('branch_id', $branchId)
     ->whereIn('status', ['pending', 'preparing'])
-    ->whereNot('status','refunded')
+    ->where('status','!=','refunded')
     ->get();
         Log::info($orders);
         Log::info($branchId);
