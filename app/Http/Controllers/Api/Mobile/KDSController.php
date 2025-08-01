@@ -31,11 +31,13 @@ class KDSController extends Controller
     ->whereIn('status', ['pending', 'preparing'])
     ->get();
 
-    // Filter out canceled/refunded items from each order
+    // Use setRelation to override the loaded items relation
     $orders->each(function ($order) {
-        $order->items = $order->items->filter(function ($item) {
+        $filteredItems = $order->items->filter(function ($item) {
             return !in_array($item->status, ['refunded', 'canceled']);
-        })->values(); // reindex
+        })->values(); // Reindex
+
+        $order->setRelation('items', $filteredItems);
     });
 
     return response()->json(['data' => $orders]);
