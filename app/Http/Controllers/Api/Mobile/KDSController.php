@@ -32,7 +32,7 @@ class KDSController extends Controller
     ->get();
         Log::info($orders);
         Log::info($branchId);
-
+dd('asd');
         return response()->json(['data' => $orders]);
     }
 
