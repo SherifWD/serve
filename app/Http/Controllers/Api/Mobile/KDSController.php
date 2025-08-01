@@ -26,9 +26,9 @@ class KDSController extends Controller
         'employee', // Optional: waiter/employee relation
         'items.modifier.modifier'
     ])
+    ->where('status','!=','refunded')
     ->where('branch_id', $branchId)
     ->whereIn('status', ['pending', 'preparing'])
-    ->where('status','!=','refunded')
     ->get();
         Log::info($orders);
         Log::info($branchId);
