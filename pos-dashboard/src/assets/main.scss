@@ -1,0 +1,60 @@
+/* src/assets/main.scss */
+body, .v-application {
+  background: #181818 !important; /* Pure dark background */
+  color: #eef3ee !important;
+}
+
+.v-container { 
+  max-width: 1600px; 
+}
+
+.branch-filter { 
+  min-width: 220px; 
+}
+
+.stat-card {
+  border-radius: 2rem !important;
+  padding: 1.1rem;
+  min-height: 120px;
+  display: flex; flex-direction: column; align-items: flex-start;
+  background: #232a2e !important;
+  color: #eef3ee;
+  box-shadow: 0 4px 24px 0 #0001;
+}
+.stat-green { background: linear-gradient(90deg,#79bfa1 0%,#232a2e 100%) !important; color: #1a4223; }
+.stat-sage { background: linear-gradient(90deg,#232a2e 0%,#b7dbcc 100%) !important; color: #24423c; }
+.stat-slate { background: #232a2e !important; color: #2a323c; }
+.stat-title { font-size: 1.05rem; font-weight: bold; color: #2a9d8f; margin-bottom: 0.5em; letter-spacing: 0.03em; }
+.stat-value { font-size: 2.2rem; font-weight: bold; margin-top: 0.1em; color: #eef3ee; }
+.section-title { color: #2a9d8f; font-size: 1.25rem; font-weight: bold; letter-spacing: 0.02em; }
+.main-card { background: #232a2e !important; color: #eef3ee !important; border-radius: 2rem !important; }
+.text-caption { color: #aaa; font-size: .95em; margin-top: .8em; }
+
+/* Vuetify cards, drawers, etc. */
+.v-card, .v-data-table, .v-toolbar, .v-navigation-drawer, .v-form, .v-btn, .v-text-field, .v-select {
+  border-radius: 2rem !important;
+}
+
+/* Drawer customizations */
+.v-navigation-drawer {
+  background: #232a2e !important;
+  color: #eef3ee !important;
+}
+.v-toolbar {
+  background: #232a2e !important;
+  color: #2a9d8f !important;
+}
+.v-data-table {
+  background: #232a2e !important;
+  color: #eef3ee !important;
+}
+
+/* List/Item styles for consistent color */
+.v-list-item__title, .v-list-item__subtitle {
+  color: #eef3ee !important;
+}
+
+.v-btn--active, .v-list-item--active {
+  background: linear-gradient(90deg,#232a2e 0%,#2a9d8f33 100%) !important;
+  color: #2a9d8f !important;
+}
