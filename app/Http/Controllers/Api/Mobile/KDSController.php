@@ -16,25 +16,31 @@ class KDSController extends Controller
      * Get all orders (with items) in this branch that are still pending or preparing.
      */
     public function getActiveOrders(Request $request)
-    {
-        $user = auth()->user();
+{
+    $user = auth()->user();
     $branchId = $user->branch_id;
 
     $orders = Order::with([
-        'table', // Make sure you have this relationship
-        'items.product', // Load product relation on each item
-        'employee', // Optional: waiter/employee relation
+        'table',
+        'items.product',
+        'employee',
         'items.modifier.modifier'
     ])
-    ->where('status','!=','refunded')
+    ->where('status', '!=', 'refunded')
     ->where('branch_id', $branchId)
     ->whereIn('status', ['pending', 'preparing'])
     ->get();
-        Log::info($orders);
-        Log::info($branchId);
-dd('asd');
-        return response()->json(['data' => $orders]);
-    }
+
+    // Filter out canceled/refunded items from each order
+    $orders->each(function ($order) {
+        $order->items = $order->items->filter(function ($item) {
+            return !in_array($item->status, ['refunded', 'canceled']);
+        })->values(); // reindex
+    });
+
+    return response()->json(['data' => $orders]);
+}
+
 
     /**
      * Set entire order status (pending -> preparing OR preparing -> prepared)
