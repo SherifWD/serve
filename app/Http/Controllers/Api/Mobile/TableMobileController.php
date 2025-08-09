@@ -130,16 +130,18 @@ class TableMobileController extends Controller
 
     $order->load('items');
     $allDone = $order->items
-        ->filter(fn($i) => !in_array($i->kds_status, ['canceled','refunded']))
+        ->filter(fn($i) => !in_array($i->kds_status, ['canceled','refunded','cancelled']))
         ->every(fn($i) => in_array($i->kds_status, ['ready','served']));
 
     if (!$allDone) {
         return response()->json(['error' => 'Items are not finished in KDS'], 422);
     }
 
-    // mark order as ready-for-cashier / or just set status if you have it
-    $order->status = 'open'; // still open but payable; adapt to your flow
+    $order->status = 'cashier'; // <— important
     $order->save();
+
+    // (optional) broadcast to waiter & cashier UIs
+    // event(new \App\Events\OrderReadyForCashier($order));
 
     return response()->json(['ok' => true]);
 }
@@ -151,18 +153,18 @@ public function batchSendToCashier(Request $request)
         'order_ids.*' => 'integer|exists:orders,id',
     ]);
 
-    $ok = [];
-    $failed = [];
-
+    $ok = []; $failed = [];
     foreach ($data['order_ids'] as $id) {
         $order = Order::with('items')->find($id);
         $allDone = $order->items
-            ->filter(fn($i) => !in_array($i->kds_status, ['canceled','refunded']))
+            ->filter(fn($i) => !in_array($i->kds_status, ['canceled','refunded','cancelled']))
             ->every(fn($i) => in_array($i->kds_status, ['ready','served']));
+
         if ($allDone) {
-            $order->status = 'open';
+            $order->status = 'cashier'; // <— important
             $order->save();
             $ok[] = $id;
+            // event(new \App\Events\OrderReadyForCashier($order));
         } else {
             $failed[] = $id;
         }
@@ -170,6 +172,7 @@ public function batchSendToCashier(Request $request)
 
     return response()->json(['ok' => $ok, 'failed' => $failed]);
 }
+
 
 
     

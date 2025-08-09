@@ -179,6 +179,7 @@ class OrderMobileController extends Controller
                 'discount'   => $itemDiscount,
                 'discount_type' => $itemDiscountType,
                 'change_note' => $item['note'] ?? null, // use as item note on create
+                'item_note' => $item['note'] ?? null, // use as item note on create
             ]);
             $orderTotal += $itemTotal;
 
