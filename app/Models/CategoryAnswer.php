@@ -11,4 +11,5 @@ class CategoryAnswer extends Model
 {
     return $this->belongsTo(CategoryChoice::class, 'choice_id');
 }
+
 }

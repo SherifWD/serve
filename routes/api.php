@@ -68,7 +68,7 @@ Route::prefix('mobile')->middleware('auth:sanctum')->group(function () {
 Route::get('products', [MobileProductController::class, 'index']);
 Route::post('orders', [OrderMobileController::class, 'store']);
 Route::patch('tables/{fromTable}/move', [TableMobileController::class, 'moveTable']);
-Route::patch('{order}/send-to-cashier', [TableMobileController::class, 'sendToCashier']);
+// Route::patch('orders/{order}/send-to-cashier', [TableMobileController::class, 'sendToCashier']);
 Route::put('orders/{order}', [OrderMobileController::class, 'update']);
 Route::patch('orders/{order}/reopen', [TableMobileController::class, 'reopenOrder']);
 Route::post('/coupons/verify', [CouponController::class, 'verify']);
@@ -81,6 +81,13 @@ Route::get('/modifiers/available', [ModifierController::class, 'availableForWait
 
 
 
+Route::post('orders/{order}/send-to-kds', [OrderMobileController::class, 'sendToKDS']);
+    Route::patch('kds/order-items/{item}', [KDSController::class, 'setOrderItemStatus']); // keep
+    Route::get('kds/orders', [KDSController::class, 'getActiveOrders']); // should filter by kds_status
+
+    // Cashier (fix path!)
+    Route::post('orders/send-to-cashier', [OrderMobileController::class, 'batchSendToCashier']);
+    Route::patch('orders/{order}/send-to-cashier', [OrderMobileController::class, 'sendToCashier']); // single
 
 
 Route::prefix('kds')->group(function () {

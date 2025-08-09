@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\Api\Mobile;
 
+use App\Events\KDSItemStatusUpdated;
+use App\Events\OrderReadyForCashier;
 use App\Http\Controllers\Controller;
 use App\Models\Order;
 use App\Models\OrderItem;
@@ -15,34 +17,85 @@ class KDSController extends Controller
     /**
      * Get all orders (with items) in this branch that are still pending or preparing.
      */
-    public function getActiveOrders(Request $request)
+    
+// app/Http/Controllers/Api/Mobile/KDSController.php
+
+public function getActiveOrders(Request $request)
 {
-    $user = auth()->user();
-    $branchId = $user->branch_id;
+    $branchId = $request->user()->branch_id;
 
-    $orders = Order::with([
-        'table',
-        'items.product',
-        'employee',
-        'items.modifier.modifier'
-    ])
-    ->where('status', '!=', 'refunded')
-    ->where('branch_id', $branchId)
-    ->whereIn('status', ['pending', 'preparing'])
-    ->get();
+    // normalized list for both US/UK spellings, just in case
+    $nonActiveItemStatuses = ['canceled','cancelled','refunded'];
 
-    // Use setRelation to override the loaded items relation
-    $orders->each(function ($order) {
-        $filteredItems = $order->items->filter(function ($item) {
-            return !in_array($item->status, ['refunded', 'canceled']);
-        })->values(); // Reindex
+    $itemScope = function ($q) use ($nonActiveItemStatuses) {
+        $q->whereNotIn('status', $nonActiveItemStatuses)
+          ->whereIn('kds_status', ['queued','preparing','ready'])
+          ->with(['product', 'modifiers.modifier']); // eager-load for UI badges
+    };
 
-        $order->setRelation('items', $filteredItems);
-    });
+    $orders = \App\Models\Order::query()
+        ->where('branch_id', $branchId)
+        ->whereNotNull('kds_sent_at')
+        ->whereIn('status', ['pending','open']) // KDS shows not-yet-closed orders
+        ->whereHas('items', $itemScope)         // only if it has visible items
+        ->with(['table','items' => $itemScope]) // but only those filtered items
+        ->orderBy('order_date', 'asc')
+        ->get()
+        ->map(function($o){
+            // Optional: flatten a few fields the KDS page expects
+            return [
+                'id'         => $o->id,
+                'table_name' => optional($o->table)->name,
+                'waiter'     => optional($o->employee)->name ?? '', // if you have a relation
+                'kds_sent_at'=> $o->kds_sent_at,
+                'created_at' => $o->created_at,
+                'items'      => $o->items->map(function($i){
+                    return [
+                        'id'         => $i->id,
+                        'quantity'   => $i->quantity,
+                        'product'    => ['name' => optional($i->product)->name], // keep it an object
+                        'note'       => $i->note,
+                        'status'     => $i->status,       // business status
+                        'kds_status' => $i->kds_status,   // UI status
+                        'modifiers'  => $i->modifiers->map(function($m){
+                            return ['name' => $m->modifier->name ?? ($m->raw_modifier ?? '')];
+                        })->values(),
+                    ];
+                })->values(),
+            ];
+        });
 
     return response()->json(['data' => $orders]);
 }
 
+public function setOrderItemStatus(Request $request, OrderItem $item)
+{
+    $data = $request->validate([
+        'status' => 'required|in:queued,preparing,ready,canceled,refunded,served',
+    ]);
+
+    // Must be same branch
+    if ($request->user()->branch_id !== $item->order->branch_id) {
+        return response()->json(['error' => 'Unauthorized'], 403);
+    }
+
+    $item->kds_status = $data['status'];
+    $item->save();
+
+    event(new KDSItemStatusUpdated($item));
+
+    // If all non-canceled/non-refunded items are ready/served → broadcast ready_for_cashier
+    $order = $item->order()->with('items')->first();
+    $allDone = $order->items
+        ->filter(fn($i) => !in_array($i->kds_status, ['canceled','refunded']))
+        ->every(fn($i) => in_array($i->kds_status, ['ready','served']));
+
+    if ($allDone) {
+        event(new OrderReadyForCashier($order));
+    }
+
+    return response()->json(['item' => $item]);
+}
 
     /**
      * Set entire order status (pending -> preparing OR preparing -> prepared)
@@ -86,41 +139,5 @@ class KDSController extends Controller
     /**
      * Set single order item status (pending -> preparing OR preparing -> prepared)
      */
-    public function setOrderItemStatus(Request $request, $orderItemId)
-    {
-        $item = OrderItem::with('order')->findOrFail($orderItemId);
-
-        // Ensure the user is in the correct branch
-        if ($item->order->branch_id !== Auth::user()->branch_id) {
-            return response()->json(['error' => 'Unauthorized'], 403);
-        }
-
-        $targetStatus = $request->input('status'); // 'preparing' or 'prepared'
-
-        if (!in_array($targetStatus, ['preparing', 'prepared'])) {
-            return response()->json(['error' => 'Invalid target status'], 422);
-        }
-
-        // Only allow correct transitions
-        if ($item->status === 'pending' && $targetStatus === 'preparing') {
-            $item->status = 'preparing';
-        } elseif ($item->status === 'preparing' && $targetStatus === 'prepared') {
-            $item->status = 'prepared';
-        } else {
-            return response()->json(['error' => 'Invalid status transition'], 422);
-        }
-
-        $item->save();
-
-        // Optionally: If all items are now prepared, auto-mark order as prepared
-        if ($targetStatus === 'prepared') {
-            $order = $item->order->fresh('items');
-            if ($order->items->every(fn($i) => $i->status === 'prepared')) {
-                $order->status = 'prepared';
-                $order->save();
-            }
-        }
-
-        return response()->json(['message' => 'Order item status updated', 'item' => $item]);
-    }
+    
 }
