@@ -33,4 +33,15 @@ public function modifiers()
 
     public function parent() { return $this->belongsTo(self::class, 'parent_item_id'); }
     public function children() { return $this->hasMany(self::class, 'parent_item_id'); }
+public function getItemNoteAttribute($value)
+{
+    // fallback to legacy 'note' if needed
+    return $value ?? $this->attributes['note'] ?? null;
 }
+
+public function getChangeNoteAttribute($value)
+{
+    return $value; // or any transform you want
+}
+}
+
