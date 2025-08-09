@@ -35,7 +35,68 @@ $orders->each(function($order){
 
         return response()->json(['data' => $orders]);
     }
+public function sendToCashier(Request $request, Order $order)
+{
+    if ($request->user()->branch_id !== $order->branch_id) {
+        return response()->json(['error' => 'Unauthorized'], 403);
+    }
 
+    $order->load('items');
+    $allDone = $order->items
+    ->filter(function ($i) {
+        $status = $i->kds_status ?? $i->status; // fallback if NULL
+        return !in_array($status, ['canceled', 'refunded', 'cancelled']);
+    })
+    ->every(function ($i) {
+        $status = $i->kds_status ?? $i->status;
+        return in_array($status, ['ready', 'served']);
+    });
+
+    if (!$allDone) {
+        return response()->json(['error' => 'Items are not finished in KDS'], 422);
+    }
+
+    $order->status = 'cashier'; // <— important
+    $order->save();
+
+    // (optional) broadcast to waiter & cashier UIs
+    // event(new \App\Events\OrderReadyForCashier($order));
+
+    return response()->json(['ok' => true]);
+}
+
+public function batchSendToCashier(Request $request)
+{
+    $data = $request->validate([
+        'order_ids' => 'required|array|min:1',
+        'order_ids.*' => 'integer|exists:orders,id',
+    ]);
+
+    $ok = []; $failed = [];
+    foreach ($data['order_ids'] as $id) {
+        $order = Order::with('items')->find($id);
+        $allDone = $order->items
+    ->filter(function ($i) {
+        $status = $i->kds_status ?? $i->status; // fallback if NULL
+        return !in_array($status, ['canceled', 'refunded', 'cancelled']);
+    })
+    ->every(function ($i) {
+        $status = $i->kds_status ?? $i->status;
+        return in_array($status, ['ready', 'served']);
+    });
+
+        if ($allDone) {
+            $order->status = 'cashier'; // <— important
+            $order->save();
+            $ok[] = $id;
+            // event(new \App\Events\OrderReadyForCashier($order));
+        } else {
+            $failed[] = $id;
+        }
+    }
+
+    return response()->json(['ok' => $ok, 'failed' => $failed]);
+}
     public function show($id)
 {
     $table = Table::with(['orders' => function($q) {
