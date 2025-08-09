@@ -313,7 +313,7 @@ public function batchSendToCashier(Request $request)
                 ]);
 
                 // notify KDS to remove split row quickly
-                event(new \App\Events\KDSItemStatusUpdated($modItem));
+                // event(new \App\Events\KDSItemStatusUpdated($modItem));
 
             } else {
                 // FULL
@@ -336,7 +336,7 @@ public function batchSendToCashier(Request $request)
                     'user_id' => $userId,
                 ]);
 
-                event(new \App\Events\KDSItemStatusUpdated($item));
+                // event(new \App\Events\KDSItemStatusUpdated($item));
             }
 
         } elseif ($action === 'change') {
@@ -364,7 +364,7 @@ public function batchSendToCashier(Request $request)
             ]);
 
             // tell the KDS that quantities changed
-            event(new \App\Events\KDSItemStatusUpdated($item));
+            // event(new \App\Events\KDSItemStatusUpdated($item));
         }
 
         // Recompute and return fresh totals
