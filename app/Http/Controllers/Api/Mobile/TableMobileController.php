@@ -19,28 +19,40 @@ class TableMobileController extends Controller
 
         $tables = Table::where('branch_id', $branchId)
             ->with([
-                'orders' => fn($q) => $q->where('status','!=',OrderStatus::CLOSED)->select('id', 'order_id', 'product_id', 'quantity', 'price', 'total', 'kds_status', 'status'),
-                'orders.items.product',
-                'orders.items.answers.choice.question',
-                'orders.items.modifiers.modifier',
-            ])->get();
+  'orders' => fn($q) => $q->where('status','!=', OrderStatus::CLOSED)
+      ->select('id','table_id','status','subtotal','tax','discount','discount_type','total','coupon_code','order_date'),
+  'orders.items' => fn($q) => $q->select(
+      'id','order_id','product_id','quantity','price','total',
+      'status','kds_status','item_note','change_note'
+  ),
+  'orders.items.product:id,name',
+  'orders.items.answers.choice.question',
+  'orders.items.modifiers.modifier',
+])->get();
 
         return response()->json(['data' => $tables]);
     }
 
-    public function show(Request $request, $id)
-    {
-        $branchId = $request->user()->branch_id;
+   public function show(Request $request, $id)
+{
+    $branchId = $request->user()->branch_id;
 
-        $table = Table::where('branch_id', $branchId)
-            ->with([
-                'orders.items.product',
-                'orders.items.answers.choice.question',
-                'orders.items.modifiers.modifier',
-            ])->findOrFail($id);
+    $table = Table::where('branch_id', $branchId)
+        ->with([
+            'orders' => fn($q) => $q->where('status','!=', OrderStatus::CLOSED)
+                ->select('id','table_id','status','subtotal','tax','discount','discount_type','total','coupon_code','order_date'),
+            'orders.items' => fn($q) => $q->select(
+                'id','order_id','product_id','quantity','price','total',
+                'status','kds_status','item_note','change_note'
+            ),
+            'orders.items.product:id,name',
+            'orders.items.answers.choice.question',
+            'orders.items.modifiers.modifier',
+        ])->findOrFail($id);
 
-        return response()->json(['data' => $table]);
-    }
+    return response()->json(['data' => $table]);
+}
+
 
     public function moveTable(Request $request, $fromTable)
     {
