@@ -24,7 +24,14 @@ class OrderMobileController extends Controller
             $query->where('table_id', $request->input('table_id'));
         }
 
-        $orders = $query->with('items.product')->get();
+        $orders = $query->with(['items.product', 'items.modifiers.modifier'])->get();
+
+$orders->each(function($order){
+    $order->items->each(function($item){
+        $item->append(['item_note','change_note']);
+    });
+});
+
 
         return response()->json(['data' => $orders]);
     }
@@ -38,6 +45,11 @@ class OrderMobileController extends Controller
 
     // You might want to get only the first open/pending order
     $order = optional($table->orders)->first();
+if ($order) {
+    $order->items->each(function($item){
+        $item->append(['item_note','change_note']);
+    });
+}
 
     return response()->json([
         'data' => [

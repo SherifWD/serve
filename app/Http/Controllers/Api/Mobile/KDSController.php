@@ -49,6 +49,7 @@ public function getActiveOrders(Request $request)
                 'waiter'     => optional($o->employee)->name ?? '', // if you have a relation
                 'kds_sent_at'=> $o->kds_sent_at,
                 'created_at' => $o->created_at,
+                
                 'items'      => $o->items->map(function($i){
                     return [
                         'id'         => $i->id,
@@ -60,6 +61,8 @@ public function getActiveOrders(Request $request)
                         'modifiers'  => $i->modifiers->map(function($m){
                             return ['name' => $m->modifier->name ?? ($m->raw_modifier ?? '')];
                         })->values(),
+                        'item_note'   => $i->item_note,
+'change_note' => $i->change_note,
                     ];
                 })->values(),
             ];
