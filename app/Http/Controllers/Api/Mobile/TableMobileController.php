@@ -19,7 +19,7 @@ class TableMobileController extends Controller
 
         $tables = Table::where('branch_id', $branchId)
             ->with([
-                'orders' => fn($q) => $q->where('status','!=',OrderStatus::CLOSED),
+                'orders' => fn($q) => $q->where('status','!=',OrderStatus::CLOSED)->select('id', 'order_id', 'product_id', 'quantity', 'price', 'total', 'kds_status', 'status'),
                 'orders.items.product',
                 'orders.items.answers.choice.question',
                 'orders.items.modifiers.modifier',
