@@ -90,8 +90,14 @@ public function setOrderItemStatus(Request $request, OrderItem $item)
     // If all non-canceled/non-refunded items are ready/served → broadcast ready_for_cashier
     $order = $item->order()->with('items')->first();
     $allDone = $order->items
-        ->filter(fn($i) => !in_array($i->kds_status, ['canceled','refunded']))
-        ->every(fn($i) => in_array($i->kds_status, ['ready','served']));
+    ->filter(function ($i) {
+        $status = $i->kds_status ?? $i->status; // fallback if NULL
+        return !in_array($status, ['canceled', 'refunded', 'cancelled']);
+    })
+    ->every(function ($i) {
+        $status = $i->kds_status ?? $i->status;
+        return in_array($status, ['ready', 'served']);
+    });
 
     if ($allDone) {
         event(new OrderReadyForCashier($order));

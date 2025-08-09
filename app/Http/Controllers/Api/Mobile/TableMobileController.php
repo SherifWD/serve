@@ -142,8 +142,14 @@ class TableMobileController extends Controller
 
     $order->load('items');
     $allDone = $order->items
-        ->filter(fn($i) => !in_array($i->kds_status, ['canceled','refunded','cancelled']))
-        ->every(fn($i) => in_array($i->kds_status, ['ready','served']));
+    ->filter(function ($i) {
+        $status = $i->kds_status ?? $i->status; // fallback if NULL
+        return !in_array($status, ['canceled', 'refunded', 'cancelled']);
+    })
+    ->every(function ($i) {
+        $status = $i->kds_status ?? $i->status;
+        return in_array($status, ['ready', 'served']);
+    });
 
     if (!$allDone) {
         return response()->json(['error' => 'Items are not finished in KDS'], 422);
@@ -169,8 +175,14 @@ public function batchSendToCashier(Request $request)
     foreach ($data['order_ids'] as $id) {
         $order = Order::with('items')->find($id);
         $allDone = $order->items
-            ->filter(fn($i) => !in_array($i->kds_status, ['canceled','refunded','cancelled']))
-            ->every(fn($i) => in_array($i->kds_status, ['ready','served']));
+    ->filter(function ($i) {
+        $status = $i->kds_status ?? $i->status; // fallback if NULL
+        return !in_array($status, ['canceled', 'refunded', 'cancelled']);
+    })
+    ->every(function ($i) {
+        $status = $i->kds_status ?? $i->status;
+        return in_array($status, ['ready', 'served']);
+    });
 
         if ($allDone) {
             $order->status = 'cashier'; // <— important
