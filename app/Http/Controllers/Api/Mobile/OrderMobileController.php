@@ -279,7 +279,7 @@ public function sendToKDS(Request $request, Order $order)
     }
 
     // Broadcast to branch — KDS should refresh/append ticket
-    event(new OrderSentToKDS($order));
+    // event(new OrderSentToKDS($order));
 
     return response()->json(['ok' => true, 'order_id' => $order->id]);
 }
