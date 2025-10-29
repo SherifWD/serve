@@ -11,8 +11,12 @@ class OrderFactory extends Factory
         return [
             'branch_id' => 1, // update as needed
             'table_id' => 1, // update as needed
-            'status' => $this->faker->randomElement(['pending', 'completed', 'cancelled']),
+            'status' => $this->faker->randomElement(['pending', 'preparing', 'prepared', 'paid', 'cancelled', 'refunded']),
+            'order_type' => $this->faker->randomElement(['dine-in', 'takeaway', 'delivery']),
             'total' => $this->faker->randomFloat(2, 20, 5000),
+            'subtotal' => $this->faker->randomFloat(2, 20, 4000),
+            'tax' => $this->faker->randomFloat(2, 0, 500),
+            'discount' => $this->faker->randomFloat(2, 0, 200),
             'order_date' => $this->faker->dateTimeThisMonth,
         ];
     }

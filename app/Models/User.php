@@ -19,9 +19,12 @@ class User extends Authenticatable
      * @var list<string>
      */
     protected $fillable = [
+        'restaurant_id',
+        'branch_id',
         'name',
         'email',
         'password',
+        'role',
     ];
 
     /**
@@ -47,22 +50,49 @@ class User extends Authenticatable
         ];
     }
 
-    public function roles() {
-    return $this->belongsToMany(Role::class);
-}
-public function role() {
-    return $this->belongsTo(Role::class);
-}
+    public function roles()
+    {
+        return $this->belongsToMany(Role::class)
+            ->withPivot(['tenant_id', 'assigned_at', 'metadata'])
+            ->withTimestamps();
+    }
 
-public function branch() {
-    return $this->belongsTo(Branch::class);
-}
+    public function primaryRole(): BelongsTo
+    {
+        return $this->belongsTo(Role::class, 'role_id');
+    }
 
-public function devices() {
-    return $this->hasMany(Device::class);
-}
-public function types()
-{
-    return $this->belongsToMany(Type::class,'type_users');
-}
+    public function branch()
+    {
+        return $this->belongsTo(Branch::class);
+    }
+
+    public function devices()
+    {
+        return $this->hasMany(Device::class);
+    }
+
+    public function types()
+    {
+        return $this->belongsToMany(Type::class, 'type_users');
+    }
+
+    public function tenantLinks()
+    {
+        return $this->hasMany(\App\Platform\Tenancy\Models\TenantUser::class);
+    }
+
+    public function tenants()
+    {
+        return $this->belongsToMany(
+            \App\Platform\Tenancy\Models\Tenant::class,
+            'tenant_users'
+        )->withPivot(['is_primary', 'status', 'invited_at', 'accepted_at', 'settings'])
+         ->withTimestamps();
+    }
+
+    public function primaryTenant()
+    {
+        return $this->tenants()->wherePivot('is_primary', true)->first();
+    }
 }

@@ -9,11 +9,21 @@
       class="sidebar"
     >
       <v-list nav dense>
-        <v-list-item prepend-avatar="/logo.png" title="POS Dashboard" class="mb-3 logo-title" />
+        <v-list-item prepend-avatar="/logo.png" title="Factory Suite" class="mb-3 logo-title" />
         <v-list-item
           :to="navDashboard.to"
           :title="navDashboard.title"
           :prepend-icon="navDashboard.icon"
+          class="nav-link"
+        />
+
+        <v-list-subheader class="nav-section mt-4">Factory Systems</v-list-subheader>
+        <v-list-item
+          v-for="item in navFactory"
+          :key="item.title"
+          :to="item.to"
+          :title="item.title"
+          :prepend-icon="item.icon"
           class="nav-link"
         />
 
@@ -88,7 +98,7 @@
     <v-app-bar app color="#181818" flat height="64">
       <v-app-bar-nav-icon @click="drawer = !drawer" color="#b7dbcc" />
       <v-toolbar-title class="font-weight-bold" style="color:#b7dbcc; letter-spacing:0.01em;">
-        <span style="color:#2a9d8f;">POS</span><span style="color:#b7dbcc;"> Dashboard</span>
+        <span style="color:#2a9d8f;">Factory</span><span style="color:#b7dbcc;"> Suite</span>
       </v-toolbar-title>
       <v-spacer />
       <v-btn icon><v-icon color="#2a9d8f">mdi-bell</v-icon></v-btn>
@@ -136,7 +146,33 @@ const drawer = ref(true)
 const router = useRouter()
 
 // Main nav groups for sidebar (easy to adjust/extend)
-const navDashboard = { to: "/dashboard", title: "Dashboard", icon: "mdi-view-dashboard" }
+const navDashboard = { to: "/dashboard", title: "ERP Home", icon: "mdi-factory" }
+
+const navFactory = [
+  { to: "/dms", title: "DMS Library", icon: "mdi-folder-file-outline" },
+  { to: "/scm", title: "SCM Hub", icon: "mdi-truck-fast" },
+  { to: "/wms", title: "WMS Stores", icon: "mdi-warehouse" },
+  { to: "/mes", title: "MES Control", icon: "mdi-robot-industrial" },
+  { to: "/iot", title: "IoT Streams", icon: "mdi-access-point-network" },
+  { to: "/cmms", title: "CMMS Maintenance", icon: "mdi-cog-outline" },
+  { to: "/procurement", title: "Procurement Office", icon: "mdi-briefcase" },
+  { to: "/qms", title: "QMS Quality", icon: "mdi-clipboard-check" },
+  { to: "/hse", title: "HSE Compliance", icon: "mdi-shield-alert" },
+  { to: "/plm", title: "PLM Workspace", icon: "mdi-drawing" },
+  { to: "/hrms", title: "HRMS People", icon: "mdi-account-badge" },
+  { to: "/visitor", title: "Visitor Access", icon: "mdi-account-badge-outline" },
+  { to: "/commerce", title: "Commerce Portal", icon: "mdi-cart-outline" },
+  { to: "/crm", title: "CRM Growth", icon: "mdi-account-group" },
+  { to: "/finance", title: "Finance Suite", icon: "mdi-currency-usd" },
+  { to: "/budgeting", title: "Budgeting Control", icon: "mdi-cash-multiple" },
+  { to: "/budgeting/reports", title: "Budgeting Reports", icon: "mdi-file-chart" },
+  { to: "/projects", title: "Projects & Changes", icon: "mdi-clipboard-flow" },
+  { to: "/projects/reports", title: "Project Insights", icon: "mdi-chart-gantt" },
+  { to: "/communication", title: "Workflow Centre", icon: "mdi-forum" },
+  { to: "/communication/reports", title: "Workflow Reports", icon: "mdi-chart-box-outline" },
+  { to: "/bi", title: "BI Insights", icon: "mdi-chart-areaspline" },
+  { to: "/pos", title: "POS Dashboard", icon: "mdi-point-of-sale" },
+]
 
 const navLocations = [
   { to: "/branches",   title: "Branches", icon: "mdi-store" },
@@ -162,6 +198,7 @@ const navOps = [
 
 const navMgmt = [
   { to: "/employees",  title: "Employees", icon: "mdi-account-group" },
+  { to: "/platform",   title: "Platform Control", icon: "mdi-office-building-cog" },
   { to: "/settings",   title: "Settings",  icon: "mdi-cog" }
 ]
 
