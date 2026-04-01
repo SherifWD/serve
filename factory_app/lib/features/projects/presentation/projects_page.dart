@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/widgets/section_card.dart';
+import '../../../core/widgets/feature_group.dart';
+import '../../../core/widgets/module_data_view.dart';
 import '../data/project_mock_data.dart';
 
 class ProjectsPage extends ConsumerWidget {
@@ -70,9 +72,21 @@ class ProjectsPage extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: 12),
+          const SectionCard(
+            title: 'Project endpoints',
+            child: FeatureGroup(entries: projectFeatures),
+          ),
+          const SizedBox(height: 12),
           SectionCard(
             title: 'Gantt-style timeline',
             child: _Timeline(),
+          ),
+          const SizedBox(height: 12),
+          const ModuleDataView(
+            moduleId: 'projects',
+            endpoint: '/projects',
+            statusOptions: ['On track', 'At risk', 'Behind'],
+            title: 'Projects list',
           ),
         ],
       ),
