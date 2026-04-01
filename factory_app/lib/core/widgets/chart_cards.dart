@@ -10,8 +10,7 @@ class TrendLineChart extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final spots = [
-      for (var i = 0; i < points.length; i++)
-        FlSpot(i.toDouble(), points[i]),
+      for (var i = 0; i < points.length; i++) FlSpot(i.toDouble(), points[i]),
     ];
     return SizedBox(
       height: 220,
@@ -26,7 +25,8 @@ class TrendLineChart extends StatelessWidget {
               isCurved: true,
               color: color,
               dotData: const FlDotData(show: false),
-              belowBarData: BarAreaData(show: true, color: color.withOpacity(0.15)),
+              belowBarData:
+                  BarAreaData(show: true, color: color.withValues(alpha: 0.15)),
             ),
           ],
         ),
@@ -59,7 +59,10 @@ class DonutChart extends StatelessWidget {
         title: entry.key,
         color: color,
         radius: 60,
-        titleStyle: Theme.of(context).textTheme.labelMedium?.copyWith(color: Colors.white),
+        titleStyle: Theme.of(context)
+            .textTheme
+            .labelMedium
+            ?.copyWith(color: Colors.white),
       );
     }).toList();
 

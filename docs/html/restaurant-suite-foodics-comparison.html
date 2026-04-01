@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Restaurant Suite vs Foodics</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="layout">
+    <div class="hero">
+      <h1>Restaurant Suite vs Foodics</h1>
+      <p>This view updates the earlier markdown comparison with the new Flutter applications and backend gap closures completed in this turn.</p>
+    </div>
+
+    <div class="card">
+      <h2>Current Position</h2>
+      <p>The product is now stronger than the original repo snapshot because it no longer stops at backend-only dine-in operations. It now has runnable Flutter role workspaces for Customer, Waiter, Cashier, Kitchen, and Owner, plus a customer loyalty and order-history flow.</p>
+    </div>
+
+    <h2 class="section-title">Where This Iteration Closed The Gap</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Area</th>
+          <th>What Was Added Here</th>
+          <th>Why It Matters Against Foodics</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Customer product layer</td>
+          <td>Customer app, restaurants listing, order history, loyalty points, customer auth, customer linkage on orders</td>
+          <td>Foodics is ahead in CRM and loyalty. This repo now has a real foundation instead of just data models.</td>
+        </tr>
+        <tr>
+          <td>Cashier maturity</td>
+          <td>Split-tender capable payment flow and payment records</td>
+          <td>Foodics explicitly offers richer dine-in payment handling; mixed tender removes a visible weakness.</td>
+        </tr>
+        <tr>
+          <td>Owner visibility</td>
+          <td>Payment mix, branch performance, loyalty member count, KDS backlog, cashier queue</td>
+          <td>This makes the ownership layer feel closer to an actual SaaS operator console.</td>
+        </tr>
+        <tr>
+          <td>Operational UI completeness</td>
+          <td>Flutter workspaces for waiter, cashier, kitchen, and owner</td>
+          <td>The previous repo state had backend capability without the matching mobile/operator product surface.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2 class="section-title">Where Foodics Still Stays Ahead</h2>
+    <div class="card">
+      <ul>
+        <li>Wider packaged ecosystem: marketplace, broader integrations, and mature omnichannel layers.</li>
+        <li>Online ordering breadth: storefronts, delivery orchestration, and deeper ecosystem partnerships.</li>
+        <li>Enterprise packaging: more battle-tested onboarding, payments, and support motion across many branches.</li>
+        <li>Commercial polish: stronger breadth of polished operational edge cases out of the box.</li>
+      </ul>
+    </div>
+
+    <h2 class="section-title">Recommended Positioning</h2>
+    <div class="card">
+      <ul>
+        <li>Position the product as the customizable Egypt-focused restaurant operating system, not as a total feature superset of Foodics.</li>
+        <li>Lead with table service UX, customer linkage, ownership visibility, and implementation flexibility.</li>
+        <li>Use Foodics as the benchmark to explain roadmap direction, not as a claim that the platform is already broader everywhere.</li>
+      </ul>
+    </div>
+
+    <h2 class="section-title">Comparison Sources</h2>
+    <div class="card">
+      <ul class="source-list">
+        <li><a href="https://www.foodics.com/pricing/">Foodics pricing</a></li>
+        <li><a href="https://www.foodics.com/rms-features/">Foodics RMS features</a></li>
+        <li><a href="https://www.foodics.com/online-features/">Foodics online features</a></li>
+        <li><a href="../foodics-comparison.md">Earlier markdown comparison already in this repo</a></li>
+      </ul>
+    </div>
+  </div>
+</body>
+</html>

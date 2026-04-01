@@ -44,7 +44,9 @@ class HrPage extends ConsumerWidget {
                       leading: const Icon(Icons.picture_as_pdf_outlined),
                       title: Text(doc.name),
                       subtitle: Text('${doc.type} - ${doc.owner}'),
-                      trailing: IconButton(onPressed: () {}, icon: const Icon(Icons.download_outlined)),
+                      trailing: IconButton(
+                          onPressed: () {},
+                          icon: const Icon(Icons.download_outlined)),
                     ),
                   ),
               ],
@@ -60,13 +62,17 @@ class HrPage extends ConsumerWidget {
                   children: [
                     CircleAvatar(
                       radius: 28,
-                      child: Text('AL', style: theme.textTheme.titleLarge?.copyWith(color: Colors.white)),
+                      child: Text('AL',
+                          style: theme.textTheme.titleLarge
+                              ?.copyWith(color: Colors.white)),
                     ),
                     const SizedBox(width: 12),
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('Alex Lee', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+                        Text('Alex Lee',
+                            style: theme.textTheme.titleMedium
+                                ?.copyWith(fontWeight: FontWeight.bold)),
                         Text('Employee - Assembly'),
                       ],
                     ),

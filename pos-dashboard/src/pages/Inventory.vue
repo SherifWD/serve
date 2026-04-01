@@ -209,6 +209,7 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
 import axios from 'axios'
+import { API_BASE_URL } from '../lib/api'
 import OwnerLayout from '@/layouts/OwnerLayout.vue'
 
 const inventoryItems = ref([])
@@ -253,7 +254,7 @@ function branchName(id) {
 async function loadBranches() {
   try {
     const token = localStorage.getItem('token')
-    const res = await axios.get('http://localhost:8000/api/branches', {
+    const res = await axios.get(`${API_BASE_URL}/branches`, {
       headers: { Authorization: `Bearer ${token}` },
     })
     branches.value = res.data.data || res.data
@@ -264,7 +265,7 @@ async function loadBranches() {
 async function loadIngredients() {
   try {
     const token = localStorage.getItem('token')
-    const res = await axios.get('http://localhost:8000/api/ingredients', {
+    const res = await axios.get(`${API_BASE_URL}/ingredients`, {
       headers: { Authorization: `Bearer ${token}` },
     })
     ingredients.value = res.data.data || res.data
@@ -275,7 +276,7 @@ async function loadIngredients() {
 async function loadProducts() {
   try {
     const token = localStorage.getItem('token')
-    const res = await axios.get('http://localhost:8000/api/products', {
+    const res = await axios.get(`${API_BASE_URL}/products`, {
       headers: { Authorization: `Bearer ${token}` },
     })
     products.value = res.data.data || res.data
@@ -286,7 +287,7 @@ async function loadProducts() {
 async function loadInventoryItems() {
   try {
     const token = localStorage.getItem('token')
-    const res = await axios.get('http://localhost:8000/api/inventory-items', {
+    const res = await axios.get(`${API_BASE_URL}/inventory-items`, {
       headers: { Authorization: `Bearer ${token}` }
     })
     inventoryItems.value = res.data.data || res.data
@@ -345,8 +346,8 @@ async function saveInventoryItem() {
     product_id: inventoryType.value === 'product' ? drawerForm.value.product_id : null,
   }
   const url = isEditing.value
-    ? `http://localhost:8000/api/inventory-items/${drawerForm.value.id}`
-    : 'http://localhost:8000/api/inventory-items'
+    ? `${API_BASE_URL}/inventory-items/${drawerForm.value.id}`
+    : `${API_BASE_URL}/inventory-items`
   const method = isEditing.value ? 'put' : 'post'
   await axios[method](url, data, { headers: { Authorization: `Bearer ${token}` } })
   rightDrawer.value = false
@@ -356,7 +357,7 @@ async function saveInventoryItem() {
 async function deleteInventoryItem(item) {
   if (!confirm(`Delete ${item.ingredient ? item.ingredient.name : item.product?.name || 'item'}?`)) return
   const token = localStorage.getItem('token')
-  await axios.delete(`http://localhost:8000/api/inventory-items/${item.id}`, {
+  await axios.delete(`${API_BASE_URL}/inventory-items/${item.id}`, {
     headers: { Authorization: `Bearer ${token}` }
   })
   loadInventoryItems()

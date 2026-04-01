@@ -17,6 +17,10 @@ public function table() {
     return $this->belongsTo(Table::class);
 }
 
+public function customer() {
+    return $this->belongsTo(Customer::class);
+}
+
 public function items() {
     return $this->hasMany(OrderItem::class);
 }

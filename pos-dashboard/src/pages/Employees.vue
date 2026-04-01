@@ -164,6 +164,7 @@
 <script setup>
 import { ref, computed, onMounted, nextTick, watch } from 'vue'
 import axios from 'axios'
+import { API_BASE_URL } from '../lib/api'
 import Chart from 'chart.js/auto'
 import OwnerLayout from '@/layouts/OwnerLayout.vue'
 
@@ -215,14 +216,14 @@ const filteredEmployees = computed(() => {
 
 async function loadEmployees() {
   const token = localStorage.getItem('token')
-  const res = await axios.get('http://localhost:8000/api/employees', {
+  const res = await axios.get(`${API_BASE_URL}/employees`, {
     headers: { Authorization: `Bearer ${token}` }
   })
   employees.value = res.data.data || res.data
 }
 async function loadBranches() {
   const token = localStorage.getItem('token')
-  const res = await axios.get('http://localhost:8000/api/branches', {
+  const res = await axios.get(`${API_BASE_URL}/branches`, {
     headers: { Authorization: `Bearer ${token}` }
   })
   branches.value = res.data.data || res.data
@@ -246,11 +247,11 @@ function openEdit(emp) {
 async function saveEmployee() {
   const token = localStorage.getItem('token')
   if (editing.value) {
-    await axios.put(`http://localhost:8000/api/employees/${form.value.id}`, form.value, {
+    await axios.put(`${API_BASE_URL}/employees/${form.value.id}`, form.value, {
       headers: { Authorization: `Bearer ${token}` }
     })
   } else {
-    await axios.post('http://localhost:8000/api/employees', form.value, {
+    await axios.post(`${API_BASE_URL}/employees`, form.value, {
       headers: { Authorization: `Bearer ${token}` }
     })
   }
@@ -261,7 +262,7 @@ async function saveEmployee() {
 async function deleteEmployee(emp) {
   if (!confirm(`Delete ${emp.name}?`)) return
   const token = localStorage.getItem('token')
-  await axios.delete(`http://localhost:8000/api/employees/${emp.id}`, {
+  await axios.delete(`${API_BASE_URL}/employees/${emp.id}`, {
     headers: { Authorization: `Bearer ${token}` }
   })
   loadEmployees()
@@ -270,7 +271,7 @@ async function deleteEmployee(emp) {
 async function loadPerformance(employeeId) {
   // Call this in openEdit
   const token = localStorage.getItem('token')
-  const res = await axios.get(`http://localhost:8000/api/employees/${employeeId}/performance`, {
+  const res = await axios.get(`${API_BASE_URL}/employees/${employeeId}/performance`, {
     headers: { Authorization: `Bearer ${token}` }
   })
   performanceRecords.value = (res.data.data || res.data).slice(0, 10).reverse()

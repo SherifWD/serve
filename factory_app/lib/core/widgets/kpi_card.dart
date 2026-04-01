@@ -31,21 +31,24 @@ class KpiCard extends StatelessWidget {
               children: [
                 Container(
                   decoration: BoxDecoration(
-                    color: resolvedColor.withOpacity(0.15),
+                    color: resolvedColor.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   padding: const EdgeInsets.all(10),
                   child: Icon(icon, color: resolvedColor),
                 ),
                 const Spacer(),
-                Text(trendLabel, style: theme.textTheme.labelMedium?.copyWith(color: Colors.green)),
+                Text(trendLabel,
+                    style: theme.textTheme.labelMedium
+                        ?.copyWith(color: Colors.green)),
               ],
             ),
             const SizedBox(height: 14),
             Text(title, style: theme.textTheme.labelLarge),
             Text(
               value,
-              style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
+              style: theme.textTheme.headlineSmall
+                  ?.copyWith(fontWeight: FontWeight.bold),
             ),
           ],
         ),

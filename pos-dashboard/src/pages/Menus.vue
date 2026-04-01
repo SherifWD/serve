@@ -206,6 +206,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import axios from 'axios'
+import { API_BASE_URL } from '../lib/api'
 import OwnerLayout from '@/layouts/OwnerLayout.vue'
 
 const menus = ref([])
@@ -240,7 +241,7 @@ const filteredMenus = computed(() => {
 async function loadMenus() {
   try {
     const token = localStorage.getItem('token')
-    const res = await axios.get('http://localhost:8000/api/menus', {
+    const res = await axios.get(`${API_BASE_URL}/menus`, {
       headers: { Authorization: `Bearer ${token}` }
     })
     menus.value = res.data.data || res.data
@@ -250,7 +251,7 @@ async function loadMenus() {
 async function loadBranches() {
   try {
     const token = localStorage.getItem('token')
-    const res = await axios.get('http://localhost:8000/api/branches', {
+    const res = await axios.get(`${API_BASE_URL}/branches`, {
       headers: { Authorization: `Bearer ${token}` }
     })
     branches.value = res.data.data || res.data
@@ -260,7 +261,7 @@ async function loadBranches() {
 async function loadCategories() {
   try {
     const token = localStorage.getItem('token')
-    const res = await axios.get('http://localhost:8000/api/categories', {
+    const res = await axios.get(`${API_BASE_URL}/categories`, {
       headers: { Authorization: `Bearer ${token}` }
     })
     categories.value = res.data.data || res.data
@@ -294,8 +295,8 @@ function openViewDrawer(menu) {
 async function saveMenu() {
   const token = localStorage.getItem('token')
   const url = isEditing.value
-    ? `http://localhost:8000/api/menus/${drawerForm.value.id}`
-    : 'http://localhost:8000/api/menus'
+    ? `${API_BASE_URL}/menus/${drawerForm.value.id}`
+    : `${API_BASE_URL}/menus`
   const method = isEditing.value ? 'put' : 'post'
   await axios[method](url, drawerForm.value, {
     headers: { Authorization: `Bearer ${token}` }
@@ -307,7 +308,7 @@ async function saveMenu() {
 async function deleteMenu(menu) {
   if (!confirm(`Delete ${menu.name}?`)) return
   const token = localStorage.getItem('token')
-  await axios.delete(`http://localhost:8000/api/menus/${menu.id}`, {
+  await axios.delete(`${API_BASE_URL}/menus/${menu.id}`, {
     headers: { Authorization: `Bearer ${token}` }
   })
   loadMenus()

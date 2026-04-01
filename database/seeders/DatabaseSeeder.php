@@ -51,6 +51,8 @@ use App\Models\ActivityLog;
 use App\Models\AuditLog;
 use App\Models\ApiToken;
 use App\Models\WebhookLog;
+use App\Models\Restaurant;
+use App\Models\Type;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Hash;
 
@@ -66,14 +68,27 @@ class DatabaseSeeder extends Seeder
             'employee' => Role::firstOrCreate(['name' => 'employee']),
         ];
 
-        // Create Owner
-        $owner = User::factory()->create([
-            'name' => 'Main Owner',
-            'email' => 'owner@example.com',
-            'password' => Hash::make('password'),
-            'role' => 'owner'
+        $types = [
+            'owner' => Type::firstOrCreate(['name' => 'owner']),
+            'waiter' => Type::firstOrCreate(['name' => 'waiter']),
+            'cashier' => Type::firstOrCreate(['name' => 'cashier']),
+            'kitchen' => Type::firstOrCreate(['name' => 'kitchen']),
+        ];
+
+        $restaurant = Restaurant::firstOrCreate([
+            'name' => 'Restaurant Suite Demo',
         ]);
+
+        // Create Owner
+        $owner = User::firstOrNew(['email' => 'owner@example.com']);
+        $owner->name = 'Main Owner';
+        $owner->password = Hash::make('password');
+        $owner->role = 'owner';
+        $owner->restaurant_id = $restaurant->id;
+        $owner->branch_id = null;
+        $owner->save();
         $owner->roles()->sync([$roles['owner']->id]);
+        $owner->types()->syncWithoutDetaching([$types['owner']->id]);
         // Create Employee
         // $employee = User::factory()->create([
         //     'name' => 'Main Employee',
@@ -84,37 +99,72 @@ class DatabaseSeeder extends Seeder
         // $employee->roles()->sync([$roles['employee']->id]);
 
         // Create Branches
-        $branches = collect([
-    Branch::factory()->create(['name' => 'Downtown Branch', 'location' => 'Downtown']),
-    Branch::factory()->create(['name' => 'Mall Branch', 'location' => 'Mall Center']),
-        ]);
+        $branchConfigs = [
+            [
+                'name' => 'Downtown Branch',
+                'location' => 'Downtown',
+                'slug' => 'downtown',
+            ],
+            [
+                'name' => 'Mall Branch',
+                'location' => 'Mall Center',
+                'slug' => 'mall',
+            ],
+        ];
+
+        $branches = collect($branchConfigs)->map(function (array $config) use ($restaurant) {
+            return Branch::firstOrCreate(
+                ['name' => $config['name']],
+                [
+                    'location' => $config['location'],
+                    'restaurant_id' => $restaurant->id,
+                ]
+            );
+        });
 
 
         // Create Supervisors and Staff per Branch
         foreach ($branches as $branch) {
-            $supervisor = User::factory()->create([
-                'name' => $branch->name . ' Supervisor',
-                'email' => 'supervisor_' . Str::slug($branch->name) . '@example.com',
-                'password' => Hash::make('password'),
-                'role' => 'supervisor',
-                'branch_id' => $branch->id,
+            $branchSlug = Str::slug(str_replace('-branch', '', strtolower($branch->name)), '_');
+
+            $supervisor = User::firstOrNew([
+                'email' => "supervisor_{$branchSlug}@example.com",
             ]);
+            $supervisor->name = $branch->name . ' Supervisor';
+            $supervisor->password = Hash::make('password');
+            $supervisor->role = 'supervisor';
+            $supervisor->branch_id = $branch->id;
+            $supervisor->restaurant_id = $restaurant->id;
+            $supervisor->save();
             $supervisor->roles()->sync([$roles['supervisor']->id]);
 
-            $staff = User::factory(2)->create([
-                'role' => 'staff',
-                'branch_id' => $branch->id,
-            ]);
-            foreach ($staff as $s) {
-                $s->roles()->sync([$roles['staff']->id]);
+            foreach (['waiter', 'cashier', 'kitchen'] as $typeName) {
+                $staff = User::firstOrNew([
+                    'email' => "{$typeName}_{$branchSlug}@example.com",
+                ]);
+                $staff->name = ucfirst($typeName) . ' ' . $branch->name;
+                $staff->password = Hash::make('password');
+                $staff->role = 'staff';
+                $staff->branch_id = $branch->id;
+                $staff->restaurant_id = $restaurant->id;
+                $staff->save();
+
+                $staff->roles()->sync([$roles['staff']->id]);
+                $staff->types()->syncWithoutDetaching([$types[$typeName]->id]);
             }
 
             // Tables
-            Table::factory()->count(4)->create(['branch_id' => $branch->id]);
+            if ($branch->tables()->count() === 0) {
+                Table::factory()->count(4)->create(['branch_id' => $branch->id]);
+            }
             // Devices
-            Device::factory()->count(2)->create(['branch_id' => $branch->id]);
+            if ($branch->devices()->count() === 0) {
+                Device::factory()->count(2)->create(['branch_id' => $branch->id]);
+            }
             // Employees
-            Employee::factory()->count(5)->create(['branch_id' => $branch->id]);
+            if ($branch->employees()->count() === 0) {
+                Employee::factory()->count(5)->create(['branch_id' => $branch->id]);
+            }
         }
 
         // Categories and Products

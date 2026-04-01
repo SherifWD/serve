@@ -197,6 +197,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import axios from 'axios'
+import { API_BASE_URL } from '../lib/api'
 import OwnerLayout from '@/layouts/OwnerLayout.vue'
 
 const suppliers = ref([])
@@ -233,7 +234,7 @@ const filteredSuppliers = computed(() => {
 async function loadSuppliers() {
   try {
     const token = localStorage.getItem('token')
-    const res = await axios.get('http://localhost:8000/api/suppliers', {
+    const res = await axios.get(`${API_BASE_URL}/suppliers`, {
       headers: { Authorization: `Bearer ${token}` }
     })
     suppliers.value = res.data.data || res.data
@@ -266,8 +267,8 @@ function openViewDrawer(supplier) {
 async function saveSupplier() {
   const token = localStorage.getItem('token')
   const url = isEditing.value
-    ? `http://localhost:8000/api/suppliers/${drawerForm.value.id}`
-    : 'http://localhost:8000/api/suppliers'
+    ? `${API_BASE_URL}/suppliers/${drawerForm.value.id}`
+    : `${API_BASE_URL}/suppliers`
   const method = isEditing.value ? 'put' : 'post'
   await axios[method](url, drawerForm.value, {
     headers: { Authorization: `Bearer ${token}` }
@@ -279,7 +280,7 @@ async function saveSupplier() {
 async function deleteSupplier(supplier) {
   if (!confirm(`Delete ${supplier.name}?`)) return
   const token = localStorage.getItem('token')
-  await axios.delete(`http://localhost:8000/api/suppliers/${supplier.id}`, {
+  await axios.delete(`${API_BASE_URL}/suppliers/${supplier.id}`, {
     headers: { Authorization: `Bearer ${token}` }
   })
   loadSuppliers()

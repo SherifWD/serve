@@ -102,6 +102,7 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue'
 import axios from 'axios'
+import { API_BASE_URL } from '../lib/api'
 import OwnerLayout from '@/layouts/OwnerLayout.vue'
 
 const loading = ref(true)
@@ -160,7 +161,7 @@ const lowStockHeaders = [
 
 async function fetchBranches() {
   const token = localStorage.getItem('token')
-  const { data } = await axios.get('http://localhost:8000/api/branches', {
+  const { data } = await axios.get(`${API_BASE_URL}/branches`, {
     headers: { Authorization: `Bearer ${token}` }
   })
   branches.value = data.data || data
@@ -170,7 +171,7 @@ async function fetchDashboard() {
   loading.value = true
   try {
     const params = selectedBranch.value ? { branch_id: selectedBranch.value } : {}
-    const { data } = await axios.get('http://localhost:8000/api/dashboard/summary', {
+    const { data } = await axios.get(`${API_BASE_URL}/dashboard/summary`, {
       headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
       params
     })

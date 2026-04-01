@@ -1,8 +1,6 @@
-import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'app.dart';
+import 'bootstrap.dart';
+import 'core/config/app_flavor.dart';
 
 void main() {
-  WidgetsFlutterBinding.ensureInitialized();
-  runApp(const ProviderScope(child: FactoryApp()));
+  bootstrap(AppFlavor.suite);
 }

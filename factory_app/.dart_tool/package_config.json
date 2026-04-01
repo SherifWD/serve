@@ -81,7 +81,7 @@
     },
     {
       "name": "flutter",
-      "rootUri": "file:///Applications/XAMPP/xamppfiles/htdocs/Flutter%20SDK/flutter/packages/flutter",
+      "rootUri": "file:///Applications/Flutter/flutter/packages/flutter",
       "packageUri": "lib/",
       "languageVersion": "3.7"
     },
@@ -135,13 +135,13 @@
     },
     {
       "name": "flutter_test",
-      "rootUri": "file:///Applications/XAMPP/xamppfiles/htdocs/Flutter%20SDK/flutter/packages/flutter_test",
+      "rootUri": "file:///Applications/Flutter/flutter/packages/flutter_test",
       "packageUri": "lib/",
       "languageVersion": "3.7"
     },
     {
       "name": "flutter_web_plugins",
-      "rootUri": "file:///Applications/XAMPP/xamppfiles/htdocs/Flutter%20SDK/flutter/packages/flutter_web_plugins",
+      "rootUri": "file:///Applications/Flutter/flutter/packages/flutter_web_plugins",
       "packageUri": "lib/",
       "languageVersion": "3.7"
     },
@@ -297,7 +297,7 @@
     },
     {
       "name": "sky_engine",
-      "rootUri": "file:///Applications/XAMPP/xamppfiles/htdocs/Flutter%20SDK/flutter/bin/cache/pkg/sky_engine",
+      "rootUri": "file:///Applications/Flutter/flutter/bin/cache/pkg/sky_engine",
       "packageUri": "lib/",
       "languageVersion": "3.7"
     },
@@ -380,7 +380,7 @@
       "languageVersion": "3.3"
     },
     {
-      "name": "factory_dashboard",
+      "name": "restaurant_suite",
       "rootUri": "../",
       "packageUri": "lib/",
       "languageVersion": "3.2"
@@ -388,7 +388,7 @@
   ],
   "generator": "pub",
   "generatorVersion": "3.8.1",
-  "flutterRoot": "file:///Applications/XAMPP/xamppfiles/htdocs/Flutter%20SDK/flutter",
+  "flutterRoot": "file:///Applications/Flutter/flutter",
   "flutterVersion": "3.32.4",
   "pubCache": "file:///Users/sherifshahawy/.pub-cache"
 }

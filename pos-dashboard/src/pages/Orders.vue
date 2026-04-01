@@ -226,6 +226,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import axios from 'axios'
+import { API_BASE_URL } from '../lib/api'
 import OwnerLayout from '@/layouts/OwnerLayout.vue'
 
 const orders = ref([])
@@ -304,7 +305,7 @@ function statusColor(status) {
 
 async function loadOrders() {
   const token = localStorage.getItem('token')
-  const res = await axios.get('http://localhost:8000/api/orders', {
+  const res = await axios.get(`${API_BASE_URL}/orders`, {
     headers: { Authorization: `Bearer ${token}` }
   })
   orders.value = res.data.data || res.data
@@ -312,21 +313,21 @@ async function loadOrders() {
 
 async function loadBranches() {
   const token = localStorage.getItem('token')
-  const res = await axios.get('http://localhost:8000/api/branches', {
+  const res = await axios.get(`${API_BASE_URL}/branches`, {
     headers: { Authorization: `Bearer ${token}` }
   })
   branches.value = res.data.data || res.data
 }
 async function loadTables() {
   const token = localStorage.getItem('token')
-  const res = await axios.get('http://localhost:8000/api/tables', {
+  const res = await axios.get(`${API_BASE_URL}/tables`, {
     headers: { Authorization: `Bearer ${token}` }
   })
   tables.value = res.data.data || res.data
 }
 async function loadProducts() {
   const token = localStorage.getItem('token')
-  const res = await axios.get('http://localhost:8000/api/products', {
+  const res = await axios.get(`${API_BASE_URL}/products`, {
     headers: { Authorization: `Bearer ${token}` }
   })
   products.value = res.data.data || res.data
@@ -339,7 +340,7 @@ function openAdd() {
 }
 async function addOrder() {
   const token = localStorage.getItem('token')
-  await axios.post('http://localhost:8000/api/orders', form.value, {
+  await axios.post(`${API_BASE_URL}/orders`, form.value, {
     headers: { Authorization: `Bearer ${token}` }
   })
   dialog.value = false

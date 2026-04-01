@@ -26,7 +26,8 @@ class EmployeesPage extends ConsumerWidget {
                   Card(
                     margin: const EdgeInsets.only(bottom: 8),
                     child: ListTile(
-                      leading: CircleAvatar(child: Text(emp.name.characters.first)),
+                      leading:
+                          CircleAvatar(child: Text(emp.name.characters.first)),
                       title: Text(emp.name),
                       subtitle: Text('${emp.role} - ${emp.department}'),
                       trailing: Chip(label: Text('Perf ${emp.performance}')),
@@ -43,11 +44,14 @@ class EmployeesPage extends ConsumerWidget {
                   .map(
                     (entry) => ListTile(
                       contentPadding: EdgeInsets.zero,
-                      title: Text(entry.key, style: theme.textTheme.titleMedium),
+                      title:
+                          Text(entry.key, style: theme.textTheme.titleMedium),
                       subtitle: Wrap(
                         spacing: 8,
                         runSpacing: 4,
-                        children: entry.value.map((p) => Chip(label: Text(p))).toList(),
+                        children: entry.value
+                            .map((p) => Chip(label: Text(p)))
+                            .toList(),
                       ),
                     ),
                   )

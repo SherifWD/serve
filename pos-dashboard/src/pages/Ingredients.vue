@@ -191,6 +191,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import axios from 'axios'
+import { API_BASE_URL } from '../lib/api'
 import OwnerLayout from '@/layouts/OwnerLayout.vue'
 
 const ingredients = ref([])
@@ -272,21 +273,21 @@ function validateGlobalStock() {
 // --- Data fetch ---
 async function fetchIngredients() {
   const token = localStorage.getItem('token')
-  const { data } = await axios.get('http://localhost:8000/api/ingredients', {
+  const { data } = await axios.get(`${API_BASE_URL}/ingredients`, {
     headers: { Authorization: `Bearer ${token}` }
   })
   ingredients.value = data
 }
 async function fetchBranches() {
   const token = localStorage.getItem('token')
-  const { data } = await axios.get('http://localhost:8000/api/branches', {
+  const { data } = await axios.get(`${API_BASE_URL}/branches`, {
     headers: { Authorization: `Bearer ${token}` }
   })
   branches.value = data.data || data
 }
 async function fetchRecipes() {
   const token = localStorage.getItem('token')
-  const { data } = await axios.get('http://localhost:8000/api/recipes', {
+  const { data } = await axios.get(`${API_BASE_URL}/recipes`, {
     headers: { Authorization: `Bearer ${token}` }
   })
   recipes.value = data.data || data
@@ -329,7 +330,7 @@ function openEditDrawer(item) {
 }
 function deleteIngredient(item) {
   if (!confirm(`Delete ingredient "${item.name}"?`)) return
-  axios.delete(`http://localhost:8000/api/ingredients/${item.id}`, {
+  axios.delete(`${API_BASE_URL}/ingredients/${item.id}`, {
     headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
   }).then(fetchIngredients)
 }
@@ -408,11 +409,11 @@ async function saveIngredient() {
   const payload = { ...form.value }
   let response
   if (isEditing.value) {
-    response = await axios.put(`http://localhost:8000/api/ingredients/${payload.id}`, payload, {
+    response = await axios.put(`${API_BASE_URL}/ingredients/${payload.id}`, payload, {
       headers: { Authorization: `Bearer ${token}` }
     })
   } else {
-    response = await axios.post('http://localhost:8000/api/ingredients', payload, {
+    response = await axios.post(`${API_BASE_URL}/ingredients`, payload, {
       headers: { Authorization: `Bearer ${token}` }
     })
   }

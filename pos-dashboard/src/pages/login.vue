@@ -42,6 +42,7 @@
 <script setup>
 import { ref } from 'vue'
 import axios from 'axios'
+import { API_BASE_URL } from '../lib/api'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../store/auth'
 const router = useRouter()
@@ -52,7 +53,7 @@ const error = ref('')
 
 async function login() {
   try {
-    const { data } = await axios.post('http://localhost:8000/api/login', {
+    const { data } = await axios.post(`${API_BASE_URL}/login`, {
       email: email.value, password: password.value
     })
     auth.setToken(data.token)

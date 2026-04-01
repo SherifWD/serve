@@ -5,17 +5,30 @@ namespace App\Http\Controllers\Api\Mobile;
 use App\Events\OrderSentToKDS;
 use App\Http\Controllers\Controller;
 use App\Models\CategoryAnswer;
+use App\Models\Customer;
+use App\Models\LoyaltyTransaction;
 use App\Models\Order;
 use App\Models\OrderItem;
+use App\Models\Payment;
 use App\Models\Product;
 use App\Models\Table;
 use Barryvdh\DomPDF\PDF;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Validator;
 
 class OrderMobileController extends Controller
 {
+    private function nonNegativeStockExpression(int $delta): string
+    {
+        if (DB::connection()->getDriverName() === 'sqlite') {
+            return "CASE WHEN stock + ($delta) < 0 THEN 0 ELSE stock + ($delta) END";
+        }
+
+        return "GREATEST(stock + ($delta), 0)";
+    }
+
     public function index(Request $request)
     {
         $query = Order::query();
@@ -24,7 +37,27 @@ class OrderMobileController extends Controller
             $query->where('table_id', $request->input('table_id'));
         }
 
-        $orders = $query->with(['items.product', 'items.modifiers.modifier'])->get();
+        if ($request->filled('status')) {
+            $statuses = collect(explode(',', (string) $request->input('status')))
+                ->map(fn ($value) => trim($value))
+                ->filter()
+                ->values();
+
+            if ($statuses->isNotEmpty()) {
+                $query->whereIn('status', $statuses);
+            }
+        }
+
+        $orders = $query->with([
+                'branch.restaurant',
+                'table',
+                'customer',
+                'items.product',
+                'items.modifiers.modifier',
+                'payments',
+            ])
+            ->latest('id')
+            ->get();
 
 $orders->each(function($order){
     $order->items->each(function($item){
@@ -126,6 +159,11 @@ if ($order) {
 {
     $data = $request->validate([
         'table_id' => 'required|integer|exists:tables,id',
+        'order_type' => 'nullable|in:dine-in,takeaway,delivery',
+        'customer_id' => 'nullable|integer|exists:customers,id',
+        'customer_name' => 'nullable|string|max:255',
+        'customer_phone' => 'nullable|string|max:30',
+        'customer_email' => 'nullable|email|max:255',
         'items' => 'required|array|min:1',
         'items.*.product_id' => 'required|integer|exists:products,id',
         'items.*.quantity' => 'required|integer|min:1',
@@ -145,6 +183,7 @@ if ($order) {
     DB::beginTransaction();
     try {
         $table = Table::findOrFail($data['table_id']);
+        $customer = $this->resolveCustomer($data);
 
         // Branch guard (optional)
         if ($request->user() && $table->branch_id !== $request->user()->branch_id) {
@@ -159,6 +198,8 @@ if ($order) {
         $order = $openOrder ?: Order::create([
             'branch_id' => $table->branch_id ?? 1,
             'table_id'  => $table->id,
+            'customer_id' => $customer?->id,
+            'order_type'=> $data['order_type'] ?? 'dine-in',
             'status'    => 'pending',
             'subtotal'  => 0,
             'tax'       => 0,
@@ -166,6 +207,11 @@ if ($order) {
             'total'     => 0,
             'order_date' => now(),
         ]);
+
+        if ($openOrder && !$order->customer_id && $customer) {
+            $order->customer_id = $customer->id;
+            $order->save();
+        }
 
         $orderTotal = $order->total;
         $branchId = $table->branch_id;
@@ -212,8 +258,9 @@ if ($order) {
                 }
             } else {
                 // simple product stock (if you track it on products)
-                if (\Schema::hasColumn('products','stock')) {
-                    $product->update(['stock' => \DB::raw('GREATEST(stock + ('.($qty*$direction).'), 0)')]);
+                if (Schema::hasColumn('products','stock')) {
+                    $delta = $qty * $direction;
+                    $product->update(['stock' => \DB::raw($this->nonNegativeStockExpression($delta))]);
                 }
             }
         };
@@ -305,9 +352,18 @@ if ($order) {
         // recompute unified subtotal/tax/total (keeps fields consistent)
         $order = \App\Services\Orders\RecalculateOrder::run($order);
 
+        $paidAmount = (float) $order->payments()->sum('amount');
+        if ($paidAmount > 0) {
+            $order->payment_status = $paidAmount >= (float) $order->total ? 'paid' : 'partial';
+            if ($order->payment_status !== 'paid' && $order->status === 'paid') {
+                $order->status = 'pending';
+            }
+            $order->save();
+        }
+
         DB::commit();
 
-        $order->load(['items.product', 'items.answers.choice.question', 'items.modifiers.modifier']); // eager
+        $order->load(['branch.restaurant', 'customer', 'items.product', 'items.answers.choice.question', 'items.modifiers.modifier', 'payments']); // eager
         return response()->json(['order' => $order], $openOrder ? 200 : 201);
 
     } catch (\Throwable $e) {
@@ -348,20 +404,70 @@ public function sendToKDS(Request $request, Order $order)
 public function pay(Request $request, $id)
 {
     $data = $request->validate([
-        'amount' => 'required|numeric|min:0',
-        'payment_method' => 'required|string|max:30',
-        'email_receipt' => 'nullable|email'
+        'amount' => 'nullable|numeric|min:0',
+        'payment_method' => 'nullable|string|max:30',
+        'email_receipt' => 'nullable|email',
+        'payments' => 'nullable|array|min:1',
+        'payments.*.method' => 'required_with:payments|in:cash,card,wallet',
+        'payments.*.amount' => 'required_with:payments|numeric|min:0.01',
     ]);
-    $order = Order::findOrFail($id);
 
-    if ($data['amount'] < $order->total) {
-        $order->payment_status = 'partial';
-    } else {
-        $order->payment_status = 'paid';
-        $order->paid_at = now();
+    if (empty($data['payments']) && (!isset($data['amount']) || empty($data['payment_method']))) {
+        return response()->json(['error' => 'Provide either a single payment or a payments split array.'], 422);
     }
-    $order->payment_method = $data['payment_method'];
-    $order->save();
+
+    $order = Order::with(['table', 'customer', 'payments'])->findOrFail($id);
+
+    DB::transaction(function () use ($data, $order) {
+        if (!empty($data['payments'])) {
+            foreach ($data['payments'] as $payment) {
+                Payment::create([
+                    'order_id' => $order->id,
+                    'method' => $payment['method'],
+                    'amount' => $payment['amount'],
+                ]);
+            }
+            $order->payment_method = count($data['payments']) > 1 ? 'mixed' : $data['payments'][0]['method'];
+        } else {
+            Payment::create([
+                'order_id' => $order->id,
+                'method' => $data['payment_method'],
+                'amount' => $data['amount'],
+            ]);
+            $order->payment_method = $data['payment_method'];
+        }
+
+        $paidAmount = (float) $order->payments()->sum('amount');
+        if ($paidAmount >= (float) $order->total) {
+            $order->payment_status = 'paid';
+            $order->status = 'paid';
+            $order->paid_at = now();
+
+            if ($order->table && $order->order_type === 'dine-in') {
+                $order->table->update(['status' => \App\Enums\TableStatus::OPEN]);
+            }
+
+            if ($order->customer && !$order->customer->loyaltyTransactions()->where('order_id', $order->id)->where('type', 'earn')->exists()) {
+                $earnedPoints = max(1, (int) floor(((float) $order->total) / 10));
+
+                LoyaltyTransaction::create([
+                    'customer_id' => $order->customer->id,
+                    'order_id' => $order->id,
+                    'points' => $earnedPoints,
+                    'type' => 'earn',
+                ]);
+
+                $order->customer->increment('loyalty_points', $earnedPoints);
+            }
+        } else {
+            $order->payment_status = $paidAmount > 0 ? 'partial' : 'unpaid';
+            $order->status = 'cashier';
+        }
+
+        $order->save();
+    });
+
+    $order->refresh()->load(['branch.restaurant', 'customer', 'items.product', 'payments']);
 
     // Optionally send email receipt
     if (!empty($data['email_receipt'])) {
@@ -375,6 +481,44 @@ public function receipt($id)
     $order = Order::with('items.product', 'table')->findOrFail($id);
     $pdf = \PDF::loadView('receipts.order', compact('order'));
     return $pdf->download("receipt_order_{$order->id}.pdf");
+}
+
+private function resolveCustomer(array $data): ?Customer
+{
+    if (!empty($data['customer_id'])) {
+        return Customer::find($data['customer_id']);
+    }
+
+    if (empty($data['customer_phone']) && empty($data['customer_email'])) {
+        return null;
+    }
+
+    $customer = Customer::query()
+        ->when(
+            !empty($data['customer_phone']),
+            fn ($query) => $query->where('phone', $data['customer_phone'])
+        )
+        ->when(
+            empty($data['customer_phone']) && !empty($data['customer_email']),
+            fn ($query) => $query->where('email', $data['customer_email'])
+        )
+        ->first();
+
+    if (!$customer) {
+        return Customer::create([
+            'name' => $data['customer_name'] ?? 'Walk-in Customer',
+            'phone' => $data['customer_phone'] ?? null,
+            'email' => $data['customer_email'] ?? null,
+        ]);
+    }
+
+    $customer->fill(array_filter([
+        'name' => $data['customer_name'] ?? null,
+        'phone' => $data['customer_phone'] ?? null,
+        'email' => $data['customer_email'] ?? null,
+    ], fn ($value) => filled($value)))->save();
+
+    return $customer;
 }
 
 }

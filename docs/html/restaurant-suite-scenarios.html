@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Restaurant Suite Scenarios</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="layout">
+    <div class="hero">
+      <h1>Restaurant Suite Scenarios And Images</h1>
+      <p>This guide combines the live dashboard captures, generated Flutter workspace screenshots, and the operational flow cards already produced from the API walkthrough.</p>
+    </div>
+
+    <div class="note">
+      Flutter images in this document come from widget goldens generated on April 1, 2026 from the current code in <code>factory_app</code>. Dashboard images come from the live owner dashboard capture set already in the repository.
+    </div>
+
+    <h2 class="section-title">Scenario 1: Returning Customer Dines In And Earns Loyalty</h2>
+
+    <div class="step card">
+      <h3>Step 1. Customer opens the app and checks order memory, restaurants, and points</h3>
+      <p>The customer app is designed like a warm marketplace homepage: registered restaurants, previous orders, and loyalty points are visible immediately.</p>
+      <img class="shot" src="../assets/flutter/customer-workspace.png" alt="Customer workspace screenshot">
+      <div class="caption">Customer app home with restaurants, order history, and rewards visibility.</div>
+    </div>
+
+    <div class="step card">
+      <h3>Step 2. Waiter sees the floor in a table-first layout</h3>
+      <p>The waiter app prioritizes table occupancy, table value, and guest context, which is the fastest mental model for dine-in operations.</p>
+      <img class="shot" src="../assets/flutter/waiter-workspace.png" alt="Waiter workspace screenshot">
+      <div class="caption">Waiter workspace with live open and occupied tables.</div>
+    </div>
+
+    <div class="step card">
+      <h3>Step 3. Waiter opens the active table, attaches customer phone, adds notes, answers, and modifiers</h3>
+      <p>This closes a meaningful gap in the old repo state because dine-in orders can now be tied to a real customer profile for history and loyalty visibility.</p>
+      <img class="shot" src="../assets/flutter/waiter-order-detail.png" alt="Waiter order detail screenshot">
+      <div class="caption">Waiter order detail with customer phone, current items, and menu composer.</div>
+    </div>
+
+    <div class="step card">
+      <h3>Step 4. Kitchen receives the ticket and advances item states</h3>
+      <p>Queued, preparing, and ready states are visible per item. Kitchen can advance each line item without waiting on a full-order status change.</p>
+      <img class="shot" src="../assets/flutter/kitchen-workspace.png" alt="Kitchen workspace screenshot">
+      <div class="caption">Kitchen board with live queued, preparing, and ready tickets.</div>
+    </div>
+
+    <div class="step card">
+      <h3>Step 5. Cashier settles the order with one or multiple tenders</h3>
+      <p>The cashier workspace supports multiple tenders in one settlement flow, which directly addresses a visible gap against Foodics-style dine-in bundles.</p>
+      <img class="shot" src="../assets/flutter/cashier-workspace.png" alt="Cashier workspace screenshot">
+      <div class="caption">Cashier queue and split-payment settlement workspace.</div>
+    </div>
+
+    <div class="step card">
+      <h3>Step 6. Owner and shareholders see the result in branch-level analytics</h3>
+      <p>The owner workspace surfaces revenue, cashier queue, KDS backlog, branch ranking, and loyalty member count. The live dashboard capture below shows the web side of the same operational flow.</p>
+      <div class="grid two">
+        <div>
+          <img class="shot" src="../assets/flutter/owner-workspace.png" alt="Owner workspace screenshot">
+          <div class="caption">Flutter owner control center.</div>
+        </div>
+        <div>
+          <img class="shot" src="../assets/screenshots/dashboard-after-payment.png" alt="Dashboard after payment screenshot">
+          <div class="caption">Live web dashboard after the walkthrough payment step.</div>
+        </div>
+      </div>
+    </div>
+
+    <h2 class="section-title">Scenario 2: Real Dine-In Exception Handling</h2>
+
+    <div class="grid two">
+      <div class="card">
+        <h3>Quantity Change</h3>
+        <p>The waiter can reduce an item quantity after submission. The API keeps history and recalculates totals.</p>
+        <img class="shot" src="../assets/flow-cards/step-04-change-quantity.png" alt="Quantity change flow">
+      </div>
+      <div class="card">
+        <h3>Refund One Item</h3>
+        <p>The waiter can refund an item and preserve auditability instead of silently editing the order line.</p>
+        <img class="shot" src="../assets/flow-cards/step-05-refund-dessert.png" alt="Refund flow">
+      </div>
+      <div class="card">
+        <h3>Reopen After Settlement</h3>
+        <p>Paid orders can be reopened, which is important for late add-ons and floor corrections.</p>
+        <img class="shot" src="../assets/flow-cards/step-08-reopen-order.png" alt="Reopen flow">
+      </div>
+      <div class="card">
+        <h3>Move Table</h3>
+        <p>The system supports audit-safe table moves by closing the source order and cloning active items into the target table order.</p>
+        <img class="shot" src="../assets/flow-cards/step-10-move-table.png" alt="Move table flow">
+      </div>
+    </div>
+
+    <h2 class="section-title">Scenario 3: Dashboard Effects During The Same Service Window</h2>
+
+    <div class="grid two">
+      <div class="card">
+        <h3>Before Service</h3>
+        <img class="shot" src="../assets/screenshots/dashboard-initial.png" alt="Initial dashboard">
+        <div class="caption">Baseline owner KPIs before the walkthrough flow started.</div>
+      </div>
+      <div class="card">
+        <h3>After Order And Adjustments</h3>
+        <img class="shot" src="../assets/screenshots/dashboard-after-adjustments.png" alt="Dashboard after adjustments">
+        <div class="caption">Revenue pipeline and recent orders reflect order creation and item adjustments.</div>
+      </div>
+      <div class="card">
+        <h3>After Payment</h3>
+        <img class="shot" src="../assets/screenshots/dashboard-after-payment.png" alt="Dashboard after payment">
+        <div class="caption">Payment data and recent activity update after settlement.</div>
+      </div>
+      <div class="card">
+        <h3>After Table Move</h3>
+        <img class="shot" src="../assets/screenshots/dashboard-after-move.png" alt="Dashboard after move">
+        <div class="caption">Order history preserves the source and target table timeline.</div>
+      </div>
+    </div>
+
+    <h2 class="section-title">Recommended Next Scenario Packs</h2>
+    <div class="card">
+      <ul>
+        <li>Large family table splits the bill across cash plus card plus wallet.</li>
+        <li>Busy brunch service with one kitchen bottleneck and one cashier bottleneck.</li>
+        <li>VIP repeat guest arrives, waiter recognizes phone, and owner dashboard later measures loyalty lift.</li>
+        <li>Multi-branch operator compares lunch shift performance between branches and drills into payment mix.</li>
+      </ul>
+    </div>
+  </div>
+</body>
+</html>

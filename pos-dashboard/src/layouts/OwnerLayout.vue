@@ -132,6 +132,7 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import axios from 'axios'
+import { API_BASE_URL } from '../lib/api'
 const drawer = ref(true)
 const router = useRouter()
 
@@ -168,7 +169,7 @@ const navMgmt = [
 async function logout() {
   try {
     const token = localStorage.getItem('token')
-    await axios.post('http://localhost:8000/api/logout', {}, {
+    await axios.post(`${API_BASE_URL}/logout`, {}, {
       headers: { Authorization: `Bearer ${token}` }
     })
   } catch (e) {}

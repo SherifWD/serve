@@ -8,7 +8,13 @@ use Illuminate\Database\Eloquent\Model;
 class Branch extends Model
 {
     use HasFactory; protected $guarded =[];
-    public function users() {
+
+    public function restaurant()
+    {
+        return $this->belongsTo(Restaurant::class);
+    }
+
+public function users() {
     return $this->hasMany(User::class);
 }
 
@@ -22,6 +28,14 @@ public function employees() {
 
 public function products() {
     return $this->hasMany(Product::class);
+}
+
+public function tables() {
+    return $this->hasMany(Table::class);
+}
+
+public function orders() {
+    return $this->hasMany(Order::class);
 }
 
 }

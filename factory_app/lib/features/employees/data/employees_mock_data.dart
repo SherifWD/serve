@@ -13,10 +13,26 @@ class EmployeeItem {
 }
 
 const employees = [
-  EmployeeItem(name: 'Ana Jimenez', role: 'Supervisor', department: 'Assembly', performance: 'A'),
-  EmployeeItem(name: 'Lee Wong', role: 'Technician', department: 'Maintenance', performance: 'B+'),
-  EmployeeItem(name: 'Sam Patel', role: 'Planner', department: 'Planning', performance: 'A-'),
-  EmployeeItem(name: 'Maria Lopez', role: 'Operator', department: 'Packaging', performance: 'B'),
+  EmployeeItem(
+      name: 'Ana Jimenez',
+      role: 'Supervisor',
+      department: 'Assembly',
+      performance: 'A'),
+  EmployeeItem(
+      name: 'Lee Wong',
+      role: 'Technician',
+      department: 'Maintenance',
+      performance: 'B+'),
+  EmployeeItem(
+      name: 'Sam Patel',
+      role: 'Planner',
+      department: 'Planning',
+      performance: 'A-'),
+  EmployeeItem(
+      name: 'Maria Lopez',
+      role: 'Operator',
+      department: 'Packaging',
+      performance: 'B'),
 ];
 
 const permissionsByRole = {

@@ -1,15 +1,36 @@
-# Factory Ops Flutter App
+# Restaurant Suite Flutter Apps
 
-Production-ready Flutter layout for a factory environment with RBAC, dashboards, charts, and modular feature folders. Uses Riverpod, GoRouter, Dio, and fl_chart with mock data.
+This Flutter project now supports both a shared multi-role suite and dedicated role entrypoints.
 
-## Run
+## Prerequisites
+
+- Flutter SDK available at `/Applications/Flutter/flutter/bin/flutter`
+- Laravel API reachable at `http://127.0.0.1:8000/api`, or override with `--dart-define=API_BASE_URL=...`
+
+## Install
+
+```bash
+/Applications/Flutter/flutter/bin/flutter pub get
 ```
-flutter pub get
-flutter run -d chrome   # or desired device
+
+## Run The Multi-Role Suite
+
+```bash
+/Applications/Flutter/flutter/bin/flutter run -t lib/main.dart
 ```
 
-Use mock accounts on the login screen:
-- owner@factory.com
-- manager@factory.com
-- employee@factory.com
-All passwords: `password`.
+## Run Dedicated Apps
+
+```bash
+/Applications/Flutter/flutter/bin/flutter run -t lib/main_customer.dart
+/Applications/Flutter/flutter/bin/flutter run -t lib/main_waiter.dart
+/Applications/Flutter/flutter/bin/flutter run -t lib/main_cashier.dart
+/Applications/Flutter/flutter/bin/flutter run -t lib/main_kitchen.dart
+/Applications/Flutter/flutter/bin/flutter run -t lib/main_owner.dart
+```
+
+## Override API Base URL
+
+```bash
+/Applications/Flutter/flutter/bin/flutter run -t lib/main_waiter.dart --dart-define=API_BASE_URL=http://127.0.0.1:8000/api
+```

@@ -20,11 +20,12 @@ class TableMobileController extends Controller
         $tables = Table::where('branch_id', $branchId)
             ->with([
   'orders' => fn($q) => $q->where('status','!=', OrderStatus::CLOSED)
-      ->select('id','table_id','status','subtotal','tax','discount','discount_type','total','coupon_code','order_date'),
+      ->select('id','table_id','customer_id','status','subtotal','tax','discount','discount_type','total','coupon_code','order_date'),
   'orders.items' => fn($q) => $q->select(
       'id','order_id','product_id','quantity','price','total',
       'status','kds_status','item_note','change_note'
   ),
+  'orders.customer:id,name,phone',
   'orders.items.product:id,name',
   'orders.items.answers.choice.question',
   'orders.items.modifiers.modifier',
@@ -40,11 +41,12 @@ class TableMobileController extends Controller
     $table = Table::where('branch_id', $branchId)
         ->with([
             'orders' => fn($q) => $q->where('status','!=', OrderStatus::CLOSED)
-                ->select('id','table_id','status','subtotal','tax','discount','discount_type','total','coupon_code','order_date'),
+                ->select('id','table_id','customer_id','status','subtotal','tax','discount','discount_type','total','coupon_code','order_date'),
             'orders.items' => fn($q) => $q->select(
                 'id','order_id','product_id','quantity','price','total',
                 'status','kds_status','item_note','change_note'
             ),
+            'orders.customer:id,name,phone',
             'orders.items.product:id,name',
             'orders.items.answers.choice.question',
             'orders.items.modifiers.modifier',
@@ -89,6 +91,7 @@ class TableMobileController extends Controller
                 $target = Order::create([
                     'branch_id' => $to->branch_id,
                     'table_id'  => $to->id,
+                    'order_type'=> 'dine-in',
                     'status'    => OrderStatus::PENDING,
                     'subtotal'  => 0,
                     'tax'       => 0,
@@ -207,10 +210,13 @@ public function batchSendToCashier(Request $request)
         if ($order->table->branch_id !== $request->user()->branch_id) {
             return response()->json(['error' => 'Unauthorized'], 403);
         }
-        if ($order->status !== OrderStatus::CASHIER) {
-            return response()->json(['error' => 'Only cashier orders can be reopened.'], 400);
+        if (!in_array($order->status, [OrderStatus::CASHIER, OrderStatus::PAID], true)) {
+            return response()->json(['error' => 'Only cashier or paid orders can be reopened.'], 400);
         }
         $order->status = OrderStatus::PENDING;
+        if ((float) $order->payments()->sum('amount') < (float) $order->total) {
+            $order->payment_status = 'partial';
+        }
         $order->save();
 
         $order->table->update(['status' => TableStatus::OCCUPIED]);

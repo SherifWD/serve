@@ -20,7 +20,8 @@ class _ReportsPageState extends ConsumerState<ReportsPage> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final filtered = reportItems.where((item) {
-      final matchesSearch = item.title.toLowerCase().contains(_search.toLowerCase());
+      final matchesSearch =
+          item.title.toLowerCase().contains(_search.toLowerCase());
       final matchesFilter = _filter == null || item.category == _filter;
       return matchesSearch && matchesFilter;
     }).toList();
@@ -80,7 +81,8 @@ class _ReportsPageState extends ConsumerState<ReportsPage> {
                   Card(
                     margin: const EdgeInsets.only(bottom: 8),
                     child: ListTile(
-                      leading: Icon(Icons.insert_chart_outlined, color: theme.colorScheme.primary),
+                      leading: Icon(Icons.insert_chart_outlined,
+                          color: theme.colorScheme.primary),
                       title: Text(item.title),
                       subtitle: Text('${item.category} - ${item.owner}'),
                       trailing: Column(

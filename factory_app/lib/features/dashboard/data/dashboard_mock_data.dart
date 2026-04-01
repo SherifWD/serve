@@ -18,7 +18,10 @@ class ActivityItem {
 }
 
 const kpiData = [
-  Kpi(title: 'Production output', value: '1,240 units', trend: '+12% vs last week'),
+  Kpi(
+      title: 'Production output',
+      value: '1,240 units',
+      trend: '+12% vs last week'),
   Kpi(title: 'Active employees', value: '86', trend: 'Stable'),
   Kpi(title: 'Pending tasks', value: '23', trend: '-5 since yesterday'),
   Kpi(title: 'Quality issues', value: '3', trend: '-1 vs avg'),
@@ -40,7 +43,11 @@ const alerts = [
 ];
 
 const activities = [
-  ActivityItem(label: 'Supervisor Ana approved overtime for Line 3', timestamp: '2 min ago'),
-  ActivityItem(label: 'New NCR opened for QA - Batch 221', timestamp: '18 min ago'),
-  ActivityItem(label: 'Maintenance ticket #151 resolved', timestamp: '1 hr ago'),
+  ActivityItem(
+      label: 'Supervisor Ana approved overtime for Line 3',
+      timestamp: '2 min ago'),
+  ActivityItem(
+      label: 'New NCR opened for QA - Batch 221', timestamp: '18 min ago'),
+  ActivityItem(
+      label: 'Maintenance ticket #151 resolved', timestamp: '1 hr ago'),
 ];

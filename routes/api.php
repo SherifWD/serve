@@ -2,6 +2,8 @@
 
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BranchController;
+use App\Http\Controllers\Api\Customer\CustomerAuthController;
+use App\Http\Controllers\Api\Customer\CustomerPortalController;
 use App\Http\Controllers\Api\CategoryController;
 use App\Http\Controllers\Api\DeviceController;
 use App\Http\Controllers\Api\EmployeeController;
@@ -53,6 +55,19 @@ Route::put('ingredients/{id}', [IngredientController::class, 'update']);
 Route::delete('ingredients/{id}', [IngredientController::class, 'destroy']);
 Route::post('ingredients/update-stock', [IngredientController::class, 'updateStock']);
 Route::apiResource('recipes', RecipeController::class);
+
+Route::prefix('customer')->group(function () {
+    Route::post('auth/login', [CustomerAuthController::class, 'login']);
+
+    Route::middleware('auth:sanctum')->group(function () {
+        Route::post('auth/logout', [CustomerAuthController::class, 'logout']);
+        Route::get('me', [CustomerAuthController::class, 'me']);
+        Route::get('home', [CustomerPortalController::class, 'home']);
+        Route::get('restaurants', [CustomerPortalController::class, 'restaurants']);
+        Route::get('orders', [CustomerPortalController::class, 'orders']);
+        Route::get('loyalty', [CustomerPortalController::class, 'loyalty']);
+    });
+});
 
 
 

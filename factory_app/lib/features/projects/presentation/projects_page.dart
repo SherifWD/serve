@@ -33,23 +33,33 @@ class ProjectsPage extends ConsumerWidget {
                           Row(
                             children: [
                               Expanded(
-                                child: Text(project.name, style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+                                child: Text(project.name,
+                                    style: theme.textTheme.titleMedium
+                                        ?.copyWith(
+                                            fontWeight: FontWeight.bold)),
                               ),
                               Chip(label: Text(project.status)),
                             ],
                           ),
                           const SizedBox(height: 8),
-                          LinearProgressIndicator(value: project.progress, minHeight: 8),
+                          LinearProgressIndicator(
+                              value: project.progress, minHeight: 8),
                           const SizedBox(height: 8),
                           Row(
                             children: [
-                              Icon(Icons.event, size: 16, color: theme.colorScheme.onSurfaceVariant),
+                              Icon(Icons.event,
+                                  size: 16,
+                                  color: theme.colorScheme.onSurfaceVariant),
                               const SizedBox(width: 4),
-                              Text('Due ${project.due}', style: theme.textTheme.labelMedium),
+                              Text('Due ${project.due}',
+                                  style: theme.textTheme.labelMedium),
                               const Spacer(),
-                              Icon(Icons.work_outline, size: 16, color: theme.colorScheme.onSurfaceVariant),
+                              Icon(Icons.work_outline,
+                                  size: 16,
+                                  color: theme.colorScheme.onSurfaceVariant),
                               const SizedBox(width: 4),
-                              Text(project.owner, style: theme.textTheme.labelMedium),
+                              Text(project.owner,
+                                  style: theme.textTheme.labelMedium),
                             ],
                           ),
                           const SizedBox(height: 8),
@@ -58,7 +68,8 @@ class ProjectsPage extends ConsumerWidget {
                             children: project.team
                                 .map((member) => Chip(
                                       label: Text(member),
-                                      avatar: const Icon(Icons.person, size: 16),
+                                      avatar:
+                                          const Icon(Icons.person, size: 16),
                                     ))
                                 .toList(),
                           ),
@@ -98,14 +109,17 @@ class _Timeline extends StatelessWidget {
             padding: const EdgeInsets.symmetric(vertical: 6),
             child: Row(
               children: [
-                SizedBox(width: 70, child: Text(label, style: theme.textTheme.labelMedium)),
+                SizedBox(
+                    width: 70,
+                    child: Text(label, style: theme.textTheme.labelMedium)),
                 Expanded(
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(10),
                     child: LinearProgressIndicator(
                       value: progress,
                       minHeight: 10,
-                      backgroundColor: theme.colorScheme.surfaceVariant,
+                      backgroundColor:
+                          theme.colorScheme.surfaceContainerHighest,
                     ),
                   ),
                 ),

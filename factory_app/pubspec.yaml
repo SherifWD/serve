@@ -1,5 +1,5 @@
-name: factory_dashboard
-description: Factory management and analytics app with RBAC and module dashboards.
+name: restaurant_suite
+description: Multi-role restaurant and cafe operations suite for customer, waiter, cashier, kitchen, and owner workflows.
 publish_to: "none"
 version: 1.0.0+1
 

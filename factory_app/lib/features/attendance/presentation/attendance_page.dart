@@ -36,7 +36,8 @@ class AttendancePage extends ConsumerWidget {
                     leading: const Icon(Icons.schedule_outlined),
                     title: Text(log.name),
                     subtitle: Text('Status: ${log.status}'),
-                    trailing: Text(log.time, style: theme.textTheme.titleMedium),
+                    trailing:
+                        Text(log.time, style: theme.textTheme.titleMedium),
                   ),
               ],
             ),

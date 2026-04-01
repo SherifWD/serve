@@ -118,6 +118,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import axios from 'axios'
+import { API_BASE_URL } from '../lib/api'
 import { useAuthStore } from '../store/auth'
 import OwnerLayout from '@/layouts/OwnerLayout.vue'
 
@@ -137,7 +138,7 @@ const headers = [
 ]
 
 async function loadBranches() {
-  const { data } = await axios.get('http://localhost:8000/api/branches', {
+  const { data } = await axios.get(`${API_BASE_URL}/branches`, {
     headers: { Authorization: `Bearer ${auth.token}` }
   })
   branches.value = data.data || data
@@ -159,11 +160,11 @@ function openViewDrawer(branch) {
 }
 async function saveBranch() {
   if (editing.value) {
-    await axios.put(`http://localhost:8000/api/branches/${branchForm.value.id}`, branchForm.value, {
+    await axios.put(`${API_BASE_URL}/branches/${branchForm.value.id}`, branchForm.value, {
       headers: { Authorization: `Bearer ${auth.token}` }
     })
   } else {
-    await axios.post('http://localhost:8000/api/branches', branchForm.value, {
+    await axios.post(`${API_BASE_URL}/branches`, branchForm.value, {
       headers: { Authorization: `Bearer ${auth.token}` }
     })
   }
@@ -171,7 +172,7 @@ async function saveBranch() {
   loadBranches()
 }
 async function deleteBranch(id) {
-  await axios.delete(`http://localhost:8000/api/branches/${id}`, {
+  await axios.delete(`${API_BASE_URL}/branches/${id}`, {
     headers: { Authorization: `Bearer ${auth.token}` }
   })
   loadBranches()

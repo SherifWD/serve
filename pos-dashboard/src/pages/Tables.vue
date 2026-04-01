@@ -117,6 +117,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import axios from 'axios'
+import { API_BASE_URL } from '../lib/api'
 import OwnerLayout from '@/layouts/OwnerLayout.vue'
 
 const tables = ref([])
@@ -135,7 +136,7 @@ const headers = [
 
 async function loadTables() {
   const token = localStorage.getItem('token')
-  const res = await axios.get('http://localhost:8000/api/tables', {
+  const res = await axios.get(`${API_BASE_URL}/tables`, {
     headers: { Authorization: `Bearer ${token}` }
   })
   tables.value = res.data.data || res.data
@@ -143,7 +144,7 @@ async function loadTables() {
 
 async function loadBranches() {
   const token = localStorage.getItem('token')
-  const res = await axios.get('http://localhost:8000/api/branches', {
+  const res = await axios.get(`${API_BASE_URL}/branches`, {
     headers: { Authorization: `Bearer ${token}` }
   })
   branches.value = res.data.data || res.data
@@ -162,11 +163,11 @@ function openEdit(table) {
 async function saveTable() {
   const token = localStorage.getItem('token')
   if (editing.value) {
-    await axios.put(`http://localhost:8000/api/tables/${form.value.id}`, form.value, {
+    await axios.put(`${API_BASE_URL}/tables/${form.value.id}`, form.value, {
       headers: { Authorization: `Bearer ${token}` }
     })
   } else {
-    await axios.post('http://localhost:8000/api/tables', form.value, {
+    await axios.post(`${API_BASE_URL}/tables`, form.value, {
       headers: { Authorization: `Bearer ${token}` }
     })
   }
@@ -175,7 +176,7 @@ async function saveTable() {
 }
 async function deleteTable(id) {
   const token = localStorage.getItem('token')
-  await axios.delete(`http://localhost:8000/api/tables/${id}`, {
+  await axios.delete(`${API_BASE_URL}/tables/${id}`, {
     headers: { Authorization: `Bearer ${token}` }
   })
   loadTables()

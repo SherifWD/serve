@@ -187,6 +187,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import axios from 'axios'
+import { API_BASE_URL } from '../lib/api'
 import OwnerLayout from '@/layouts/OwnerLayout.vue'
 
 const products = ref([])
@@ -237,7 +238,7 @@ const selectedRecipe = computed(() => {
 async function loadProducts() {
   try {
     const token = localStorage.getItem('token')
-    const res = await axios.get('http://localhost:8000/api/products', {
+    const res = await axios.get(`${API_BASE_URL}/products`, {
       headers: { Authorization: `Bearer ${token}` }
     })
     products.value = res.data.data || res.data
@@ -247,7 +248,7 @@ async function loadProducts() {
 async function loadCategories() {
   try {
     const token = localStorage.getItem('token')
-    const res = await axios.get('http://localhost:8000/api/categories', {
+    const res = await axios.get(`${API_BASE_URL}/categories`, {
       headers: { Authorization: `Bearer ${token}` }
     })
     categories.value = res.data.data || res.data
@@ -257,7 +258,7 @@ async function loadCategories() {
 async function loadBranches() {
   try {
     const token = localStorage.getItem('token')
-    const res = await axios.get('http://localhost:8000/api/branches', {
+    const res = await axios.get(`${API_BASE_URL}/branches`, {
       headers: { Authorization: `Bearer ${token}` }
     })
     branches.value = res.data.data || res.data
@@ -267,7 +268,7 @@ async function loadBranches() {
 async function loadRecipes() {
   try {
     const token = localStorage.getItem('token')
-    const res = await axios.get('http://localhost:8000/api/recipes', {
+    const res = await axios.get(`${API_BASE_URL}/recipes`, {
       headers: { Authorization: `Bearer ${token}` }
     })
     recipes.value = (res.data.data || res.data)
@@ -318,8 +319,8 @@ function onRecipeChange(val) {
 async function saveProduct() {
   const token = localStorage.getItem('token');
   const url = isEditing.value
-    ? `http://localhost:8000/api/products/${drawerForm.value.id}`
-    : 'http://localhost:8000/api/products';
+    ? `${API_BASE_URL}/products/${drawerForm.value.id}`
+    : `${API_BASE_URL}/products`;
   const method = isEditing.value ? 'put' : 'post';
 
   // Only pass the recipe_id, not the whole recipe object
@@ -342,7 +343,7 @@ async function saveProduct() {
 async function deleteProduct(prod) {
   if (!confirm(`Delete ${prod.name}?`)) return
   const token = localStorage.getItem('token')
-  await axios.delete(`http://localhost:8000/api/products/${prod.id}`, {
+  await axios.delete(`${API_BASE_URL}/products/${prod.id}`, {
     headers: { Authorization: `Bearer ${token}` }
   })
   loadProducts()

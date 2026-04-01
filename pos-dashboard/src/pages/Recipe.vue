@@ -110,6 +110,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import axios from 'axios'
+import { API_BASE_URL } from '../lib/api'
 import OwnerLayout from '@/layouts/OwnerLayout.vue'
 
 const recipes = ref([])
@@ -153,7 +154,7 @@ function formatRecipeIngredients(ingredients) {
 
 async function fetchRecipes() {
   const token = localStorage.getItem('token')
-  const { data } = await axios.get('http://localhost:8000/api/recipes', {
+  const { data } = await axios.get(`${API_BASE_URL}/recipes`, {
     headers: { Authorization: `Bearer ${token}` }
   })
   // Map to flat array for table display
@@ -168,7 +169,7 @@ async function fetchRecipes() {
 }
 async function fetchAllIngredients() {
   const token = localStorage.getItem('token')
-  const { data } = await axios.get('http://localhost:8000/api/ingredients', {
+  const { data } = await axios.get(`${API_BASE_URL}/ingredients`, {
     headers: { Authorization: `Bearer ${token}` }
   })
   allIngredients.value = data.data || data
@@ -202,8 +203,8 @@ async function saveRecipe() {
   saving.value = true
   const token = localStorage.getItem('token')
   const url = isEditing.value
-    ? `http://localhost:8000/api/recipes/${form.value.id}`
-    : 'http://localhost:8000/api/recipes'
+    ? `${API_BASE_URL}/recipes/${form.value.id}`
+    : `${API_BASE_URL}/recipes`
   const method = isEditing.value ? 'put' : 'post'
 
   const payload = {
@@ -221,7 +222,7 @@ async function saveRecipe() {
 }
 function deleteRecipe(item) {
   if (!confirm(`Delete recipe "${item.description}"?`)) return
-  axios.delete(`http://localhost:8000/api/recipes/${item.id}`, {
+  axios.delete(`${API_BASE_URL}/recipes/${item.id}`, {
     headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
   }).then(fetchRecipes)
 }

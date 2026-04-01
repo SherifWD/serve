@@ -33,7 +33,9 @@ class SalariesPage extends ConsumerWidget {
                         mainAxisAlignment: MainAxisAlignment.center,
                         crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
-                          Text(item.net, style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+                          Text(item.net,
+                              style: theme.textTheme.titleMedium
+                                  ?.copyWith(fontWeight: FontWeight.bold)),
                           Chip(label: Text(item.status)),
                         ],
                       ),
@@ -52,7 +54,8 @@ class SalariesPage extends ConsumerWidget {
                   contentPadding: EdgeInsets.zero,
                   leading: Icon(Icons.verified_user_outlined),
                   title: Text('Role-restricted access'),
-                  subtitle: Text('Only owners and managers see payroll adjustments'),
+                  subtitle:
+                      Text('Only owners and managers see payroll adjustments'),
                 ),
                 ListTile(
                   contentPadding: EdgeInsets.zero,

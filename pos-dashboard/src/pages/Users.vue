@@ -28,6 +28,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import axios from 'axios'
+import { API_BASE_URL } from '../lib/api'
 import { useAuthStore } from '../store/auth'
 const auth = useAuthStore()
 const users = ref([])
@@ -45,13 +46,13 @@ const editing = ref(false)
 const userForm = ref({ id: null, name: '', email: '', role: '', branch_id: null })
 
 async function loadUsers() {
-  const { data } = await axios.get('http://localhost:8000/api/users', {
+  const { data } = await axios.get(`${API_BASE_URL}/users`, {
     headers: { Authorization: `Bearer ${auth.token}` }
   })
   users.value = data
 }
 async function loadBranches() {
-  const { data } = await axios.get('http://localhost:8000/api/branches', {
+  const { data } = await axios.get(`${API_BASE_URL}/branches`, {
     headers: { Authorization: `Bearer ${auth.token}` }
   })
   branches.value = data
@@ -63,11 +64,11 @@ function editUser(user) {
 }
 async function saveUser() {
   if (editing.value) {
-    await axios.put(`http://localhost:8000/api/users/${userForm.value.id}`, userForm.value, {
+    await axios.put(`${API_BASE_URL}/users/${userForm.value.id}`, userForm.value, {
       headers: { Authorization: `Bearer ${auth.token}` }
     })
   } else {
-    await axios.post('http://localhost:8000/api/users', userForm.value, {
+    await axios.post(`${API_BASE_URL}/users`, userForm.value, {
       headers: { Authorization: `Bearer ${auth.token}` }
     })
   }
@@ -75,7 +76,7 @@ async function saveUser() {
   loadUsers()
 }
 async function deleteUser(id) {
-  await axios.delete(`http://localhost:8000/api/users/${id}`, {
+  await axios.delete(`${API_BASE_URL}/users/${id}`, {
     headers: { Authorization: `Bearer ${auth.token}` }
   })
   loadUsers()

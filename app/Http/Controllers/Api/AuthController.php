@@ -44,6 +44,8 @@ public function login(Request $request)
             'id'    => $user->id,
             'name'  => $user->name,
             'email' => $user->email,
+            'branch_id' => $user->branch_id,
+            'restaurant_id' => $user->restaurant_id,
             'types' => $user->types->pluck('name'), // Return all types
         ]
     ]);
@@ -60,6 +62,15 @@ public function login(Request $request)
     // Get current user (for profile/SPA boot)
     public function me(Request $request)
     {
-        return response()->json($request->user());
+        $user = $request->user()->loadMissing('types');
+
+        return response()->json([
+            'id' => $user->id,
+            'name' => $user->name,
+            'email' => $user->email,
+            'branch_id' => $user->branch_id,
+            'restaurant_id' => $user->restaurant_id,
+            'types' => $user->types->pluck('name'),
+        ]);
     }
 }

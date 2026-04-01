@@ -1,154 +1,128 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../core/widgets/chart_cards.dart';
-import '../../../core/widgets/kpi_card.dart';
-import '../../../core/widgets/section_card.dart';
-import '../data/dashboard_mock_data.dart';
+import '../../../core/config/app_flavor.dart';
+import '../../../core/models/app_models.dart';
+import '../../auth/providers/auth_providers.dart';
+import '../../cashier/presentation/cashier_workspace.dart';
+import '../../customer/presentation/customer_workspace.dart';
+import '../../kitchen/presentation/kitchen_workspace.dart';
+import '../../owner/presentation/owner_workspace.dart';
+import '../../waiter/presentation/waiter_workspace.dart';
 
 class DashboardPage extends ConsumerWidget {
   const DashboardPage({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final theme = Theme.of(context);
+    final session = ref.watch(currentSessionProvider);
+    final roles = ref.watch(availableRolesProvider);
+    final fixedRole = ref.watch(fixedRoleProvider);
 
-    return SingleChildScrollView(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          LayoutBuilder(
-            builder: (context, constraints) {
-              final isWide = constraints.maxWidth > 900;
-              return GridView.builder(
-                itemCount: kpiData.length,
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: isWide ? 4 : 2,
-                  crossAxisSpacing: 12,
-                  mainAxisSpacing: 12,
-                  childAspectRatio: 1.3,
-                ),
-                itemBuilder: (context, index) {
-                  final kpi = kpiData[index];
-                  final icons = [
-                    Icons.factory_outlined,
-                    Icons.groups_2_outlined,
-                    Icons.checklist_outlined,
-                    Icons.verified_outlined,
-                  ];
-                  return KpiCard(
-                    title: kpi.title,
-                    value: kpi.value,
-                    trendLabel: kpi.trend,
-                    icon: icons[index % icons.length],
-                  );
-                },
-              );
-            },
-          ),
-          const SizedBox(height: 16),
-          Wrap(
-            spacing: 12,
-            runSpacing: 12,
-            children: [
-              SizedBox(
-                width: MediaQuery.of(context).size.width > 1200
-                    ? (MediaQuery.of(context).size.width - 140) * 0.62
-                    : MediaQuery.of(context).size.width - 40,
-                child: SectionCard(
-                  title: 'Production trend',
-                  trailing: IconButton(
-                    onPressed: () {},
-                    icon: const Icon(Icons.refresh),
+    if (session == null) {
+      return const Scaffold(body: SizedBox.shrink());
+    }
+
+    final workspace = switch (session.activeRole) {
+      AppRole.customer => const CustomerWorkspacePage(),
+      AppRole.waiter => const WaiterWorkspacePage(),
+      AppRole.cashier => const CashierWorkspacePage(),
+      AppRole.kitchen => const KitchenWorkspacePage(),
+      AppRole.owner => const OwnerWorkspacePage(),
+    };
+
+    final title = switch (session.activeRole) {
+      AppRole.customer => 'Customer App',
+      AppRole.waiter => 'Waiter App',
+      AppRole.cashier => 'Cashier App',
+      AppRole.kitchen => 'Kitchen App',
+      AppRole.owner => 'Owner Control Center',
+    };
+
+    final subtitle = switch (session.activeRole) {
+      AppRole.customer =>
+        'Talabat-inspired discovery, loyalty, and order memory',
+      AppRole.waiter => 'Table-first dine-in operations',
+      AppRole.cashier => 'Queue settlement and multi-tender payments',
+      AppRole.kitchen => 'Live KDS execution board',
+      AppRole.owner => 'SaaS-level visibility across branches and operations',
+    };
+
+    return Scaffold(
+      appBar: AppBar(
+        titleSpacing: 0,
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(title),
+            Text(
+              subtitle,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
-                  child: TrendLineChart(
-                    points: productionTrend,
-                    color: theme.colorScheme.primary,
-                  ),
-                ),
-              ),
-              SizedBox(
-                width: MediaQuery.of(context).size.width > 1200
-                    ? (MediaQuery.of(context).size.width - 140) * 0.34
-                    : MediaQuery.of(context).size.width - 40,
-                child: SectionCard(
-                  title: 'Task distribution',
-                  child: DonutChart(sections: taskDistribution),
-                  trailing: Chip(label: Text('Live')), // simple status
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          LayoutBuilder(
-            builder: (context, constraints) {
-              final isWide = constraints.maxWidth > 1000;
-              return Flex(
-                direction: isWide ? Axis.horizontal : Axis.vertical,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    flex: 3,
-                    child: SectionCard(
-                      title: 'Alerts & actions',
-                      trailing: FilledButton.tonal(
-                        onPressed: () {},
-                        child: const Text('Acknowledge all'),
-                      ),
-                      child: Column(
+            ),
+          ],
+        ),
+        actions: [
+          if (fixedRole == null && roles.length > 1)
+            PopupMenuButton<AppRole>(
+              tooltip: 'Switch role',
+              icon: const Icon(Icons.swap_horiz),
+              onSelected: (role) =>
+                  ref.read(authProvider.notifier).switchRole(role),
+              itemBuilder: (context) {
+                return [
+                  for (final role in roles)
+                    PopupMenuItem<AppRole>(
+                      value: role,
+                      child: Row(
                         children: [
-                          for (final alert in alerts)
-                            ListTile(
-                              contentPadding: EdgeInsets.zero,
-                              leading: Icon(
-                                Icons.warning_amber_rounded,
-                                color: _alertColor(alert.level, theme),
-                              ),
-                              title: Text(alert.message),
-                              subtitle: Text(alert.level),
-                              trailing: TextButton(onPressed: () {}, child: const Text('Open')),
-                            ),
+                          Icon(role.icon, size: 18),
+                          const SizedBox(width: 10),
+                          Text(role.label),
                         ],
                       ),
                     ),
-                  ),
-                  if (isWide) const SizedBox(width: 12) else const SizedBox(height: 12),
-                  Expanded(
-                    flex: 2,
-                    child: SectionCard(
-                      title: 'Activity',
-                      child: Column(
-                        children: [
-                          for (final item in activities)
-                            ListTile(
-                              contentPadding: EdgeInsets.zero,
-                              leading: const Icon(Icons.bolt_outlined),
-                              title: Text(item.label),
-                              subtitle: Text(item.timestamp),
-                            ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-              );
-            },
+                ];
+              },
+            ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            child: Center(
+              child: Text(
+                session.name,
+                style: Theme.of(context)
+                    .textTheme
+                    .labelLarge
+                    ?.copyWith(fontWeight: FontWeight.w700),
+              ),
+            ),
+          ),
+          IconButton(
+            tooltip: 'Logout',
+            onPressed: () => ref.read(authProvider.notifier).logout(),
+            icon: const Icon(Icons.logout),
           ),
         ],
       ),
+      body: SafeArea(
+        child: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                const Color(0xFFFFFFFF),
+                const Color(0xFFF6F0E7).withValues(alpha: 0.7),
+              ],
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+            ),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(18, 8, 18, 18),
+            child: workspace,
+          ),
+        ),
+      ),
     );
-  }
-
-  Color _alertColor(String level, ThemeData theme) {
-    switch (level) {
-      case 'High':
-        return theme.colorScheme.error;
-      case 'Medium':
-        return Colors.orange;
-      default:
-        return theme.colorScheme.primary;
-    }
   }
 }

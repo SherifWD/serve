@@ -3,17 +3,32 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Illuminate\Foundation\Auth\User as Authenticatable;
+use Illuminate\Notifications\Notifiable;
+use Laravel\Sanctum\HasApiTokens;
 
-class Customer extends Model
+class Customer extends Authenticatable
 {
-    use HasFactory; protected $guarded =[];
-    public function loyaltyTransactions() {
-    return $this->hasMany(LoyaltyTransaction::class);
-}
+    use HasApiTokens, HasFactory, Notifiable;
 
-public function feedback() {
-    return $this->hasMany(Feedback::class);
-}
+    protected $guarded = [];
 
+    protected $hidden = [
+        'remember_token',
+    ];
+
+    public function loyaltyTransactions()
+    {
+        return $this->hasMany(LoyaltyTransaction::class);
+    }
+
+    public function feedback()
+    {
+        return $this->hasMany(Feedback::class);
+    }
+
+    public function orders()
+    {
+        return $this->hasMany(Order::class);
+    }
 }
