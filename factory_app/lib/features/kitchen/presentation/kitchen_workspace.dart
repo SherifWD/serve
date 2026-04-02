@@ -33,8 +33,9 @@ class _KitchenWorkspacePageState extends ConsumerState<KitchenWorkspacePage> {
         if (snapshot.hasError) {
           return ErrorView(
             message: snapshot.error.toString(),
-            onRetry: () => setState(() => _future =
-                ref.read(suiteRepositoryProvider).fetchKitchenBoard()),
+            onRetry: () => setState(() {
+              _future = ref.read(suiteRepositoryProvider).fetchKitchenBoard();
+            }),
           );
         }
 
@@ -54,8 +55,9 @@ class _KitchenWorkspacePageState extends ConsumerState<KitchenWorkspacePage> {
 
         return RefreshIndicator(
           onRefresh: () async {
-            setState(() => _future =
-                ref.read(suiteRepositoryProvider).fetchKitchenBoard());
+            setState(() {
+              _future = ref.read(suiteRepositoryProvider).fetchKitchenBoard();
+            });
             await _future;
           },
           child: ListView(
@@ -186,8 +188,9 @@ class _KitchenWorkspacePageState extends ConsumerState<KitchenWorkspacePage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('${item.name} marked $nextStatus')),
       );
-      setState(() =>
-          _future = ref.read(suiteRepositoryProvider).fetchKitchenBoard());
+      setState(() {
+        _future = ref.read(suiteRepositoryProvider).fetchKitchenBoard();
+      });
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context)

@@ -76,7 +76,9 @@ class _WaiterOrderPageState extends ConsumerState<WaiterOrderPage> {
           if (snapshot.hasError) {
             return ErrorView(
               message: snapshot.error.toString(),
-              onRetry: () => setState(() => _future = _load()),
+              onRetry: () => setState(() {
+                _future = _load();
+              }),
             );
           }
 
@@ -85,7 +87,9 @@ class _WaiterOrderPageState extends ConsumerState<WaiterOrderPage> {
 
           return RefreshIndicator(
             onRefresh: () async {
-              setState(() => _future = _load());
+              setState(() {
+                _future = _load();
+              });
               await _future;
             },
             child: ListView(
@@ -405,7 +409,9 @@ class _WaiterOrderPageState extends ConsumerState<WaiterOrderPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('${product.name} added to the order')),
       );
-      setState(() => _future = _load());
+      setState(() {
+        _future = _load();
+      });
     }
   }
 
@@ -500,7 +506,9 @@ class _WaiterOrderPageState extends ConsumerState<WaiterOrderPage> {
       if (!mounted) return;
       ScaffoldMessenger.of(context)
           .showSnackBar(SnackBar(content: Text(successMessage)));
-      setState(() => _future = _load());
+      setState(() {
+        _future = _load();
+      });
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context)

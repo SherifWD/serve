@@ -37,8 +37,9 @@ class _OwnerWorkspacePageState extends ConsumerState<OwnerWorkspacePage> {
         if (snapshot.hasError) {
           return ErrorView(
             message: snapshot.error.toString(),
-            onRetry: () => setState(() => _future =
-                ref.read(suiteRepositoryProvider).fetchOwnerSummary()),
+            onRetry: () => setState(() {
+              _future = ref.read(suiteRepositoryProvider).fetchOwnerSummary();
+            }),
           );
         }
 
@@ -46,8 +47,9 @@ class _OwnerWorkspacePageState extends ConsumerState<OwnerWorkspacePage> {
 
         return RefreshIndicator(
           onRefresh: () async {
-            setState(() => _future =
-                ref.read(suiteRepositoryProvider).fetchOwnerSummary());
+            setState(() {
+              _future = ref.read(suiteRepositoryProvider).fetchOwnerSummary();
+            });
             await _future;
           },
           child: ListView(

@@ -77,7 +77,9 @@ class _CashierWorkspacePageState extends ConsumerState<CashierWorkspacePage> {
         if (snapshot.hasError) {
           return ErrorView(
             message: snapshot.error.toString(),
-            onRetry: () => setState(() => _future = _loadOrders()),
+            onRetry: () => setState(() {
+              _future = _loadOrders();
+            }),
           );
         }
 
@@ -100,7 +102,9 @@ class _CashierWorkspacePageState extends ConsumerState<CashierWorkspacePage> {
 
         return RefreshIndicator(
           onRefresh: () async {
-            setState(() => _future = _loadOrders());
+            setState(() {
+              _future = _loadOrders();
+            });
             await _future;
           },
           child: wide
