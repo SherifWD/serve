@@ -3,31 +3,39 @@
 namespace App\Http\Controllers\Api\Mobile;
 
 use App\Http\Controllers\Controller;
-use App\Models\Product;
-use Illuminate\Support\Facades\Request;
+use App\Models\Category;
+use Illuminate\Http\Request;
 
 class MobileProductController extends Controller
 {
-    public function index()
-{
-    $categories = \App\Models\Category::with([
-        'products:id,name,price,category_id,image',
-        'questions' => function($q) {
-            $q->select('id', 'category_id', 'question', 'image');
-        },
-        'questions.choices' => function($q) {
-            $q->select('id', 'question_id', 'choice', 'image');
-        }
-    ])->get(['id', 'name']);
+    public function index(Request $request)
+    {
+        $user = $request->user();
+        $branchId = $user?->branch_id;
 
-    // Optionally, filter out categories with no products
-    $categories = $categories->filter(function($cat) {
-        return $cat->products->isNotEmpty();
-    })->values();
+        $categories = Category::query()
+            ->when($branchId, fn ($query) => $query->where('branch_id', $branchId))
+            ->with([
+                'products' => function ($query) use ($branchId) {
+                    $query->select('id', 'name', 'price', 'category_id', 'image', 'branch_id')
+                        ->when($branchId, fn ($inner) => $inner->where('branch_id', $branchId))
+                        ->where('is_available', true)
+                        ->orderBy('name');
+                },
+                'questions' => function ($query) {
+                    $query->select('id', 'category_id', 'question', 'image');
+                },
+                'questions.choices' => function ($query) {
+                    $query->select('id', 'question_id', 'choice', 'image');
+                },
+            ])
+            ->orderBy('name')
+            ->get(['id', 'name', 'branch_id']);
 
-    return response()->json(['data' => $categories]);
-}
+        $categories = $categories
+            ->filter(fn ($category) => $category->products->isNotEmpty())
+            ->values();
 
-
-    
+        return response()->json(['data' => $categories]);
+    }
 }

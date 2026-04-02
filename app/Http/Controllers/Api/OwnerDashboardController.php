@@ -12,6 +12,7 @@ use App\Models\Payment;
 use App\Models\Product;
 use App\Models\Employee;
 use App\Models\Ingredient;
+use App\Models\InventoryItem;
 use App\Models\Table;
 use Illuminate\Support\Facades\DB;
 
@@ -49,7 +50,14 @@ class OwnerDashboardController extends Controller
             ->when($restaurantId, fn ($q) => $q->whereHas('branch', fn ($branchQuery) => $branchQuery->where('restaurant_id', $restaurantId)))
             ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
             ->count();
-        $employees = Employee::count();
+        $employeesQuery = Employee::query();
+        if ($restaurantId) {
+            $employeesQuery->whereHas('branch', fn ($q) => $q->where('restaurant_id', $restaurantId));
+        }
+        if ($branchId) {
+            $employeesQuery->where('branch_id', $branchId);
+        }
+        $employees = $employeesQuery->count();
 
         // Top 5 Products (by quantity sold in paid orders)
         $topProductsQuery = DB::table('order_items')
@@ -76,9 +84,23 @@ class OwnerDashboardController extends Controller
             });
 
         // Low Inventory Ingredients (< 10 in stock)
-        $lowInventory = Ingredient::where('stock', '<', 10)
-            ->orderBy('stock', 'asc')
-            ->get(['id', 'name', 'stock', 'unit']);
+        $lowInventoryQuery = InventoryItem::query()
+            ->select('id', 'name', 'quantity', 'unit', 'min_stock')
+            ->whereColumn('quantity', '<=', 'min_stock')
+            ->orderBy('quantity', 'asc');
+        if ($restaurantId) {
+            $lowInventoryQuery->whereHas('branch', fn ($q) => $q->where('restaurant_id', $restaurantId));
+        }
+        if ($branchId) {
+            $lowInventoryQuery->where('branch_id', $branchId);
+        }
+        $lowInventory = $lowInventoryQuery->limit(10)->get()
+            ->map(fn ($item) => [
+                'id' => $item->id,
+                'name' => $item->name,
+                'stock' => (float) $item->quantity,
+                'unit' => $item->unit,
+            ]);
 
         // Recent Orders
         $recentOrdersQuery = Order::with('branch')
@@ -141,7 +163,18 @@ class OwnerDashboardController extends Controller
                 'orders_count' => $branch->paid_orders_count,
             ]);
 
-        $loyaltyMembers = Customer::query()->where('loyalty_points', '>', 0)->count();
+        $loyaltyMembersQuery = Customer::query()->where('loyalty_points', '>', 0);
+        if ($restaurantId || $branchId) {
+            $loyaltyMembersQuery->whereHas('orders', function ($query) use ($restaurantId, $branchId) {
+                if ($restaurantId) {
+                    $query->whereHas('branch', fn ($branchQuery) => $branchQuery->where('restaurant_id', $restaurantId));
+                }
+                if ($branchId) {
+                    $query->where('branch_id', $branchId);
+                }
+            });
+        }
+        $loyaltyMembers = $loyaltyMembersQuery->distinct('customers.id')->count('customers.id');
 
         return response()->json([
             'total_sales'   => $totalSales,

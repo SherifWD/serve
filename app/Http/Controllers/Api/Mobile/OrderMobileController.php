@@ -32,6 +32,13 @@ class OrderMobileController extends Controller
     public function index(Request $request)
     {
         $query = Order::query();
+        $user = $request->user();
+
+        if ($user?->branch_id) {
+            $query->where('branch_id', $user->branch_id);
+        } elseif ($user?->restaurant_id) {
+            $query->whereHas('branch', fn ($branchQuery) => $branchQuery->where('restaurant_id', $user->restaurant_id));
+        }
 
         if ($request->has('table_id')) {
             $query->where('table_id', $request->input('table_id'));

@@ -139,6 +139,7 @@ class CustomerPortalController extends Controller
         return [
             'id' => $restaurant->id,
             'name' => $restaurant->name,
+            'kind' => $restaurant->kind,
             'branch_count' => $restaurant->branches_count ?? $restaurant->branches->count(),
             'branches' => $restaurant->branches->map(fn ($branch) => [
                 'id' => $branch->id,
