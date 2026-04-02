@@ -334,10 +334,10 @@ class _HeroPanel extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 24),
-          Wrap(
+          const Wrap(
             spacing: 10,
             runSpacing: 10,
-            children: const [
+            children: [
               _HeroPill(label: 'Customer loyalty'),
               _HeroPill(label: 'Waiter order flow'),
               _HeroPill(label: 'Kitchen board'),

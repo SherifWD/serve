@@ -33,9 +33,9 @@ class _WaiterWorkspacePageState extends ConsumerState<WaiterWorkspacePage> {
       length: 3,
       child: Column(
         children: [
-          TabBar(
+          const TabBar(
             isScrollable: true,
-            tabs: const [
+            tabs: [
               Tab(text: 'Tables'),
               Tab(text: 'Menu'),
               Tab(text: 'Service'),

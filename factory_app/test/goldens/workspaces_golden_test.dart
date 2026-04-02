@@ -596,7 +596,7 @@ class _FakeSuiteRepository extends SuiteRepository {
 
   @override
   Future<OwnerSummary> fetchOwnerSummary({int? branchId}) async {
-    return OwnerSummary(
+    return const OwnerSummary(
       totalSales: 15420,
       ordersCount: 126,
       avgOrderValue: 122.38,
@@ -606,12 +606,12 @@ class _FakeSuiteRepository extends SuiteRepository {
       cashierQueue: 3,
       kdsBacklog: 5,
       loyaltyMembers: 382,
-      paymentMix: const [
+      paymentMix: [
         PaymentMixEntry(method: 'card', total: 10240),
         PaymentMixEntry(method: 'cash', total: 4120),
         PaymentMixEntry(method: 'wallet', total: 1060),
       ],
-      branchPerformance: const [
+      branchPerformance: [
         BranchPerformance(
             id: 1,
             name: 'Nile Bean Downtown',
@@ -625,16 +625,16 @@ class _FakeSuiteRepository extends SuiteRepository {
             ordersCount: 58,
             location: 'New Cairo'),
       ],
-      topProducts: const [
+      topProducts: [
         {'name': 'Flat White', 'quantity': 94},
         {'name': 'Chicken Caesar Wrap', 'quantity': 72},
         {'name': 'Iced Spanish Latte', 'quantity': 61},
       ],
-      lowStockItems: const [
+      lowStockItems: [
         {'name': 'Coffee Beans', 'stock': 6, 'unit': 'kg'},
         {'name': 'Halloumi', 'stock': 4, 'unit': 'kg'},
       ],
-      recentOrders: const [
+      recentOrders: [
         {'id': 81, 'status': 'paid'},
         {'id': 82, 'status': 'cashier'},
       ],

@@ -6,7 +6,7 @@ import '../models/roles.dart';
 import '../../features/auth/providers/auth_providers.dart';
 
 final allModulesProvider = Provider<List<AppModule>>((ref) {
-  return [
+  return const [
     AppModule(
       id: 'dashboard',
       name: 'Dashboard',

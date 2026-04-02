@@ -45,11 +45,11 @@ class SalariesPage extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: 12),
-          SectionCard(
+          const SectionCard(
             title: 'Security controls',
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              children: const [
+              children: [
                 ListTile(
                   contentPadding: EdgeInsets.zero,
                   leading: Icon(Icons.verified_user_outlined),

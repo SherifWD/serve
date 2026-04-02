@@ -243,8 +243,9 @@ class _WaiterOrderPageState extends ConsumerState<WaiterOrderPage> {
     final added = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
-      builder: (context) {
-        return Padding(
+            builder: (context) {
+              final navigator = Navigator.of(context);
+              return Padding(
           padding: EdgeInsets.only(
             left: 20,
             right: 20,
@@ -383,9 +384,8 @@ class _WaiterOrderPageState extends ConsumerState<WaiterOrderPage> {
                             ],
                           );
 
-                          if (mounted) {
-                            Navigator.of(context).pop(true);
-                          }
+                          if (!mounted) return;
+                          navigator.pop(true);
                         },
                         child: const Text('Add to order'),
                       ),

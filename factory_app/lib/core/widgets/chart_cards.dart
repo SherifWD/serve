@@ -16,8 +16,8 @@ class TrendLineChart extends StatelessWidget {
       height: 220,
       child: LineChart(
         LineChartData(
-          gridData: FlGridData(show: false),
-          titlesData: FlTitlesData(show: false),
+          gridData: const FlGridData(show: false),
+          titlesData: const FlTitlesData(show: false),
           borderData: FlBorderData(show: false),
           lineBarsData: [
             LineChartBarData(
@@ -105,8 +105,8 @@ class SimpleBarChart extends StatelessWidget {
       height: 220,
       child: BarChart(
         BarChartData(
-          gridData: FlGridData(show: false),
-          titlesData: FlTitlesData(show: false),
+          gridData: const FlGridData(show: false),
+          titlesData: const FlTitlesData(show: false),
           borderData: FlBorderData(show: false),
           barGroups: bars,
         ),

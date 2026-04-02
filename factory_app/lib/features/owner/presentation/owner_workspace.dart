@@ -216,10 +216,10 @@ class _OwnerWorkspacePageState extends ConsumerState<OwnerWorkspacePage> {
                     ),
                   ),
                   const SizedBox(width: 16),
-                  Expanded(
+                  const Expanded(
                     child: SectionCard(
                       title: 'Competitive gap closure',
-                      child: const Column(
+                      child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(

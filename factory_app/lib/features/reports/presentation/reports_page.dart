@@ -99,9 +99,9 @@ class _ReportsPageState extends ConsumerState<ReportsPage> {
             ),
           ),
           const SizedBox(height: 12),
-          SectionCard(
+          const SectionCard(
             title: 'Monthly summary',
-            child: SimpleBarChart(values: const [14, 18, 16, 20, 24, 22]),
+            child: SimpleBarChart(values: [14, 18, 16, 20, 24, 22]),
           ),
         ],
       ),

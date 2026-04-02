@@ -73,15 +73,15 @@ class HrPage extends ConsumerWidget {
                         Text('Alex Lee',
                             style: theme.textTheme.titleMedium
                                 ?.copyWith(fontWeight: FontWeight.bold)),
-                        Text('Employee - Assembly'),
+                        const Text('Employee - Assembly'),
                       ],
                     ),
                   ],
                 ),
                 const SizedBox(height: 12),
-                Wrap(
+                const Wrap(
                   spacing: 8,
-                  children: const [
+                  children: [
                     Chip(label: Text('Documents up to date')),
                     Chip(label: Text('No open HR cases')),
                   ],

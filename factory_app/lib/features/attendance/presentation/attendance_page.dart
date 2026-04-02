@@ -23,9 +23,9 @@ class AttendancePage extends ConsumerWidget {
             ),
             child: Column(
               children: [
-                Wrap(
+                const Wrap(
                   spacing: 8,
-                  children: const [
+                  children: [
                     Chip(label: Text('Check-in window: 07:00 - 07:30')),
                     Chip(label: Text('Overtime approvals open')),
                   ],
@@ -43,7 +43,7 @@ class AttendancePage extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: 12),
-          SectionCard(
+          const SectionCard(
             title: 'Monthly hours',
             child: SimpleBarChart(values: monthlyHours),
           ),

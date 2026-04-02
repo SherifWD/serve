@@ -7,7 +7,8 @@ Updated: April 1, 2026
 - PHP 8.2+
 - Composer
 - MySQL or MariaDB
-- Node.js 20+
+- Node.js 18+ for Laravel helper tooling
+- Node.js 18+ for `pos-dashboard` after the Vite pin in this repo
 - npm
 
 ## 2. Backend Setup
@@ -48,19 +49,34 @@ php artisan migrate --force
 php artisan db:seed --force
 ```
 
-This repository now seeds stable testing users and role types.
+This repository now seeds the full restaurant and cafe demo estate through [RestaurantSuiteDemoSeeder.php](/Applications/XAMPP/xamppfiles/htdocs/pos_restaurant/database/seeders/RestaurantSuiteDemoSeeder.php).
 
 ## 4. Default Test Accounts
 
-- Owner: `owner@example.com` / `password`
-- Downtown waiter: `waiter_downtown_branch@example.com` / `password`
-- Downtown cashier: `cashier_downtown_branch@example.com` / `password`
-- Downtown kitchen: `kitchen_downtown_branch@example.com` / `password`
-- Mall waiter: `waiter_mall_branch@example.com` / `password`
-- Mall cashier: `cashier_mall_branch@example.com` / `password`
-- Mall kitchen: `kitchen_mall_branch@example.com` / `password`
+All seeded staff and owner passwords are:
 
-Customer accounts are created by the app automatically when you log in with a name and phone.
+```text
+password
+```
+
+Account patterns:
+
+- Owner: `owner.<restaurant-slug>@example.com`
+- Stakeholder: `stakeholder.<restaurant-slug>@example.com`
+- Supervisor: `supervisor.<restaurant-slug>.<branch-slug>@example.com`
+- Waiter: `waiter1.<restaurant-slug>.<branch-slug>@example.com`
+- Cashier: `cashier1.<restaurant-slug>.<branch-slug>@example.com`
+- Kitchen: `kitchen1.<restaurant-slug>.<branch-slug>@example.com`
+
+Examples:
+
+- `owner.nile-flame-grill@example.com`
+- `stakeholder.bean-harbor-cafe@example.com`
+- `waiter1.nile-flame-grill.downtown@example.com`
+- `cashier1.bean-harbor-cafe.maadi@example.com`
+- `kitchen1.cairo-kebab-district.zayed@example.com`
+
+Known seeded customers are documented in [seed-data-reference.md](/Applications/XAMPP/xamppfiles/htdocs/pos_restaurant/docs/seed-data-reference.md). Customers can still be created ad hoc by the app when logging in with a new name and phone.
 
 ## 5. Local Backend Smoke Checks
 
@@ -91,6 +107,24 @@ VITE_API_BASE_URL=https://your-backend-domain/api npm run build
 ```
 
 Upload `pos-dashboard/dist` to your frontend hosting if you want the dashboard online.
+
+Important for Hostinger shared hosting:
+
+- Do not run `npm run dev` on the server as your deployed dashboard.
+- `vite dev` is a local development server, not a production web server.
+- Build the dashboard once with `npm run build`, then serve the generated static files from `pos-dashboard/dist`.
+- If your Hostinger environment is still on Node 18, the dashboard now uses a Node 18 compatible Vite line.
+- If your Laravel app lives in a subfolder such as `/serveu/serve/public/`, build the dashboard with a matching base and upload it under `public/dashboard/`:
+
+```bash
+cd pos-dashboard
+npm install
+VITE_API_BASE_URL=https://ambernoak.co.uk/serveu/serve/public/api \
+VITE_APP_BASE=/serveu/serve/public/dashboard/ \
+npm run build
+```
+
+- After uploading the contents of `dist/` into `public/dashboard/`, the Laravel root route will redirect `/` to `/dashboard/` automatically when that built file exists.
 
 ## 7. Flutter Setup
 
@@ -143,7 +177,7 @@ Repeat with the other entrypoints to produce separate waiter, cashier, kitchen, 
 
 ## 10. Suggested Full Manual Test Cycle
 
-1. Log in to the owner dashboard with `owner@example.com`.
+1. Log in to the owner dashboard with a seeded owner account such as `owner.nile-flame-grill@example.com`.
 2. Verify branches, tables, products, and users load.
 3. Install waiter APK on a phone.
 4. Install kitchen APK on a tablet.
@@ -162,6 +196,7 @@ Repeat with the other entrypoints to produce separate waiter, cashier, kitchen, 
 ## 11. Hostinger Notes
 
 - If you deploy only the backend on Hostinger, point both Flutter and the dashboard to `https://your-backend-domain/api`.
+- If you deploy the dashboard on Hostinger shared hosting, publish the contents of `pos-dashboard/dist` instead of trying to keep `npm run dev` running.
 - Make sure Sanctum tokens are preserved and HTTPS is enabled.
 - If you use shared hosting and cannot keep a queue worker alive, keep `QUEUE_CONNECTION=sync` for staging.
 - Run `php artisan optimize:clear` after environment changes.
