@@ -85,6 +85,7 @@
       <div class="seed-hint">
         <div class="seed-hint-title">Seeded admin</div>
         <div>admin@restaurant-suite.com / password</div>
+        <div class="seed-hint-api">API: {{ API_BASE_URL }}</div>
       </div>
     </v-card>
   </div>
@@ -118,7 +119,13 @@ async function login() {
     auth.setSession({ user: data.user, token: data.token })
     router.push('/dashboard')
   } catch (requestError) {
-    error.value = requestError?.response?.data?.message || 'Unable to sign in with these credentials.'
+    if (requestError?.response?.data?.message) {
+      error.value = requestError.response.data.message
+    } else if (requestError?.response?.status) {
+      error.value = `Login failed with status ${requestError.response.status}. Check backend logs for the exact cause.`
+    } else {
+      error.value = `Dashboard could not reach the API at ${API_BASE_URL}.`
+    }
   } finally {
     loading.value = false
   }
@@ -224,6 +231,13 @@ async function login() {
   padding-top: 18px;
   border-top: 1px solid var(--rs-border);
   color: var(--rs-text-soft);
+}
+
+.seed-hint-api {
+  margin-top: 6px;
+  color: var(--rs-text-muted);
+  font-size: 0.82rem;
+  word-break: break-all;
 }
 
 @media (max-width: 1100px) {
