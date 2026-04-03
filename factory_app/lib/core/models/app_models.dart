@@ -236,21 +236,112 @@ class RestaurantListing {
     required this.name,
     required this.branchCount,
     required this.branches,
+    this.kind = 'restaurant',
+    this.coverImageUrl,
+    this.featuredItems = const [],
   });
 
   final int id;
   final String name;
   final int branchCount;
   final List<BranchInfo> branches;
+  final String kind;
+  final String? coverImageUrl;
+  final List<RestaurantFeaturedItem> featuredItems;
 
   factory RestaurantListing.fromJson(Map<String, dynamic> json) {
     return RestaurantListing(
       id: jsonInt(json['id']),
       name: jsonString(json['name']),
       branchCount: jsonInt(json['branch_count']),
+      kind: jsonString(json['kind'], fallback: 'restaurant'),
+      coverImageUrl: jsonNullableString(json['cover_image']),
+      featuredItems: jsonMapList(json['featured_items'])
+          .map(RestaurantFeaturedItem.fromJson)
+          .toList(growable: false),
       branches: jsonMapList(json['branches'])
           .map(BranchInfo.fromJson)
           .toList(growable: false),
+    );
+  }
+}
+
+class RestaurantFeaturedItem {
+  const RestaurantFeaturedItem({
+    required this.id,
+    required this.name,
+    required this.price,
+    this.imageUrl,
+  });
+
+  final int id;
+  final String name;
+  final double price;
+  final String? imageUrl;
+
+  factory RestaurantFeaturedItem.fromJson(Map<String, dynamic> json) {
+    return RestaurantFeaturedItem(
+      id: jsonInt(json['id']),
+      name: jsonString(json['name']),
+      price: jsonDouble(json['price']),
+      imageUrl: jsonNullableString(json['image']),
+    );
+  }
+}
+
+class CustomerMenuItem {
+  const CustomerMenuItem({
+    required this.id,
+    required this.name,
+    required this.price,
+    this.imageUrl,
+    this.branchId,
+    this.branchName,
+    this.branchLocation,
+    this.categoryName,
+  });
+
+  final int id;
+  final String name;
+  final double price;
+  final String? imageUrl;
+  final int? branchId;
+  final String? branchName;
+  final String? branchLocation;
+  final String? categoryName;
+
+  factory CustomerMenuItem.fromJson(Map<String, dynamic> json) {
+    return CustomerMenuItem(
+      id: jsonInt(json['id']),
+      name: jsonString(json['name']),
+      price: jsonDouble(json['price']),
+      imageUrl: jsonNullableString(json['image']),
+      branchId: jsonNullableInt(json['branch_id']),
+      branchName: jsonNullableString(json['branch_name']),
+      branchLocation: jsonNullableString(json['branch_location']),
+      categoryName: jsonNullableString(json['category_name']),
+    );
+  }
+}
+
+class CustomerRestaurantDetail {
+  const CustomerRestaurantDetail({
+    required this.restaurant,
+    required this.items,
+    required this.meta,
+  });
+
+  final RestaurantListing restaurant;
+  final List<CustomerMenuItem> items;
+  final PaginationMeta meta;
+
+  factory CustomerRestaurantDetail.fromJson(Map<String, dynamic> json) {
+    return CustomerRestaurantDetail(
+      restaurant: RestaurantListing.fromJson(jsonMap(json['restaurant'])),
+      items: jsonMapList(json['data'])
+          .map(CustomerMenuItem.fromJson)
+          .toList(growable: false),
+      meta: PaginationMeta.fromJson(jsonMap(json['meta'])),
     );
   }
 }
@@ -287,6 +378,7 @@ class OrderItemLine {
     this.itemNote,
     this.changeNote,
     this.modifiers = const [],
+    this.imageUrl,
   });
 
   final int id;
@@ -299,6 +391,7 @@ class OrderItemLine {
   final String? itemNote;
   final String? changeNote;
   final List<String> modifiers;
+  final String? imageUrl;
 
   factory OrderItemLine.fromJson(Map<String, dynamic> json) {
     final product = jsonMap(json['product']);
@@ -312,6 +405,7 @@ class OrderItemLine {
       kdsStatus: jsonNullableString(json['kds_status']),
       itemNote: jsonNullableString(json['item_note'] ?? json['note']),
       changeNote: jsonNullableString(json['change_note']),
+      imageUrl: jsonNullableString(product['image'] ?? json['image']),
       modifiers: jsonMapList(json['modifiers'])
           .map((modifier) {
             final nested = jsonMap(modifier['modifier']);
@@ -395,6 +489,8 @@ class CustomerOrder {
     required this.createdAt,
     required this.items,
     required this.payments,
+    this.restaurantId,
+    this.branchId,
     this.branchName,
     this.branchLocation,
     this.restaurantName,
@@ -409,6 +505,8 @@ class CustomerOrder {
   final DateTime? createdAt;
   final List<OrderItemLine> items;
   final List<PaymentRecord> payments;
+  final int? restaurantId;
+  final int? branchId;
   final String? branchName;
   final String? branchLocation;
   final String? restaurantName;
@@ -422,6 +520,8 @@ class CustomerOrder {
       paymentStatus: jsonString(json['payment_status'], fallback: 'unpaid'),
       orderType: jsonString(json['order_type'], fallback: 'dine-in'),
       createdAt: jsonDate(json['created_at']),
+      restaurantId: jsonNullableInt(json['restaurant_id']),
+      branchId: jsonNullableInt(json['branch_id']),
       items: jsonMapList(json['items'])
           .map(OrderItemLine.fromJson)
           .toList(growable: false),
@@ -443,6 +543,8 @@ class LoyaltyEntry {
     required this.points,
     this.createdAt,
     this.orderId,
+    this.restaurantId,
+    this.branchId,
     this.restaurantName,
     this.branchName,
   });
@@ -452,6 +554,8 @@ class LoyaltyEntry {
   final int points;
   final DateTime? createdAt;
   final int? orderId;
+  final int? restaurantId;
+  final int? branchId;
   final String? restaurantName;
   final String? branchName;
 
@@ -462,6 +566,8 @@ class LoyaltyEntry {
       points: jsonInt(json['points']),
       createdAt: jsonDate(json['created_at']),
       orderId: jsonNullableInt(json['order_id']),
+      restaurantId: jsonNullableInt(json['restaurant_id']),
+      branchId: jsonNullableInt(json['branch_id']),
       restaurantName: jsonNullableString(json['restaurant_name']),
       branchName: jsonNullableString(json['branch_name']),
     );

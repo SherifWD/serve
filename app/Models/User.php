@@ -22,6 +22,9 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
+        'role',
+        'branch_id',
+        'restaurant_id',
     ];
 
     /**
@@ -47,22 +50,53 @@ class User extends Authenticatable
         ];
     }
 
-    public function roles() {
-    return $this->belongsToMany(Role::class);
-}
-public function role() {
-    return $this->belongsTo(Role::class);
-}
+    public function restaurant()
+    {
+        return $this->belongsTo(Restaurant::class);
+    }
 
-public function branch() {
-    return $this->belongsTo(Branch::class);
-}
+    public function roles()
+    {
+        return $this->belongsToMany(Role::class);
+    }
 
-public function devices() {
-    return $this->hasMany(Device::class);
-}
-public function types()
-{
-    return $this->belongsToMany(Type::class,'type_users');
-}
+    public function branch()
+    {
+        return $this->belongsTo(Branch::class);
+    }
+
+    public function devices()
+    {
+        return $this->hasMany(Device::class);
+    }
+
+    public function types()
+    {
+        return $this->belongsToMany(Type::class, 'type_users');
+    }
+
+    public function isPlatformAdmin(): bool
+    {
+        return $this->role === 'admin' || $this->roles()->where('name', 'admin')->exists();
+    }
+
+    public function isRestaurantOwner(): bool
+    {
+        return $this->role === 'owner' || $this->roles()->where('name', 'owner')->exists();
+    }
+
+    public function permissionNames()
+    {
+        $this->loadMissing('roles.permissions');
+
+        return $this->roles
+            ->flatMap(fn (Role $role) => $role->permissions->pluck('name'))
+            ->unique()
+            ->values();
+    }
+
+    public function hasPermission(string $permission): bool
+    {
+        return $this->isPlatformAdmin() || $this->permissionNames()->contains($permission);
+    }
 }

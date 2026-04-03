@@ -48,79 +48,96 @@ class DashboardPage extends ConsumerWidget {
       AppRole.owner => 'SaaS-level visibility across branches and operations',
     };
 
+    final isCustomer = session.activeRole == AppRole.customer;
+    final background = switch (session.activeRole) {
+      AppRole.customer => const Color(0xFFFFF8F1),
+      AppRole.kitchen => const Color(0xFF0D1321),
+      AppRole.cashier => const Color(0xFFF4F1EA),
+      AppRole.waiter => const Color(0xFFF7F2EA),
+      AppRole.owner => const Color(0xFF0F172A),
+    };
+
     return Scaffold(
-      appBar: AppBar(
-        titleSpacing: 0,
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(title),
-            Text(
-              subtitle,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+      backgroundColor: background,
+      appBar: isCustomer
+          ? null
+          : AppBar(
+              backgroundColor: background,
+              foregroundColor: session.activeRole == AppRole.owner ||
+                      session.activeRole == AppRole.kitchen
+                  ? Colors.white
+                  : null,
+              titleSpacing: 0,
+              title: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title),
+                  Text(
+                    subtitle,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: session.activeRole == AppRole.owner ||
+                                  session.activeRole == AppRole.kitchen
+                              ? Colors.white70
+                              : Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
                   ),
-            ),
-          ],
-        ),
-        actions: [
-          if (fixedRole == null && roles.length > 1)
-            PopupMenuButton<AppRole>(
-              tooltip: 'Switch role',
-              icon: const Icon(Icons.swap_horiz),
-              onSelected: (role) =>
-                  ref.read(authProvider.notifier).switchRole(role),
-              itemBuilder: (context) {
-                return [
-                  for (final role in roles)
-                    PopupMenuItem<AppRole>(
-                      value: role,
-                      child: Row(
-                        children: [
-                          Icon(role.icon, size: 18),
-                          const SizedBox(width: 10),
-                          Text(role.label),
-                        ],
-                      ),
-                    ),
-                ];
-              },
-            ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8),
-            child: Center(
-              child: Text(
-                session.name,
-                style: Theme.of(context)
-                    .textTheme
-                    .labelLarge
-                    ?.copyWith(fontWeight: FontWeight.w700),
+                ],
               ),
-            ),
-          ),
-          IconButton(
-            tooltip: 'Logout',
-            onPressed: () => ref.read(authProvider.notifier).logout(),
-            icon: const Icon(Icons.logout),
-          ),
-        ],
-      ),
-      body: SafeArea(
-        child: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [
-                const Color(0xFFFFFFFF),
-                const Color(0xFFF6F0E7).withValues(alpha: 0.7),
+              actions: [
+                if (fixedRole == null && roles.length > 1)
+                  PopupMenuButton<AppRole>(
+                    tooltip: 'Switch role',
+                    icon: const Icon(Icons.swap_horiz),
+                    onSelected: (role) =>
+                        ref.read(authProvider.notifier).switchRole(role),
+                    itemBuilder: (context) {
+                      return [
+                        for (final role in roles)
+                          PopupMenuItem<AppRole>(
+                            value: role,
+                            child: Row(
+                              children: [
+                                Icon(role.icon, size: 18),
+                                const SizedBox(width: 10),
+                                Text(role.label),
+                              ],
+                            ),
+                          ),
+                      ];
+                    },
+                  ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  child: Center(
+                    child: Text(
+                      session.name,
+                      style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                            fontWeight: FontWeight.w700,
+                            color: session.activeRole == AppRole.owner ||
+                                    session.activeRole == AppRole.kitchen
+                                ? Colors.white
+                                : null,
+                          ),
+                    ),
+                  ),
+                ),
+                IconButton(
+                  tooltip: 'Logout',
+                  onPressed: () => ref.read(authProvider.notifier).logout(),
+                  icon: const Icon(Icons.logout),
+                ),
               ],
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
             ),
+      body: SafeArea(
+        top: isCustomer,
+        child: Padding(
+          padding: EdgeInsets.fromLTRB(
+            isCustomer ? 0 : 18,
+            isCustomer ? 0 : 8,
+            isCustomer ? 0 : 18,
+            isCustomer ? 0 : 18,
           ),
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(18, 8, 18, 18),
-            child: workspace,
-          ),
+          child: workspace,
         ),
       ),
     );

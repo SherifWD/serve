@@ -33,6 +33,7 @@ use App\Models\OrderItemHistory;
 use App\Models\OrderItemModifier;
 use App\Models\OrderStatusLog;
 use App\Models\Payment;
+use App\Models\Permission;
 use App\Models\Product;
 use App\Models\ProductPerformance;
 use App\Models\PurchaseOrder;
@@ -58,7 +59,8 @@ use Illuminate\Support\Str;
 class RestaurantSuiteDemoSeeder extends Seeder
 {
     private const SEED_MARKER_KEY = 'restaurant_suite_demo_seed_version';
-    private const SEED_MARKER_VALUE = '2026-04-02-full-pos-scenarios';
+    private const LEGACY_SEED_MARKER_VALUE = '2026-04-02-full-pos-scenarios';
+    private const SEED_MARKER_VALUE = '2026-04-03-platform-admin-sync';
 
     private Generator $faker;
 
@@ -79,16 +81,23 @@ class RestaurantSuiteDemoSeeder extends Seeder
         $this->faker = fake('en_US');
         $this->faker->seed(20260402);
 
-        if (Setting::where('key', self::SEED_MARKER_KEY)->value('value') === self::SEED_MARKER_VALUE) {
-            $this->command?->info('RestaurantSuiteDemoSeeder already applied. Use migrate:fresh --seed for a clean demo dataset.');
-            return;
-        }
+        $currentMarker = Setting::where('key', self::SEED_MARKER_KEY)->value('value');
 
         $this->seedReferenceData();
+        $this->seedPlatformAdmin();
         $customers = $this->seedCustomers();
 
-        foreach ($this->venueBlueprints() as $venueBlueprint) {
-            $this->seedVenue($venueBlueprint, $customers);
+        $hasScenarioData = in_array($currentMarker, [
+            self::LEGACY_SEED_MARKER_VALUE,
+            self::SEED_MARKER_VALUE,
+        ], true);
+
+        if (!$hasScenarioData) {
+            foreach ($this->venueBlueprints() as $venueBlueprint) {
+                $this->seedVenue($venueBlueprint, $customers);
+            }
+        } else {
+            $this->command?->info('RestaurantSuiteDemoSeeder synced reference data and platform admin. Existing demo scenarios were retained.');
         }
 
         Setting::updateOrCreate(
@@ -99,7 +108,7 @@ class RestaurantSuiteDemoSeeder extends Seeder
 
     private function seedReferenceData(): void
     {
-        foreach (['owner', 'supervisor', 'staff', 'employee'] as $roleName) {
+        foreach (['admin', 'owner', 'supervisor', 'staff', 'employee'] as $roleName) {
             $role = Role::firstOrCreate(['name' => $roleName]);
             $this->roleIds[$roleName] = $role->id;
         }
@@ -112,6 +121,125 @@ class RestaurantSuiteDemoSeeder extends Seeder
         Setting::updateOrCreate(['key' => 'currency'], ['value' => 'EGP']);
         Setting::updateOrCreate(['key' => 'vat_rate'], ['value' => '0.14']);
         Setting::updateOrCreate(['key' => 'loyalty_rule'], ['value' => '1 point per EGP 10']);
+
+        $permissionNames = [
+            'platform.restaurants.manage',
+            'platform.branches.manage',
+            'platform.users.manage',
+            'platform.roles.manage',
+            'dashboard.view',
+            'branches.view',
+            'branches.manage',
+            'users.view',
+            'users.manage',
+            'roles.view',
+            'orders.view',
+            'orders.manage',
+            'cashier.manage',
+            'kds.manage',
+            'tables.view',
+            'tables.manage',
+            'menu.view',
+            'menu.manage',
+            'categories.view',
+            'categories.manage',
+            'products.view',
+            'products.manage',
+            'inventory.view',
+            'inventory.manage',
+            'suppliers.view',
+            'suppliers.manage',
+            'ingredients.view',
+            'ingredients.manage',
+            'recipes.view',
+            'recipes.manage',
+            'employees.view',
+            'employees.manage',
+            'settings.view',
+            'settings.manage',
+        ];
+
+        foreach ($permissionNames as $permissionName) {
+            Permission::firstOrCreate(['name' => $permissionName]);
+        }
+
+        $rolePermissions = [
+            'admin' => $permissionNames,
+            'owner' => [
+                'dashboard.view',
+                'branches.view',
+                'branches.manage',
+                'users.view',
+                'users.manage',
+                'roles.view',
+                'orders.view',
+                'orders.manage',
+                'cashier.manage',
+                'kds.manage',
+                'tables.view',
+                'tables.manage',
+                'menu.view',
+                'menu.manage',
+                'categories.view',
+                'categories.manage',
+                'products.view',
+                'products.manage',
+                'inventory.view',
+                'inventory.manage',
+                'suppliers.view',
+                'suppliers.manage',
+                'ingredients.view',
+                'ingredients.manage',
+                'recipes.view',
+                'recipes.manage',
+                'employees.view',
+                'employees.manage',
+                'settings.view',
+                'settings.manage',
+            ],
+            'supervisor' => [
+                'dashboard.view',
+                'branches.view',
+                'users.view',
+                'roles.view',
+                'orders.view',
+                'orders.manage',
+                'cashier.manage',
+                'kds.manage',
+                'tables.view',
+                'tables.manage',
+                'menu.view',
+                'categories.view',
+                'products.view',
+                'inventory.view',
+                'suppliers.view',
+                'ingredients.view',
+                'recipes.view',
+                'employees.view',
+            ],
+            'staff' => [
+                'orders.view',
+                'orders.manage',
+                'cashier.manage',
+                'kds.manage',
+                'tables.view',
+                'tables.manage',
+                'menu.view',
+                'categories.view',
+                'products.view',
+                'ingredients.view',
+                'inventory.view',
+            ],
+            'employee' => [
+                'dashboard.view',
+            ],
+        ];
+
+        foreach ($rolePermissions as $roleName => $names) {
+            $role = Role::query()->find($this->roleIds[$roleName]);
+            $permissionIds = Permission::query()->whereIn('name', $names)->pluck('id')->all();
+            $role?->permissions()->sync($permissionIds);
+        }
 
         foreach ([
             ['name' => 'No Ice', 'price' => 0],
@@ -168,6 +296,23 @@ class RestaurantSuiteDemoSeeder extends Seeder
             );
             $this->ingredients[$ingredient->name] = $ingredient;
         }
+    }
+
+    private function seedPlatformAdmin(): void
+    {
+        $user = User::updateOrCreate(
+            ['email' => 'admin@restaurant-suite.com'],
+            [
+                'name' => 'Restaurant Suite Admin',
+                'password' => Hash::make('password'),
+                'role' => 'admin',
+                'restaurant_id' => null,
+                'branch_id' => null,
+            ],
+        );
+
+        $user->roles()->sync([$this->roleIds['admin']]);
+        $user->types()->sync([]);
     }
 
     private function seedCustomers(): Collection

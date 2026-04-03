@@ -10,8 +10,8 @@ use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Payment;
 use App\Models\Product;
+use App\Models\Restaurant;
 use App\Models\Employee;
-use App\Models\Ingredient;
 use App\Models\InventoryItem;
 use App\Models\Table;
 use Illuminate\Support\Facades\DB;
@@ -20,9 +20,11 @@ class OwnerDashboardController extends Controller
 {
     public function summary(Request $request)
     {
-        // Optionally filter by branch
+        $viewer = $request->user();
         $branchId = $request->input('branch_id');
-        $restaurantId = $request->user()?->restaurant_id;
+        $restaurantId = $viewer->isPlatformAdmin()
+            ? $request->input('restaurant_id')
+            : $viewer?->restaurant_id;
         $paidScope = function ($query) {
             $query->where(function ($inner) {
                 $inner->where('payment_status', 'paid')
@@ -163,6 +165,13 @@ class OwnerDashboardController extends Controller
                 'orders_count' => $branch->paid_orders_count,
             ]);
 
+        $restaurantsCount = Restaurant::query()->count();
+        $branchesCountQuery = Branch::query();
+        if ($restaurantId) {
+            $branchesCountQuery->where('restaurant_id', $restaurantId);
+        }
+        $branchesCount = $branchesCountQuery->count();
+
         $loyaltyMembersQuery = Customer::query()->where('loyalty_points', '>', 0);
         if ($restaurantId || $branchId) {
             $loyaltyMembersQuery->whereHas('orders', function ($query) use ($restaurantId, $branchId) {
@@ -180,6 +189,8 @@ class OwnerDashboardController extends Controller
             'total_sales'   => $totalSales,
             'orders_count'  => $totalOrders,
             'avg_order_value' => $avgOrderValue,
+            'restaurant_count' => $restaurantsCount,
+            'branch_count' => $branchesCount,
             'product_count' => $products,
             'employee_count'=> $employees,
             'active_tables' => $activeTables,

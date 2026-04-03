@@ -21,12 +21,14 @@ use App\Http\Controllers\Api\OrderController;
 use App\Http\Controllers\Api\OwnerDashboardController;
 use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\RecipeController;
+use App\Http\Controllers\Api\RestaurantController;
 use App\Http\Controllers\Api\RoleController;
 use App\Http\Controllers\Api\SupplierController;
 use App\Http\Controllers\Api\TableController;
 use App\Http\Controllers\Api\UserController;
 use Illuminate\Support\Facades\Route;
 Route::middleware(['auth:sanctum'])->group(function () {
+    Route::apiResource('restaurants', RestaurantController::class);
     Route::apiResource('branches', BranchController::class);
     Route::apiResource('categories', CategoryController::class);
     Route::apiResource('products', ProductController::class);
@@ -64,7 +66,9 @@ Route::prefix('customer')->group(function () {
         Route::get('me', [CustomerAuthController::class, 'me']);
         Route::get('home', [CustomerPortalController::class, 'home']);
         Route::get('restaurants', [CustomerPortalController::class, 'restaurants']);
+        Route::get('restaurants/{restaurant}', [CustomerPortalController::class, 'restaurant']);
         Route::get('orders', [CustomerPortalController::class, 'orders']);
+        Route::get('orders/{order}', [CustomerPortalController::class, 'order']);
         Route::get('loyalty', [CustomerPortalController::class, 'loyalty']);
     });
 });

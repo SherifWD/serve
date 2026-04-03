@@ -1,4 +1,3 @@
-// src/plugins/vuetify.js
 import 'vuetify/styles'
 import { createVuetify } from 'vuetify'
 import * as components from 'vuetify/components'
@@ -8,21 +7,22 @@ export default createVuetify({
   components,
   directives,
   theme: {
-    defaultTheme: 'yellowBlack',
+    defaultTheme: 'restaurantSuiteDark',
     themes: {
-      yellowBlack: {
-        dark: false,
+      restaurantSuiteDark: {
+        dark: true,
         colors: {
-          background: '#181818',
-          surface: '#222',
-          primary: '#2a9d8f',    // Softer yellow
-          'primary-darken-1': '#FFD24C',
-          secondary: '#222',
-          accent: '#FFEB99',
-          text: '#fff',
-          card: '#232323'
-        }
-      }
-    }
-  }
+          background: '#09111d',
+          surface: '#111c2b',
+          primary: '#3ecf8e',
+          secondary: '#1d2c3d',
+          accent: '#5fb3ff',
+          error: '#ef4444',
+          warning: '#f59e0b',
+          success: '#22c55e',
+          info: '#5fb3ff',
+        },
+      },
+    },
+  },
 })

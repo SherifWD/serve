@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Str;
 
 class Product extends Model
 {
@@ -25,6 +26,14 @@ public function orderItems() {
 }
 public function getImageAttribute($val)
     {
-        return asset('storage').'/'. $val;
+        if (blank($val)) {
+            return null;
+        }
+
+        if (Str::startsWith($val, ['http://', 'https://'])) {
+            return $val;
+        }
+
+        return asset('storage').'/'.$val;
     }
 }

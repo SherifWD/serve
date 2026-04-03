@@ -26,7 +26,7 @@ class TableMobileController extends Controller
       'status','kds_status','item_note','change_note'
   ),
   'orders.customer:id,name,phone',
-  'orders.items.product:id,name',
+  'orders.items.product:id,name,image',
   'orders.items.answers.choice.question',
   'orders.items.modifiers.modifier',
 ])->get();
@@ -47,7 +47,7 @@ class TableMobileController extends Controller
                 'status','kds_status','item_note','change_note'
             ),
             'orders.customer:id,name,phone',
-            'orders.items.product:id,name',
+            'orders.items.product:id,name,image',
             'orders.items.answers.choice.question',
             'orders.items.modifiers.modifier',
         ])->findOrFail($id);

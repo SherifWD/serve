@@ -1,224 +1,424 @@
 <template>
-  <v-app>
-    <!-- Sidebar -->
+  <v-app class="owner-shell">
     <v-navigation-drawer
-      app
       v-model="drawer"
-      width="220"
-      color="#181818"
-      class="sidebar"
+      app
+      width="292"
+      color="transparent"
+      class="shell-drawer"
     >
-      <v-list nav dense>
-        <v-list-item prepend-avatar="/logo.png" title="POS Dashboard" class="mb-3 logo-title" />
-        <v-list-item
-          :to="navDashboard.to"
-          :title="navDashboard.title"
-          :prepend-icon="navDashboard.icon"
-          class="nav-link"
-        />
+      <div class="drawer-panel">
+        <div class="brand-block">
+          <div class="brand-icon">RS</div>
+          <div>
+            <div class="brand-title">Restaurant Suite</div>
+            <div class="brand-subtitle">
+              {{ auth.isAdmin ? 'Platform Admin Console' : 'Owner Control Center' }}
+            </div>
+          </div>
+        </div>
 
-        <v-divider class="my-2" />
+        <div class="workspace-card">
+          <div class="workspace-label">Current Workspace</div>
+          <div class="workspace-name">{{ auth.displayWorkspace }}</div>
+          <div class="workspace-meta">
+            {{ auth.displayRole }}
+            <span v-if="auth.user?.branch?.name"> · {{ auth.user.branch.name }}</span>
+          </div>
+        </div>
 
-        <!-- Branches & Location -->
-        <v-list-subheader class="nav-section">Locations</v-list-subheader>
-        <v-list-item
-          v-for="item in navLocations"
-          :key="item.title"
-          :to="item.to"
-          :title="item.title"
-          :prepend-icon="item.icon"
-          class="nav-link"
-        />
-
-        <v-divider class="my-2" />
-
-        <!-- Menu & Products -->
-        <v-list-subheader class="nav-section">Menu & Products</v-list-subheader>
-        <v-list-item
-          v-for="item in navMenuProducts"
-          :key="item.title"
-          :to="item.to"
-          :title="item.title"
-          :prepend-icon="item.icon"
-          class="nav-link"
-        />
-
-        <v-divider class="my-2" />
-
-        <!-- Stock & Ingredients -->
-        <v-list-subheader class="nav-section">Inventory</v-list-subheader>
-        <v-list-item
-          v-for="item in navInventory"
-          :key="item.title"
-          :to="item.to"
-          :title="item.title"
-          :prepend-icon="item.icon"
-          class="nav-link"
-        />
-
-        <v-divider class="my-2" />
-
-        <!-- Operations -->
-        <v-list-subheader class="nav-section">Operations</v-list-subheader>
-        <v-list-item
-          v-for="item in navOps"
-          :key="item.title"
-          :to="item.to"
-          :title="item.title"
-          :prepend-icon="item.icon"
-          class="nav-link"
-        />
-
-        <v-divider class="my-2" />
-
-        <!-- People & Settings -->
-        <v-list-subheader class="nav-section">Management</v-list-subheader>
-        <v-list-item
-          v-for="item in navMgmt"
-          :key="item.title"
-          :to="item.to"
-          :title="item.title"
-          :prepend-icon="item.icon"
-          class="nav-link"
-        />
-      </v-list>
+        <div class="nav-sections">
+          <div v-for="section in visibleSections" :key="section.title" class="nav-section">
+            <div class="section-title">{{ section.title }}</div>
+            <v-list density="comfortable" bg-color="transparent" nav>
+              <v-list-item
+                v-for="item in section.items"
+                :key="item.to"
+                :to="item.to"
+                rounded="xl"
+                class="nav-item"
+              >
+                <template #prepend>
+                  <v-icon :icon="item.icon" />
+                </template>
+                <v-list-item-title>{{ item.title }}</v-list-item-title>
+                <template #append>
+                  <v-chip
+                    v-if="item.badge && item.badge()"
+                    size="x-small"
+                    color="primary"
+                    variant="tonal"
+                    class="rs-pill"
+                  >
+                    {{ item.badge() }}
+                  </v-chip>
+                </template>
+              </v-list-item>
+            </v-list>
+          </div>
+        </div>
+      </div>
     </v-navigation-drawer>
 
-    <!-- App Bar -->
-    <v-app-bar app color="#181818" flat height="64">
-      <v-app-bar-nav-icon @click="drawer = !drawer" color="#b7dbcc" />
-      <v-toolbar-title class="font-weight-bold" style="color:#b7dbcc; letter-spacing:0.01em;">
-        <span style="color:#2a9d8f;">POS</span><span style="color:#b7dbcc;"> Dashboard</span>
-      </v-toolbar-title>
-      <v-spacer />
-      <v-btn icon><v-icon color="#2a9d8f">mdi-bell</v-icon></v-btn>
-      <v-menu>
-        <template #activator="{ props }">
-          <v-btn icon v-bind="props">
-            <v-icon color="#b7dbcc">mdi-account-circle</v-icon>
+    <v-app-bar app flat color="transparent" height="88" class="shell-app-bar">
+      <div class="app-bar-panel">
+        <div class="d-flex align-center ga-3">
+          <v-btn icon variant="text" @click="drawer = !drawer">
+            <v-icon icon="mdi-menu" />
           </v-btn>
-        </template>
-        <v-list>
-          <v-list-item title="Profile" />
-          <v-list-item title="Logout" @click="logout" />
-        </v-list>
-      </v-menu>
+          <div>
+            <div class="page-kicker">{{ currentSection }}</div>
+            <div class="page-title">{{ currentTitle }}</div>
+          </div>
+        </div>
+
+        <div class="toolbar-actions">
+          <v-chip variant="tonal" color="primary" class="rs-pill">
+            {{ auth.displayRole }}
+          </v-chip>
+
+          <v-menu>
+            <template #activator="{ props }">
+              <button class="account-button" v-bind="props">
+                <div class="account-copy">
+                  <span class="account-name">{{ auth.user?.name || 'Operator' }}</span>
+                  <span class="account-email">{{ auth.user?.email || 'No email' }}</span>
+                </div>
+                <div class="account-avatar">
+                  {{ initials }}
+                </div>
+              </button>
+            </template>
+
+            <v-list class="menu-surface">
+              <v-list-item title="Logout" prepend-icon="mdi-logout" @click="logout" />
+            </v-list>
+          </v-menu>
+        </div>
+      </div>
     </v-app-bar>
 
-    <!-- Content -->
-    <v-main style="background: #181818; min-height: calc(100vh - 64px - 48px);">
+    <v-main class="shell-main">
       <slot />
     </v-main>
-
-    <!-- Footer -->
-    <v-footer
-      app
-      padless
-      class="footer"
-      color="#181818"
-      height="48"
-      style="width: 100vw; left: 0; position: fixed; bottom: 0; z-index: 200;"
-    >
-      <v-col cols="12" class="text-center" style="color:#b7dbcc;">
-        <span>
-          <span style="color:#2a9d8f;font-weight:600;">PYRAMAKERZ</span> Technologies &copy; {{ new Date().getFullYear() }}
-        </span>
-      </v-col>
-    </v-footer>
   </v-app>
 </template>
 
 <script setup>
-import { ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { computed, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import axios from 'axios'
 import { API_BASE_URL } from '../lib/api'
-const drawer = ref(true)
+import { useAuthStore } from '../store/auth'
+
+const auth = useAuthStore()
+const route = useRoute()
 const router = useRouter()
+const drawer = ref(true)
 
-// Main nav groups for sidebar (easy to adjust/extend)
-const navDashboard = { to: "/dashboard", title: "Dashboard", icon: "mdi-view-dashboard" }
-
-const navLocations = [
-  { to: "/branches",   title: "Branches", icon: "mdi-store" },
-  { to: "/tables",     title: "Tables",   icon: "mdi-table-furniture" },
+const navSections = [
+  {
+    title: 'Overview',
+    items: [
+      { to: '/dashboard', title: 'Dashboard', icon: 'mdi-view-dashboard-outline', permission: 'dashboard.view' },
+    ],
+  },
+  {
+    title: 'Platform',
+    items: [
+      { to: '/restaurants', title: 'Restaurants', icon: 'mdi-storefront-outline', permission: 'platform.restaurants.manage' },
+      { to: '/branches', title: 'Branches', icon: 'mdi-map-marker-radius-outline', permission: 'branches.view' },
+      { to: '/users', title: 'Users', icon: 'mdi-account-group-outline', permission: 'users.view' },
+      { to: '/roles', title: 'Roles & Permissions', icon: 'mdi-shield-account-outline', permission: 'roles.view' },
+    ],
+  },
+  {
+    title: 'Operations',
+    items: [
+      { to: '/orders', title: 'Orders', icon: 'mdi-receipt-text-outline', permission: 'orders.view' },
+      { to: '/tables', title: 'Tables', icon: 'mdi-table-furniture', permission: 'tables.view' },
+      { to: '/employees', title: 'Employees', icon: 'mdi-badge-account-outline', permission: 'employees.view' },
+    ],
+  },
+  {
+    title: 'Catalog',
+    items: [
+      { to: '/menus', title: 'Menus', icon: 'mdi-food-outline', permission: 'menu.view' },
+      { to: '/categories', title: 'Categories', icon: 'mdi-shape-outline', permission: 'categories.view' },
+      { to: '/products', title: 'Products', icon: 'mdi-hamburger', permission: 'products.view' },
+      { to: '/recipe', title: 'Recipes', icon: 'mdi-silverware-fork-knife', permission: 'recipes.view' },
+      { to: '/ingredients', title: 'Ingredients', icon: 'mdi-leaf-circle-outline', permission: 'ingredients.view' },
+    ],
+  },
+  {
+    title: 'Supply Chain',
+    items: [
+      { to: '/inventory', title: 'Inventory', icon: 'mdi-warehouse', permission: 'inventory.view' },
+      { to: '/suppliers', title: 'Suppliers', icon: 'mdi-truck-delivery-outline', permission: 'suppliers.view' },
+    ],
+  },
+  {
+    title: 'Settings',
+    items: [
+      { to: '/settings', title: 'Settings', icon: 'mdi-cog-outline', permission: 'settings.view' },
+    ],
+  },
 ]
 
-const navMenuProducts = [
-  { to: "/menus",      title: "Menus",      icon: "mdi-food-variant" },
-  { to: "/categories", title: "Categories", icon: "mdi-shape" },
-  { to: "/products",   title: "Products",   icon: "mdi-food" },
-  { to: "/recipe",     title: "Recipes",    icon: "mdi-silverware-fork-knife" },
-  { to: "/ingredients",title: "Ingredients",icon: "mdi-leaf" }
-]
+const visibleSections = computed(() =>
+  navSections
+    .map((section) => ({
+      ...section,
+      items: section.items.filter((item) => auth.can(item.permission)),
+    }))
+    .filter((section) => section.items.length > 0),
+)
 
-const navInventory = [
-  { to: "/inventory",  title: "Stock Inventory", icon: "mdi-warehouse" },
-  { to: "/suppliers",  title: "Suppliers",       icon: "mdi-truck-delivery" }
-]
+const currentTitle = computed(() => route.meta?.title || 'Dashboard')
 
-const navOps = [
-  { to: "/orders",     title: "Orders",    icon: "mdi-receipt" }
-]
+const currentSection = computed(() => {
+  const section = navSections.find((candidate) =>
+    candidate.items.some((item) => item.to === route.path),
+  )
 
-const navMgmt = [
-  { to: "/employees",  title: "Employees", icon: "mdi-account-group" },
-  { to: "/settings",   title: "Settings",  icon: "mdi-cog" }
-]
+  return section?.title || 'Restaurant Suite'
+})
+
+const initials = computed(() => {
+  const name = auth.user?.name?.trim()
+  if (!name) return 'RS'
+
+  return name
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join('')
+})
 
 async function logout() {
   try {
-    const token = localStorage.getItem('token')
-    await axios.post(`${API_BASE_URL}/logout`, {}, {
-      headers: { Authorization: `Bearer ${token}` }
-    })
-  } catch (e) {}
-  localStorage.removeItem('token')
-  localStorage.removeItem('user')
+    await axios.post(
+      `${API_BASE_URL}/logout`,
+      {},
+      { headers: { Authorization: `Bearer ${auth.token}` } },
+    )
+  } catch {
+    // Ignore logout API errors and clear local session anyway.
+  }
+
+  auth.logout()
   router.push('/login')
 }
 </script>
 
 <style scoped>
-.sidebar {
-  background: #181818 !important;
-  color: #b7dbcc !important;
-  border-right: 1px solid #232a2e;
+.owner-shell {
+  background: transparent;
 }
-.logo-title .v-list-item__title {
-  color: #2a9d8f !important;
+
+.shell-drawer {
+  padding: 18px 0 18px 18px;
+}
+
+.drawer-panel {
+  height: calc(100vh - 36px);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 20px 18px;
+  border: 1px solid var(--rs-border);
+  border-radius: 30px;
+  background: linear-gradient(180deg, rgba(12, 20, 33, 0.98), rgba(8, 15, 26, 0.98));
+  box-shadow: var(--rs-shadow);
+}
+
+.brand-block {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.brand-icon {
+  width: 48px;
+  height: 48px;
+  display: grid;
+  place-items: center;
+  border-radius: 16px;
+  background: linear-gradient(135deg, var(--rs-accent), #1c8dff);
+  color: #04111a;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+
+.brand-title {
+  color: var(--rs-text);
+  font-size: 1.05rem;
   font-weight: 700;
-  letter-spacing: 0.05em;
 }
-.nav-section {
-  color: #888 !important;
-  font-size: 0.99em;
+
+.brand-subtitle {
+  color: var(--rs-text-muted);
+  font-size: 0.84rem;
+}
+
+.workspace-card {
+  padding: 16px;
+  border-radius: 22px;
+  background: linear-gradient(180deg, rgba(63, 207, 142, 0.14), rgba(23, 34, 49, 0.82));
+  border: 1px solid rgba(62, 207, 142, 0.18);
+}
+
+.workspace-label,
+.section-title,
+.page-kicker,
+.account-email {
+  color: var(--rs-text-muted);
+  font-size: 0.78rem;
   text-transform: uppercase;
-  margin: 10px 0 0 8px;
-  letter-spacing: 0.09em;
+  letter-spacing: 0.12em;
+}
+
+.workspace-name,
+.page-title {
+  color: var(--rs-text);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.workspace-name {
+  margin-top: 0.35rem;
+  font-size: 1rem;
+}
+
+.workspace-meta {
+  margin-top: 0.35rem;
+  color: var(--rs-text-soft);
+  font-size: 0.9rem;
+}
+
+.nav-sections {
+  flex: 1;
+  overflow: auto;
+  padding-right: 6px;
+}
+
+.nav-section + .nav-section {
+  margin-top: 12px;
+}
+
+.section-title {
+  margin: 0 12px 8px;
+}
+
+.nav-item {
+  min-height: 46px;
+  margin-bottom: 6px;
+  color: var(--rs-text-soft);
+}
+
+:deep(.nav-item .v-list-item__prepend .v-icon),
+:deep(.nav-item .v-list-item-title) {
+  color: var(--rs-text-soft);
+}
+
+:deep(.nav-item.v-list-item--active) {
+  background: linear-gradient(90deg, rgba(62, 207, 142, 0.18), rgba(36, 91, 180, 0.14)) !important;
+  border: 1px solid rgba(62, 207, 142, 0.18);
+}
+
+:deep(.nav-item.v-list-item--active .v-list-item-title),
+:deep(.nav-item.v-list-item--active .v-icon) {
+  color: var(--rs-text) !important;
+}
+
+.shell-app-bar {
+  padding: 18px 24px 0 24px;
+}
+
+.app-bar-panel {
+  width: 100%;
+  height: 70px;
+  padding: 0 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border: 1px solid var(--rs-border);
+  border-radius: 26px;
+  background: rgba(13, 22, 35, 0.88);
+  backdrop-filter: blur(18px);
+}
+
+.page-title {
+  font-size: 1.35rem;
+}
+
+.toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.account-button {
+  border: 1px solid var(--rs-border);
+  background: rgba(17, 28, 43, 0.9);
+  color: inherit;
+  border-radius: 999px;
+  padding: 8px 8px 8px 14px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.account-copy {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  text-align: right;
+}
+
+.account-name {
+  color: var(--rs-text);
+  font-size: 0.95rem;
   font-weight: 600;
 }
-.nav-link .v-list-item__title {
-  color: #b7dbcc !important;
-  font-weight: 500;
+
+.account-avatar {
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #28445f, #162437);
+  color: var(--rs-text);
+  font-weight: 700;
 }
-.v-list-item--active, .nav-link.router-link-exact-active {
-  background: linear-gradient(90deg,#232a2e 0%,#2a9d8f11 100%) !important;
-  color: #2a9d8f !important;
+
+.menu-surface {
+  border: 1px solid var(--rs-border);
+  border-radius: 18px;
+  background: #0f1827;
 }
-.v-list-item__prepend-icon .v-icon {
-  color: #2a9d8f !important;
+
+.shell-main {
+  padding: 118px 24px 24px 24px;
 }
-.v-btn {
-  color: #2a9d8f !important;
-}
-.footer {
-  background: #181818 !important;
-  color: #b7dbcc !important;
-  font-weight: bold;
-  letter-spacing: 0.03em;
-  padding: 0.5rem 0;
-  border-top: 1px solid #232a2e;
-  min-height: 48px;
+
+@media (max-width: 960px) {
+  .shell-drawer {
+    padding-left: 0;
+  }
+
+  .shell-main {
+    padding-inline: 16px;
+  }
+
+  .page-title {
+    font-size: 1.1rem;
+  }
+
+  .account-copy {
+    display: none;
+  }
 }
 </style>

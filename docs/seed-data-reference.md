@@ -29,6 +29,7 @@ The seeder stores a version marker in `settings` and will not duplicate the data
 - Venue kind persisted in the `restaurants.kind` column
 - 1 to 3 branches per venue
 - 2 owner-side users per venue: owner and stakeholder
+- 1 platform admin account with full cross-restaurant access
 - 1 supervisor per branch
 - 2 waiters per branch
 - 1 cashier per branch
@@ -74,6 +75,7 @@ password
 
 Owner-side accounts:
 
+- `admin@restaurant-suite.com`
 - `owner.<restaurant-slug>@example.com`
 - `stakeholder.<restaurant-slug>@example.com`
 
@@ -88,6 +90,7 @@ Branch staff accounts:
 
 Examples:
 
+- `admin@restaurant-suite.com`
 - `owner.nile-flame-grill@example.com`
 - `stakeholder.bean-harbor-cafe@example.com`
 - `waiter1.nile-flame-grill.downtown@example.com`
@@ -147,6 +150,7 @@ This gives usable data for:
 - Kitchen app: queued and in-progress tickets
 - Cashier app: cashier queue and paid orders
 - Owner app: summary cards, payment mix, branch ranking, loyalty members, alerts, and low stock items
+- Web dashboard: platform admin restaurant management, branch control, user management, and role permission testing
 
 ## API Scope Fixes Included
 

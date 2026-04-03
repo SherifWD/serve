@@ -8,49 +8,41 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use App\Models\User;
 use Illuminate\Support\Facades\Log;
-use App\Models\Type;
 
 class AuthController extends Controller
 {
-public function login(Request $request)
-{
-    Log::info('Login Request', $request->all());
-    $request->validate([
-        'email'    => 'required|email',
-        'password' => 'required',
-        'type'     => 'nullable|string|exists:types,name', // Validate type if present
-    ]);
+    public function login(Request $request)
+    {
+        Log::info('Login Request', $request->only('email', 'type'));
 
-    $user = User::where('email', $request->email)->first();
+        $request->validate([
+            'email' => 'required|email',
+            'password' => 'required',
+            'type' => 'nullable|string|exists:types,name',
+        ]);
 
-    if (!$user || !Hash::check($request->password, $user->password)) {
-        return response()->json(['message' => 'Invalid credentials'], 401);
-    }
+        $user = User::with(['types', 'roles.permissions', 'branch:id,name,restaurant_id', 'restaurant:id,name,kind'])
+            ->where('email', $request->email)
+            ->first();
 
-    // If type is provided, ensure user has that type
-    if ($request->filled('type')) {
-        $hasType = $user->types()->where('name', $request->type)->exists();
-        if (!$hasType) {
-            return response()->json(['message' => 'User does not have required type'], 403);
+        if (!$user || !Hash::check($request->password, $user->password)) {
+            return response()->json(['message' => 'Invalid credentials'], 401);
         }
+
+        if ($request->filled('type')) {
+            $hasType = $user->types()->where('name', $request->type)->exists();
+            if (!$hasType) {
+                return response()->json(['message' => 'User does not have required type'], 403);
+            }
+        }
+
+        $token = $user->createToken('api-token')->plainTextToken;
+
+        return response()->json([
+            'token' => $token,
+            'user' => $this->serializeUser($user),
+        ]);
     }
-
-    // Create Sanctum token
-    $token = $user->createToken('api-token')->plainTextToken;
-
-    return response()->json([
-        'token' => $token,
-        'user'  => [
-            'id'    => $user->id,
-            'name'  => $user->name,
-            'email' => $user->email,
-            'branch_id' => $user->branch_id,
-            'restaurant_id' => $user->restaurant_id,
-            'types' => $user->types->pluck('name'), // Return all types
-        ]
-    ]);
-}
-
 
     // Logout
     public function logout(Request $request)
@@ -62,15 +54,33 @@ public function login(Request $request)
     // Get current user (for profile/SPA boot)
     public function me(Request $request)
     {
-        $user = $request->user()->loadMissing('types');
+        $user = $request->user()->loadMissing(['types', 'roles.permissions', 'branch:id,name,restaurant_id', 'restaurant:id,name,kind']);
 
-        return response()->json([
+        return response()->json($this->serializeUser($user));
+    }
+
+    private function serializeUser(User $user): array
+    {
+        return [
             'id' => $user->id,
             'name' => $user->name,
             'email' => $user->email,
+            'role' => $user->role,
+            'roles' => $user->roles->pluck('name')->values(),
+            'permissions' => $user->permissionNames()->values(),
             'branch_id' => $user->branch_id,
+            'branch' => $user->branch ? [
+                'id' => $user->branch->id,
+                'name' => $user->branch->name,
+                'restaurant_id' => $user->branch->restaurant_id,
+            ] : null,
             'restaurant_id' => $user->restaurant_id,
-            'types' => $user->types->pluck('name'),
-        ]);
+            'restaurant' => $user->restaurant ? [
+                'id' => $user->restaurant->id,
+                'name' => $user->restaurant->name,
+                'kind' => $user->restaurant->kind,
+            ] : null,
+            'types' => $user->types->pluck('name')->values(),
+        ];
     }
 }

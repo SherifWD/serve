@@ -357,7 +357,9 @@ class _FakeSuiteRepository extends SuiteRepository {
   @override
   Future<PagedResponse<RestaurantListing>> fetchRestaurants({
     int page = 1,
+    int perPage = 12,
     String search = '',
+    String? kind,
   }) async {
     return PagedResponse<RestaurantListing>(
       items: await _restaurantsPage(),
@@ -398,8 +400,49 @@ class _FakeSuiteRepository extends SuiteRepository {
   }
 
   @override
+  Future<CustomerRestaurantDetail> fetchCustomerRestaurantDetail({
+    required int restaurantId,
+    int page = 1,
+    int perPage = 12,
+    String search = '',
+  }) async {
+    final restaurants = await _restaurantsPage();
+    final restaurant = restaurants.firstWhere(
+      (item) => item.id == restaurantId,
+      orElse: () => restaurants.first,
+    );
+    return CustomerRestaurantDetail(
+      restaurant: restaurant,
+      items: const [
+        CustomerMenuItem(
+          id: 1,
+          name: 'Flat White',
+          price: 95,
+          categoryName: 'Coffee',
+          branchName: 'Nile Bean Downtown',
+          branchLocation: 'Zamalek',
+        ),
+        CustomerMenuItem(
+          id: 2,
+          name: 'Chicken Caesar Wrap',
+          price: 148,
+          categoryName: 'Kitchen',
+          branchName: 'Nile Bean Downtown',
+          branchLocation: 'Zamalek',
+        ),
+      ],
+      meta: const PaginationMeta(
+        currentPage: 1,
+        lastPage: 1,
+        perPage: 12,
+        total: 2,
+      ),
+    );
+  }
+
+  @override
   Future<PagedResponse<CustomerOrder>> fetchCustomerOrders(
-      {int page = 1}) async {
+      {int page = 1, int perPage = 10}) async {
     return PagedResponse<CustomerOrder>(
       items: [
         (await fetchCustomerHome()).recentOrders.first,
@@ -429,8 +472,14 @@ class _FakeSuiteRepository extends SuiteRepository {
   }
 
   @override
+  Future<CustomerOrder> fetchCustomerOrderDetail(int orderId) async {
+    final orders = (await fetchCustomerOrders()).items;
+    return orders.firstWhere((item) => item.id == orderId, orElse: () => orders.first);
+  }
+
+  @override
   Future<PagedResponse<LoyaltyEntry>> fetchCustomerLoyalty(
-      {int page = 1}) async {
+      {int page = 1, int perPage = 10}) async {
     return PagedResponse<LoyaltyEntry>(
       items: [
         LoyaltyEntry(

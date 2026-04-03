@@ -21,11 +21,18 @@ class SuiteRepository {
 
   Future<PagedResponse<RestaurantListing>> fetchRestaurants({
     int page = 1,
+    int perPage = 12,
     String search = '',
+    String? kind,
   }) async {
     final response = await _dio.get(
       '/customer/restaurants',
-      queryParameters: {'page': page, 'search': search},
+      queryParameters: {
+        'page': page,
+        'per_page': perPage,
+        'search': search,
+        if (kind != null && kind.isNotEmpty) 'kind': kind,
+      },
     );
     _throwIfNeeded(response);
     return PagedResponse<RestaurantListing>.fromJson(
@@ -34,11 +41,31 @@ class SuiteRepository {
     );
   }
 
-  Future<PagedResponse<CustomerOrder>> fetchCustomerOrders(
-      {int page = 1}) async {
+  Future<CustomerRestaurantDetail> fetchCustomerRestaurantDetail({
+    required int restaurantId,
+    int page = 1,
+    int perPage = 12,
+    String search = '',
+  }) async {
+    final response = await _dio.get(
+      '/customer/restaurants/$restaurantId',
+      queryParameters: {
+        'page': page,
+        'per_page': perPage,
+        'search': search,
+      },
+    );
+    _throwIfNeeded(response);
+    return CustomerRestaurantDetail.fromJson(_map(response.data));
+  }
+
+  Future<PagedResponse<CustomerOrder>> fetchCustomerOrders({
+    int page = 1,
+    int perPage = 10,
+  }) async {
     final response = await _dio.get(
       '/customer/orders',
-      queryParameters: {'page': page},
+      queryParameters: {'page': page, 'per_page': perPage},
     );
     _throwIfNeeded(response);
     return PagedResponse<CustomerOrder>.fromJson(
@@ -47,11 +74,19 @@ class SuiteRepository {
     );
   }
 
-  Future<PagedResponse<LoyaltyEntry>> fetchCustomerLoyalty(
-      {int page = 1}) async {
+  Future<CustomerOrder> fetchCustomerOrderDetail(int orderId) async {
+    final response = await _dio.get('/customer/orders/$orderId');
+    _throwIfNeeded(response);
+    return CustomerOrder.fromJson(_map(_map(response.data)['data']));
+  }
+
+  Future<PagedResponse<LoyaltyEntry>> fetchCustomerLoyalty({
+    int page = 1,
+    int perPage = 10,
+  }) async {
     final response = await _dio.get(
       '/customer/loyalty',
-      queryParameters: {'page': page},
+      queryParameters: {'page': page, 'per_page': perPage},
     );
     _throwIfNeeded(response);
     return PagedResponse<LoyaltyEntry>.fromJson(

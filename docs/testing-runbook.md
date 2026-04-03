@@ -61,6 +61,7 @@ password
 
 Account patterns:
 
+- Platform admin: `admin@restaurant-suite.com`
 - Owner: `owner.<restaurant-slug>@example.com`
 - Stakeholder: `stakeholder.<restaurant-slug>@example.com`
 - Supervisor: `supervisor.<restaurant-slug>.<branch-slug>@example.com`
@@ -70,6 +71,7 @@ Account patterns:
 
 Examples:
 
+- `admin@restaurant-suite.com`
 - `owner.nile-flame-grill@example.com`
 - `stakeholder.bean-harbor-cafe@example.com`
 - `waiter1.nile-flame-grill.downtown@example.com`
@@ -107,6 +109,24 @@ VITE_API_BASE_URL=https://your-backend-domain/api npm run build
 ```
 
 Upload `pos-dashboard/dist` to your frontend hosting if you want the dashboard online.
+
+Dashboard routes now include:
+
+- `#/dashboard`
+- `#/restaurants`
+- `#/branches`
+- `#/users`
+- `#/roles`
+- `#/orders`
+- `#/tables`
+- `#/products`
+- `#/categories`
+- `#/menus`
+- `#/inventory`
+- `#/suppliers`
+- `#/ingredients`
+- `#/recipe`
+- `#/settings`
 
 Important for Hostinger shared hosting:
 
@@ -178,20 +198,21 @@ Repeat with the other entrypoints to produce separate waiter, cashier, kitchen, 
 ## 10. Suggested Full Manual Test Cycle
 
 1. Log in to the owner dashboard with a seeded owner account such as `owner.nile-flame-grill@example.com`.
-2. Verify branches, tables, products, and users load.
-3. Install waiter APK on a phone.
-4. Install kitchen APK on a tablet.
-5. Install cashier APK on another phone or tablet.
-6. Install customer APK on a second phone.
-7. Customer logs in with a new phone number.
-8. Waiter opens a table and attaches the customer.
-9. Waiter adds items, modifiers, and notes.
-10. Waiter sends items to kitchen.
-11. Kitchen moves items from queued to preparing to ready.
-12. Waiter sends the order to cashier.
-13. Cashier settles with one tender, then repeat another order with split tenders.
-14. Owner dashboard verifies recent orders, revenue, branch performance, loyalty members, cashier queue, and KDS backlog.
-15. Repeat with change quantity, refund item, reopen paid order, and move table scenarios.
+2. Log in to the platform dashboard with `admin@restaurant-suite.com` if you want to test cross-restaurant management.
+3. Verify restaurants, branches, users, and roles pages load on the dashboard.
+4. Install waiter APK on a phone.
+5. Install kitchen APK on a tablet.
+6. Install cashier APK on another phone or tablet.
+7. Install customer APK on a second phone.
+8. Customer logs in with a new phone number.
+9. Waiter opens a table and attaches the customer.
+10. Waiter adds items, modifiers, and notes.
+11. Waiter sends items to kitchen.
+12. Kitchen moves items from queued to preparing to ready.
+13. Waiter sends the order to cashier.
+14. Cashier settles with one tender, then repeat another order with split tenders.
+15. Owner dashboard verifies recent orders, revenue, branch performance, loyalty members, cashier queue, and KDS backlog.
+16. Repeat with change quantity, refund item, reopen paid order, and move table scenarios.
 
 ## 11. Hostinger Notes
 

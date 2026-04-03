@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../../core/models/app_models.dart';
+import '../../../core/widgets/branded_image.dart';
 import '../../../core/widgets/state_views.dart';
 import '../../suite/data/suite_repository.dart';
 
@@ -263,6 +264,24 @@ class _WaiterOrderPageState extends ConsumerState<WaiterOrderPage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
                   children: [
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(24),
+                      child: SizedBox(
+                        height: 190,
+                        width: double.infinity,
+                        child: BrandedImage(
+                          label: product.name,
+                          imageUrl: product.imageUrl,
+                          kind: BrandedImageKind.dish,
+                          overlay: const LinearGradient(
+                            colors: [Color(0x00000000), Color(0x44000000)],
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 18),
                     Text(
                       product.name,
                       style: Theme.of(context)
@@ -271,7 +290,13 @@ class _WaiterOrderPageState extends ConsumerState<WaiterOrderPage> {
                           ?.copyWith(fontWeight: FontWeight.w800),
                     ),
                     const SizedBox(height: 8),
-                    Text('EGP ${product.price.toStringAsFixed(2)}'),
+                    Text(
+                      'EGP ${product.price.toStringAsFixed(2)}',
+                      style: Theme.of(context)
+                          .textTheme
+                          .titleMedium
+                          ?.copyWith(fontWeight: FontWeight.w800),
+                    ),
                     const SizedBox(height: 18),
                     Row(
                       children: [
@@ -569,6 +594,21 @@ class _OrderItemsCard extends StatelessWidget {
                   ),
                   child: Row(
                     children: [
+                      if (item.imageUrl != null) ...[
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(18),
+                          child: SizedBox(
+                            width: 72,
+                            height: 72,
+                            child: BrandedImage(
+                              label: item.name,
+                              imageUrl: item.imageUrl,
+                              kind: BrandedImageKind.dish,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                      ],
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -648,27 +688,62 @@ class _MenuComposerCard extends StatelessWidget {
                   .titleLarge
                   ?.copyWith(fontWeight: FontWeight.w800),
             ),
+            const SizedBox(height: 4),
+            const Text(
+              'Visual dish cards help the waiter recognize items faster while ordering at the table.',
+            ),
             const SizedBox(height: 14),
             for (final category in menu)
-              ExpansionTile(
-                tilePadding: EdgeInsets.zero,
-                childrenPadding: EdgeInsets.zero,
-                title: Text(category.name),
-                subtitle: Text(
-                  '${category.products.length} products • ${category.questions.length} category questions • ${modifiers.length} modifiers',
-                ),
-                children: [
-                  for (final product in category.products)
-                    ListTile(
-                      contentPadding: EdgeInsets.zero,
-                      title: Text(product.name),
-                      subtitle: Text('EGP ${product.price.toStringAsFixed(2)}'),
-                      trailing: FilledButton.tonal(
-                        onPressed: () => onAdd(product, category),
-                        child: const Text('Add'),
-                      ),
+              Padding(
+                padding: const EdgeInsets.only(bottom: 22),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      category.name,
+                      style: Theme.of(context)
+                          .textTheme
+                          .titleMedium
+                          ?.copyWith(fontWeight: FontWeight.w800),
                     ),
-                ],
+                    const SizedBox(height: 4),
+                    Text(
+                      '${category.products.length} products • ${category.questions.length} questions • ${modifiers.length} modifiers',
+                      style: const TextStyle(color: Color(0xFF64748B)),
+                    ),
+                    const SizedBox(height: 12),
+                    LayoutBuilder(
+                      builder: (context, constraints) {
+                        final width = constraints.maxWidth;
+                        final crossAxisCount = width > 760
+                            ? 3
+                            : width > 520
+                                ? 2
+                                : 1;
+
+                        return GridView.builder(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          itemCount: category.products.length,
+                          gridDelegate:
+                              SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: crossAxisCount,
+                            crossAxisSpacing: 12,
+                            mainAxisSpacing: 12,
+                            childAspectRatio: 0.78,
+                          ),
+                          itemBuilder: (context, index) {
+                            final product = category.products[index];
+                            return _ProductChooserCard(
+                              product: product,
+                              onTap: () => onAdd(product, category),
+                            );
+                          },
+                        );
+                      },
+                    ),
+                  ],
+                ),
               ),
           ],
         ),
@@ -689,4 +764,77 @@ class _WaiterOrderBundle {
   final List<MenuCategoryData> menu;
   final List<ModifierData> modifiers;
   final List<TableOverview> tables;
+}
+
+class _ProductChooserCard extends StatelessWidget {
+  const _ProductChooserCard({
+    required this.product,
+    required this.onTap,
+  });
+
+  final MenuProduct product;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: const Color(0xFFF8FAFC),
+      borderRadius: BorderRadius.circular(24),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: ClipRRect(
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(24),
+                ),
+                child: BrandedImage(
+                  label: product.name,
+                  imageUrl: product.imageUrl,
+                  kind: BrandedImageKind.dish,
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    product.name,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.w800,
+                        ),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          'EGP ${product.price.toStringAsFixed(0)}',
+                          style: Theme.of(context)
+                              .textTheme
+                              .titleSmall
+                              ?.copyWith(fontWeight: FontWeight.w900),
+                        ),
+                      ),
+                      FilledButton.tonal(
+                        onPressed: onTap,
+                        child: const Text('Add'),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }

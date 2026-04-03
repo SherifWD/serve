@@ -5,132 +5,119 @@
         <v-col cols="12" lg="8">
           <div class="rs-panel hero-panel">
             <div>
-              <div class="page-kicker">Location Control</div>
-              <h1 class="page-title">Manage branches, map them to restaurants, and keep each location organized.</h1>
+              <div class="page-kicker">Platform Control</div>
+              <h1 class="page-title">Restaurants and cafes across the full SaaS network.</h1>
               <p class="page-copy">
-                Platform admin can create branches for any venue. Restaurant owners only see and
-                manage the branches inside their own brand.
+                Create brands, classify them as restaurants or cafes, and track how many
+                branches and users already exist under each venue.
               </p>
             </div>
 
             <v-btn
-              v-if="auth.can('branches.manage')"
+              v-if="auth.isAdmin"
               color="primary"
               size="large"
               class="rs-pill"
               @click="openCreate"
             >
               <v-icon start icon="mdi-plus" />
-              Add branch
+              Add restaurant
             </v-btn>
           </div>
         </v-col>
 
         <v-col cols="12" md="6" lg="2">
           <div class="rs-panel metric-card">
-            <div class="metric-label">Branches</div>
-            <div class="metric-value">{{ branches.length }}</div>
+            <div class="metric-label">Venues</div>
+            <div class="metric-value">{{ restaurants.length }}</div>
           </div>
         </v-col>
 
         <v-col cols="12" md="6" lg="2">
           <div class="rs-panel metric-card">
-            <div class="metric-label">Venues</div>
-            <div class="metric-value">
-              {{ auth.isAdmin ? restaurants.length : (auth.user?.restaurant?.name ? 1 : 0) }}
-            </div>
+            <div class="metric-label">Branches</div>
+            <div class="metric-value">{{ totalBranches }}</div>
           </div>
         </v-col>
       </v-row>
 
-      <div class="rs-panel filter-panel">
-        <v-row>
-          <v-col v-if="auth.isAdmin" cols="12" md="6">
-            <v-select
-              v-model="selectedRestaurant"
-              :items="restaurants"
-              item-title="name"
-              item-value="id"
-              label="Restaurant"
-              variant="outlined"
-              clearable
-              @update:modelValue="loadBranches"
-            />
-          </v-col>
-        </v-row>
-      </div>
+      <v-alert
+        v-if="!auth.isAdmin"
+        type="info"
+        variant="tonal"
+        class="mb-4"
+      >
+        Restaurants are controlled by the platform admin account.
+      </v-alert>
 
       <div class="rs-panel table-panel">
         <div class="panel-header">
           <div>
-            <div class="panel-title">Branch Directory</div>
-            <div class="panel-subtitle">Branch location records available to the current user.</div>
+            <div class="panel-title">Venue Directory</div>
+            <div class="panel-subtitle">Every restaurant and cafe registered in the solution.</div>
           </div>
         </div>
 
         <v-data-table
           :headers="headers"
-          :items="branches"
+          :items="restaurants"
           item-value="id"
           class="rs-table"
           hide-default-footer
         >
-          <template #item.restaurant="{ item }">
-            <v-chip variant="tonal" color="primary" class="rs-pill">
-              {{ item.restaurant?.name || 'Unassigned' }}
+          <template #item.kind="{ item }">
+            <v-chip :color="item.kind === 'cafe' ? 'info' : 'primary'" variant="tonal" class="rs-pill">
+              {{ item.kind }}
             </v-chip>
           </template>
 
           <template #item.actions="{ item }">
             <div class="table-actions">
               <v-btn
-                v-if="auth.can('branches.manage')"
+                v-if="auth.isAdmin"
                 size="small"
                 icon="mdi-pencil-outline"
                 variant="text"
                 @click="openEdit(item)"
               />
               <v-btn
-                v-if="auth.can('branches.manage')"
+                v-if="auth.isAdmin"
                 size="small"
                 icon="mdi-delete-outline"
                 variant="text"
                 color="error"
-                @click="removeBranch(item.id)"
+                @click="removeRestaurant(item.id)"
               />
             </div>
           </template>
         </v-data-table>
       </div>
 
-      <v-dialog v-model="dialog" max-width="560">
+      <v-dialog v-model="dialog" max-width="520">
         <v-card class="dialog-card">
           <v-card-title class="dialog-title">
-            {{ editing ? 'Edit branch' : 'Create branch' }}
+            {{ editing ? 'Edit venue' : 'Create venue' }}
           </v-card-title>
           <v-card-text>
-            <v-row>
-              <v-col v-if="auth.isAdmin" cols="12">
-                <v-select
-                  v-model="form.restaurant_id"
-                  :items="restaurants"
-                  item-title="name"
-                  item-value="id"
-                  label="Restaurant"
-                  variant="outlined"
-                />
-              </v-col>
-              <v-col cols="12">
-                <v-text-field v-model="form.name" label="Branch name" variant="outlined" />
-              </v-col>
-              <v-col cols="12">
-                <v-text-field v-model="form.location" label="Location" variant="outlined" />
-              </v-col>
-            </v-row>
+            <v-form @submit.prevent="saveRestaurant">
+              <v-text-field
+                v-model="form.name"
+                label="Venue name"
+                variant="outlined"
+                class="mb-4"
+              />
+              <v-select
+                v-model="form.kind"
+                :items="['restaurant', 'cafe']"
+                label="Venue type"
+                variant="outlined"
+                class="mb-4"
+              />
+            </v-form>
           </v-card-text>
           <v-card-actions class="justify-end px-6 pb-6">
             <v-btn variant="text" @click="dialog = false">Cancel</v-btn>
-            <v-btn color="primary" class="rs-pill" @click="saveBranch">Save</v-btn>
+            <v-btn color="primary" class="rs-pill" @click="saveRestaurant">Save</v-btn>
           </v-card-actions>
         </v-card>
       </v-dialog>
@@ -139,7 +126,7 @@
 </template>
 
 <script setup>
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import axios from 'axios'
 import OwnerLayout from '@/layouts/OwnerLayout.vue'
 import { API_BASE_URL } from '../lib/api'
@@ -148,115 +135,92 @@ import { useAuthStore } from '../store/auth'
 const auth = useAuthStore()
 
 const restaurants = ref([])
-const branches = ref([])
 const dialog = ref(false)
 const editing = ref(false)
-const selectedRestaurant = ref(auth.user?.restaurant_id ?? null)
-const form = ref(createEmptyForm())
+const form = ref({
+  id: null,
+  name: '',
+  kind: 'restaurant',
+})
 
 const headers = [
-  { title: 'ID', key: 'id', width: 70 },
-  { title: 'Branch', key: 'name' },
-  { title: 'Restaurant', key: 'restaurant' },
-  { title: 'Location', key: 'location' },
+  { title: 'ID', key: 'id' },
+  { title: 'Name', key: 'name' },
+  { title: 'Type', key: 'kind' },
+  { title: 'Branches', key: 'branches_count' },
+  { title: 'Users', key: 'users_count' },
   { title: 'Actions', key: 'actions', sortable: false, width: 120 },
 ]
 
-function createEmptyForm() {
-  return {
-    id: null,
-    restaurant_id: auth.isAdmin ? selectedRestaurant.value : auth.user?.restaurant_id,
-    name: '',
-    location: '',
-  }
-}
+const totalBranches = computed(() =>
+  restaurants.value.reduce((sum, restaurant) => sum + Number(restaurant.branches_count || 0), 0),
+)
 
 function authHeaders() {
   return { Authorization: `Bearer ${auth.token}` }
 }
 
 async function loadRestaurants() {
-  if (!auth.isAdmin) return
-
   const { data } = await axios.get(`${API_BASE_URL}/restaurants`, {
     headers: authHeaders(),
   })
+
   restaurants.value = data
-}
-
-async function loadBranches() {
-  const params = {}
-
-  if (auth.isAdmin && selectedRestaurant.value) {
-    params.restaurant_id = selectedRestaurant.value
-  }
-
-  const { data } = await axios.get(`${API_BASE_URL}/branches`, {
-    headers: authHeaders(),
-    params,
-  })
-
-  branches.value = data.data || data
 }
 
 function openCreate() {
   editing.value = false
-  form.value = createEmptyForm()
+  form.value = {
+    id: null,
+    name: '',
+    kind: 'restaurant',
+  }
   dialog.value = true
 }
 
-function openEdit(branch) {
+function openEdit(restaurant) {
   editing.value = true
   form.value = {
-    id: branch.id,
-    restaurant_id: branch.restaurant_id ?? branch.restaurant?.id ?? auth.user?.restaurant_id,
-    name: branch.name,
-    location: branch.location,
+    id: restaurant.id,
+    name: restaurant.name,
+    kind: restaurant.kind,
   }
   dialog.value = true
 }
 
-async function saveBranch() {
+async function saveRestaurant() {
   const payload = {
     name: form.value.name,
-    location: form.value.location,
-  }
-
-  if (auth.isAdmin) {
-    payload.restaurant_id = form.value.restaurant_id
+    kind: form.value.kind,
   }
 
   if (editing.value) {
-    await axios.put(`${API_BASE_URL}/branches/${form.value.id}`, payload, {
+    await axios.put(`${API_BASE_URL}/restaurants/${form.value.id}`, payload, {
       headers: authHeaders(),
     })
   } else {
-    await axios.post(`${API_BASE_URL}/branches`, payload, {
+    await axios.post(`${API_BASE_URL}/restaurants`, payload, {
       headers: authHeaders(),
     })
   }
 
   dialog.value = false
-  await loadBranches()
+  await loadRestaurants()
 }
 
-async function removeBranch(id) {
-  await axios.delete(`${API_BASE_URL}/branches/${id}`, {
+async function removeRestaurant(id) {
+  await axios.delete(`${API_BASE_URL}/restaurants/${id}`, {
     headers: authHeaders(),
   })
-  await loadBranches()
+  await loadRestaurants()
 }
 
-onMounted(async () => {
-  await loadRestaurants()
-  await loadBranches()
-})
+onMounted(loadRestaurants)
 </script>
 
 <style scoped>
 .hero-panel,
 .metric-card,
-.filter-panel,
 .table-panel,
 .dialog-card {
   padding: 24px;
@@ -280,10 +244,10 @@ onMounted(async () => {
 }
 
 .page-title {
-  max-width: 700px;
+  max-width: 640px;
   margin-top: 0.8rem;
   color: var(--rs-text);
-  font-size: 2.35rem;
+  font-size: 2.4rem;
   line-height: 1.05;
   letter-spacing: -0.04em;
 }
@@ -310,7 +274,6 @@ onMounted(async () => {
   margin-top: 1rem;
 }
 
-.filter-panel,
 .table-panel {
   margin-top: 8px;
 }
