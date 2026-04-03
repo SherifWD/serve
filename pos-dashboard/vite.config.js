@@ -6,7 +6,7 @@ import vue from '@vitejs/plugin-vue'
 export default defineConfig(({ command, mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
   const appBase =
-    command === 'build' ? env.VITE_APP_BASE || '/dashboard/' : '/'
+    command === 'build' ? env.VITE_APP_BASE || './' : '/'
 
   return {
     base: appBase,
