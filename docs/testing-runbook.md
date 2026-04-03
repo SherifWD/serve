@@ -97,7 +97,7 @@ Local development:
 ```bash
 cd pos-dashboard
 npm install
-VITE_API_BASE_URL=http://127.0.0.1:8000/api npm run dev
+VITE_DEPLOY_TARGET=local npm run dev
 ```
 
 Production build:
@@ -105,7 +105,7 @@ Production build:
 ```bash
 cd pos-dashboard
 npm install
-VITE_API_BASE_URL=https://your-backend-domain/api npm run build
+VITE_DEPLOY_TARGET=prod npm run build
 ```
 
 Upload `pos-dashboard/dist` to your frontend hosting if you want the dashboard online.
@@ -139,8 +139,7 @@ Important for Hostinger shared hosting:
 ```bash
 cd pos-dashboard
 npm install
-VITE_API_BASE_URL=https://ambernoak.co.uk/serveu/serve/public/api \
-VITE_APP_BASE=/serveu/serve/public/dashboard/ \
+VITE_DEPLOY_TARGET=prod \
 npm run build
 ```
 

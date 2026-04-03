@@ -9,14 +9,14 @@
 
 ```bash
 npm install
-VITE_API_BASE_URL=http://127.0.0.1:8000/api npm run dev
+VITE_DEPLOY_TARGET=local npm run dev
 ```
 
 ## Production Build
 
 ```bash
 npm install
-VITE_API_BASE_URL=https://your-backend-domain/api npm run build
+VITE_DEPLOY_TARGET=prod npm run build
 ```
 
 Deploy the generated files from `dist/`.

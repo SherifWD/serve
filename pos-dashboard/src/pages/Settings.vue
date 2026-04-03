@@ -109,7 +109,7 @@
               <v-list density="compact" bg-color="transparent">
                 <v-list-item title="Vue routes use hash history for Hostinger shared hosting." />
                 <v-list-item title="All dashboard pages now require auth except login." />
-                <v-list-item title="API calls use VITE_API_BASE_URL, so the same build can target staging or production." />
+                <v-list-item title="API calls use VITE_DEPLOY_TARGET for local or prod, with VITE_API_BASE_URL still available as an explicit override." />
               </v-list>
             </v-card-text>
           </v-card>
