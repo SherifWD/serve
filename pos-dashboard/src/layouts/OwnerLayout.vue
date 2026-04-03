@@ -1,14 +1,14 @@
 <template>
-  <v-app class="owner-shell" :class="{ 'drawer-open': drawer }">
-    <button
-      v-if="drawer"
-      class="shell-backdrop"
-      type="button"
-      aria-label="Close navigation"
-      @click="drawer = false"
-    />
-
-    <aside class="shell-sidebar" :class="{ 'is-open': drawer }" :aria-hidden="(!drawer).toString()">
+  <v-app class="owner-shell">
+    <v-navigation-drawer
+      v-model="drawer"
+      temporary
+      location="left"
+      width="292"
+      color="transparent"
+      scrim="rgba(3, 9, 20, 0.48)"
+      class="shell-drawer"
+    >
       <div class="drawer-panel">
         <div class="brand-block">
           <div class="brand-icon">RS</div>
@@ -39,6 +39,7 @@
                 :to="item.to"
                 rounded="xl"
                 class="nav-item"
+                @click="drawer = false"
               >
                 <template #prepend>
                   <v-icon :icon="item.icon" />
@@ -60,57 +61,55 @@
           </div>
         </div>
       </div>
-    </aside>
+    </v-navigation-drawer>
 
-    <div class="shell-stage">
-      <header class="shell-app-bar">
-        <div class="app-bar-panel">
-          <div class="d-flex align-center ga-3">
-            <button
-              class="shell-toggle"
-              type="button"
-              :aria-expanded="drawer.toString()"
-              :aria-label="drawer ? 'Hide navigation' : 'Show navigation'"
-              @click="drawer = !drawer"
-            >
-              <v-icon :icon="drawer ? 'mdi-close' : 'mdi-menu'" />
-            </button>
-            <div>
-              <div class="page-kicker">{{ currentSection }}</div>
-              <div class="page-title">{{ currentTitle }}</div>
-            </div>
-          </div>
-
-          <div class="toolbar-actions">
-            <v-chip variant="tonal" color="primary" class="rs-pill">
-              {{ auth.displayRole }}
-            </v-chip>
-
-            <v-menu>
-              <template #activator="{ props }">
-                <button class="account-button" v-bind="props">
-                  <div class="account-copy">
-                    <span class="account-name">{{ auth.user?.name || 'Operator' }}</span>
-                    <span class="account-email">{{ auth.user?.email || 'No email' }}</span>
-                  </div>
-                  <div class="account-avatar">
-                    {{ initials }}
-                  </div>
-                </button>
-              </template>
-
-              <v-list class="menu-surface">
-                <v-list-item title="Logout" prepend-icon="mdi-logout" @click="logout" />
-              </v-list>
-            </v-menu>
+    <v-app-bar app flat color="transparent" height="88" class="shell-app-bar">
+      <div class="app-bar-panel">
+        <div class="d-flex align-center ga-3">
+          <button
+            class="shell-toggle"
+            type="button"
+            :aria-expanded="drawer.toString()"
+            :aria-label="drawer ? 'Hide navigation' : 'Show navigation'"
+            @click="drawer = !drawer"
+          >
+            <v-icon :icon="drawer ? 'mdi-close' : 'mdi-menu'" />
+          </button>
+          <div>
+            <div class="page-kicker">{{ currentSection }}</div>
+            <div class="page-title">{{ currentTitle }}</div>
           </div>
         </div>
-      </header>
 
-      <main class="shell-main">
-        <slot />
-      </main>
-    </div>
+        <div class="toolbar-actions">
+          <v-chip variant="tonal" color="primary" class="rs-pill">
+            {{ auth.displayRole }}
+          </v-chip>
+
+          <v-menu>
+            <template #activator="{ props }">
+              <button class="account-button" v-bind="props">
+                <div class="account-copy">
+                  <span class="account-name">{{ auth.user?.name || 'Operator' }}</span>
+                  <span class="account-email">{{ auth.user?.email || 'No email' }}</span>
+                </div>
+                <div class="account-avatar">
+                  {{ initials }}
+                </div>
+              </button>
+            </template>
+
+            <v-list class="menu-surface">
+              <v-list-item title="Logout" prepend-icon="mdi-logout" @click="logout" />
+            </v-list>
+          </v-menu>
+        </div>
+      </div>
+    </v-app-bar>
+
+    <v-main class="shell-main">
+      <slot />
+    </v-main>
   </v-app>
 </template>
 
@@ -208,9 +207,7 @@ const initials = computed(() => {
 watch(
   () => route.fullPath,
   () => {
-    if (typeof window !== 'undefined' && window.innerWidth < 1280) {
-      drawer.value = false
-    }
+    drawer.value = false
   },
 )
 
@@ -233,51 +230,14 @@ async function logout() {
 <style scoped>
 .owner-shell {
   background: transparent;
-  min-height: 100vh;
-  position: relative;
-  display: grid;
-  grid-template-columns: 0 minmax(0, 1fr);
-  gap: 20px;
-  padding: 18px 24px 24px;
-  transition: grid-template-columns 0.32s ease, padding 0.32s ease;
 }
 
-.owner-shell.drawer-open {
-  grid-template-columns: clamp(292px, 25vw, 360px) minmax(0, 1fr);
-}
-
-.shell-backdrop {
-  display: none;
-}
-
-.shell-sidebar {
-  min-width: 0;
-  overflow: hidden;
-  opacity: 0;
-  pointer-events: none;
-  transform: translateX(-18px);
-  transition:
-    opacity 0.24s ease,
-    transform 0.32s ease;
-}
-
-.shell-sidebar.is-open {
-  opacity: 1;
-  pointer-events: auto;
-  transform: translateX(0);
-}
-
-.shell-stage {
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
+.shell-drawer {
+  padding: 18px 0 18px 18px;
 }
 
 .drawer-panel {
-  height: calc(100vh - 42px);
-  position: sticky;
-  top: 18px;
+  height: calc(100vh - 36px);
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -389,9 +349,7 @@ async function logout() {
 }
 
 .shell-app-bar {
-  position: sticky;
-  top: 18px;
-  z-index: 20;
+  padding: 18px 24px 0 24px;
 }
 
 .app-bar-panel {
@@ -480,41 +438,16 @@ async function logout() {
 }
 
 .shell-main {
-  min-width: 0;
+  padding: 118px 24px 24px 24px;
 }
 
-@media (max-width: 1279px) {
-  .owner-shell,
-  .owner-shell.drawer-open {
-    grid-template-columns: minmax(0, 1fr);
-    padding-inline: 16px;
-  }
-
-  .shell-sidebar {
-    position: fixed;
-    left: 16px;
-    top: 16px;
-    bottom: 16px;
-    width: min(86vw, 340px);
-    z-index: 40;
-    transform: translateX(calc(-100% - 24px));
-  }
-
-  .shell-sidebar.is-open {
-    transform: translateX(0);
-  }
-
-  .shell-backdrop {
-    display: block;
-    position: fixed;
-    inset: 0;
-    z-index: 30;
-    background: rgba(2, 8, 20, 0.46);
-    backdrop-filter: blur(4px);
+@media (max-width: 960px) {
+  .shell-drawer {
+    padding-left: 0;
   }
 
   .shell-main {
-    padding-inline: 0;
+    padding-inline: 16px;
   }
 
   .page-title {
@@ -523,12 +456,6 @@ async function logout() {
 
   .account-copy {
     display: none;
-  }
-}
-
-@media (min-width: 1280px) {
-  .owner-shell.drawer-open .shell-stage {
-    width: 100%;
   }
 }
 </style>
