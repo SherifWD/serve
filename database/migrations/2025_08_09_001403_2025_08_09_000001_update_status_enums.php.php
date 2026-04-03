@@ -1,10 +1,25 @@
 <?php
+
 use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\DB;
 
 return new class extends Migration {
     public function up(): void
     {
+        $driver = DB::getDriverName();
+
+        if ($driver === 'sqlite') {
+            if (!Schema::hasColumn('tables', 'status')) {
+                Schema::table('tables', function (Blueprint $table) {
+                    $table->string('status')->default('open');
+                });
+            }
+
+            return;
+        }
+
         // MySQL ENUM modify (adjust list if you already have more states)
         DB::statement("
             ALTER TABLE orders
@@ -15,7 +30,7 @@ return new class extends Migration {
 
         // Ensure tables.status exists and is ENUM (create/alter as needed)
         // If `status` doesn't exist, add it:
-        $hasStatus = DB::select("SHOW COLUMNS FROM `tables` LIKE 'status'");
+        $hasStatus = Schema::hasColumn('tables', 'status');
         if (!$hasStatus) {
             DB::statement("
                 ALTER TABLE `tables`

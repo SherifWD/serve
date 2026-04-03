@@ -81,6 +81,9 @@ class TableMobileController extends Controller
                 return response()->json(['error' => 'No active orders to move.'], 404);
             }
 
+            $sourceCustomerId = $orders->pluck('customer_id')->filter()->first();
+            $sourceKdsSentAt = $orders->pluck('kds_sent_at')->filter()->sort()->first();
+
             // Ensure a target open order
             $target = Order::where('table_id', $to->id)
                 ->whereIn('status', [OrderStatus::PENDING, OrderStatus::OPEN, OrderStatus::RUNNING])
@@ -91,6 +94,7 @@ class TableMobileController extends Controller
                 $target = Order::create([
                     'branch_id' => $to->branch_id,
                     'table_id'  => $to->id,
+                    'customer_id' => $sourceCustomerId,
                     'order_type'=> 'dine-in',
                     'status'    => OrderStatus::PENDING,
                     'subtotal'  => 0,
@@ -99,6 +103,9 @@ class TableMobileController extends Controller
                     'total'     => 0,
                     'order_date'=> now(),
                 ]);
+            } elseif (!$target->customer_id && $sourceCustomerId) {
+                $target->customer_id = $sourceCustomerId;
+                $target->save();
             }
 
             // Move by cloning items (keep history)
@@ -131,6 +138,11 @@ class TableMobileController extends Controller
             $to->status = TableStatus::OCCUPIED;
             $to->save();
 
+            if (!$target->kds_sent_at && $sourceKdsSentAt) {
+                $target->kds_sent_at = $sourceKdsSentAt;
+                $target->save();
+            }
+
             \App\Services\Orders\RecalculateOrder::run($target);
 
             return response()->json(['message' => 'Table moved successfully.']);
@@ -139,7 +151,7 @@ class TableMobileController extends Controller
 
    public function sendToCashier(Request $request, Order $order)
 {
-    if ($request->user()->branch_id !== $order->branch_id) {
+    if ((int) $request->user()->branch_id !== (int) $order->branch_id) {
         return response()->json(['error' => 'Unauthorized'], 403);
     }
 
@@ -207,7 +219,7 @@ public function batchSendToCashier(Request $request)
     public function reopenOrder(Request $request, $orderId)
     {
         $order = Order::with('table')->findOrFail($orderId);
-        if ($order->table->branch_id !== $request->user()->branch_id) {
+        if ((int) $order->table->branch_id !== (int) $request->user()->branch_id) {
             return response()->json(['error' => 'Unauthorized'], 403);
         }
         if (!in_array($order->status, [OrderStatus::CASHIER, OrderStatus::PAID], true)) {
@@ -247,7 +259,7 @@ public function batchSendToCashier(Request $request)
     $item  = OrderItem::with(['order.table','product','answers','modifiers'])->findOrFail($orderItemId);
     $order = $item->order;
 
-    if ($order->table->branch_id !== $request->user()->branch_id) {
+    if ((int) $order->table->branch_id !== (int) $request->user()->branch_id) {
         return response()->json(['error' => 'Unauthorized'], 403);
     }
 

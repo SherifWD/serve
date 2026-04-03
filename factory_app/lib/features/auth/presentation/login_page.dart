@@ -21,7 +21,6 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   final _customerPhoneController = TextEditingController();
   final _customerEmailController = TextEditingController();
 
-  bool _customerMode = false;
   AppRole _selectedStaffRole = AppRole.owner;
 
   @override
@@ -40,7 +39,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     final flavor = ref.watch(appFlavorProvider);
     final lockedRole = ref.watch(fixedRoleProvider);
     final theme = Theme.of(context);
-    final customerMode = lockedRole == AppRole.customer || _customerMode;
+    final customerMode = lockedRole == AppRole.customer;
     final selectedRole = lockedRole ?? _selectedStaffRole;
 
     if (!authState.hasBootstrapped) {
@@ -86,7 +85,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                                     customerMode
                                         ? 'Customer app access'
                                         : lockedRole == null
-                                            ? 'Team sign in'
+                                            ? 'Staff suite sign in'
                                             : '${selectedRole.label} sign in',
                                     style: theme.textTheme.headlineMedium
                                         ?.copyWith(
@@ -98,33 +97,13 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                                     customerMode
                                         ? 'View previous orders, loyalty points, and registered restaurants.'
                                         : lockedRole == null
-                                            ? 'Choose the exact role workspace you want to run: waiter, cashier, kitchen, or owner.'
+                                            ? 'Choose the exact staff workspace you want to run: waiter, cashier, kitchen, or owner.'
                                             : 'This app is pinned to the ${selectedRole.label.toLowerCase()} workspace for a cleaner branch rollout.',
                                     style: theme.textTheme.bodyLarge?.copyWith(
                                       color: theme.colorScheme.onSurfaceVariant,
                                     ),
                                   ),
                                   const SizedBox(height: 20),
-                                  if (lockedRole == null)
-                                    SegmentedButton<bool>(
-                                      segments: const [
-                                        ButtonSegment<bool>(
-                                          value: false,
-                                          icon: Icon(Icons.badge_outlined),
-                                          label: Text('Staff'),
-                                        ),
-                                        ButtonSegment<bool>(
-                                          value: true,
-                                          icon: Icon(Icons.storefront_outlined),
-                                          label: Text('Customer'),
-                                        ),
-                                      ],
-                                      selected: {_customerMode},
-                                      onSelectionChanged: (value) {
-                                        setState(
-                                            () => _customerMode = value.first);
-                                      },
-                                    ),
                                   const SizedBox(height: 24),
                                   if (!customerMode) ...[
                                     TextField(
@@ -237,7 +216,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                                     customerMode
                                         ? 'Customer login currently uses quick phone-based access for MVP rollout. Replace with OTP before production launch.'
                                         : lockedRole == null
-                                            ? 'The selected role is enforced against the backend `type` list, so each workspace opens against the correct permission set.'
+                                            ? 'The selected role is enforced against the backend `type` list, so the staff suite only opens against the correct permission set.'
                                             : '${flavor.shellLabel} app stays locked to one operational role, which is safer for branch devices and easier for staff training.',
                                     style: theme.textTheme.bodySmall?.copyWith(
                                       color: theme.colorScheme.onSurfaceVariant,
@@ -262,8 +241,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
 
   Future<void> _submit() async {
     final notifier = ref.read(authProvider.notifier);
-    final customerMode =
-        ref.read(fixedRoleProvider) == AppRole.customer || _customerMode;
+    final customerMode = ref.read(fixedRoleProvider) == AppRole.customer;
 
     if (customerMode) {
       await notifier.loginCustomer(

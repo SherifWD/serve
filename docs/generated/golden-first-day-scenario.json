@@ -1,0 +1,2480 @@
+{
+    "title": "Golden First Day Scenario",
+    "generated_at": "2026-04-03T03:34:29+00:00",
+    "environment": {
+        "db_connection": "sqlite",
+        "app_env": "local"
+    },
+    "restaurant": {
+        "id": 15,
+        "name": "Harbor Ember Kitchen",
+        "kind": "restaurant"
+    },
+    "accounts": {
+        "owner": {
+            "name": "Rana Soliman",
+            "email": "owner.harbor-ember-kitchen@example.com",
+            "password": "password"
+        },
+        "stakeholder": {
+            "name": "Hossam Gaber",
+            "email": "stakeholder.harbor-ember-kitchen@example.com",
+            "password": "password"
+        },
+        "staff": [
+            {
+                "branch_name": "Downtown Flagship",
+                "name": "Dina Farouk",
+                "email": "dina.farouk.downtown-flagship@example.com",
+                "password": "password",
+                "role": "supervisor",
+                "types": []
+            },
+            {
+                "branch_name": "Downtown Flagship",
+                "name": "Karim Adel",
+                "email": "karim.adel.downtown-flagship@example.com",
+                "password": "password",
+                "role": "staff",
+                "types": [
+                    "waiter"
+                ]
+            },
+            {
+                "branch_name": "Downtown Flagship",
+                "name": "Salma Nasser",
+                "email": "salma.nasser.downtown-flagship@example.com",
+                "password": "password",
+                "role": "staff",
+                "types": [
+                    "cashier"
+                ]
+            },
+            {
+                "branch_name": "Downtown Flagship",
+                "name": "Tamer Wael",
+                "email": "tamer.wael.downtown-flagship@example.com",
+                "password": "password",
+                "role": "staff",
+                "types": [
+                    "kitchen"
+                ]
+            },
+            {
+                "branch_name": "New Cairo Studio",
+                "name": "Nour Hassan",
+                "email": "nour.hassan.new-cairo-studio@example.com",
+                "password": "password",
+                "role": "staff",
+                "types": [
+                    "waiter"
+                ]
+            },
+            {
+                "branch_name": "New Cairo Studio",
+                "name": "Ahmed Samy",
+                "email": "ahmed.samy.new-cairo-studio@example.com",
+                "password": "password",
+                "role": "staff",
+                "types": [
+                    "cashier"
+                ]
+            },
+            {
+                "branch_name": "New Cairo Studio",
+                "name": "Mina Wagdy",
+                "email": "mina.wagdy.new-cairo-studio@example.com",
+                "password": "password",
+                "role": "staff",
+                "types": [
+                    "kitchen"
+                ]
+            },
+            {
+                "branch_name": "Maadi Terrace",
+                "name": "Mariam Fares",
+                "email": "mariam.fares.maadi-terrace@example.com",
+                "password": "password",
+                "role": "staff",
+                "types": [
+                    "waiter"
+                ]
+            },
+            {
+                "branch_name": "Maadi Terrace",
+                "name": "Omar Lotfy",
+                "email": "omar.lotfy.maadi-terrace@example.com",
+                "password": "password",
+                "role": "staff",
+                "types": [
+                    "cashier"
+                ]
+            },
+            {
+                "branch_name": "Maadi Terrace",
+                "name": "Lina Atef",
+                "email": "lina.atef.maadi-terrace@example.com",
+                "password": "password",
+                "role": "staff",
+                "types": [
+                    "kitchen"
+                ]
+            }
+        ]
+    },
+    "branches": [
+        {
+            "id": 28,
+            "name": "Downtown Flagship",
+            "location": "Downtown Cairo"
+        },
+        {
+            "id": 29,
+            "name": "New Cairo Studio",
+            "location": "New Cairo"
+        },
+        {
+            "id": 30,
+            "name": "Maadi Terrace",
+            "location": "Maadi"
+        }
+    ],
+    "products": [
+        {
+            "id": 406,
+            "branch_name": "Downtown Flagship",
+            "category_name": "Breakfast & Brunch",
+            "name": "Cedar Chicken Bowl",
+            "price": 198,
+            "stock": 16,
+            "min_stock": 8
+        },
+        {
+            "id": 407,
+            "branch_name": "Downtown Flagship",
+            "category_name": "Breakfast & Brunch",
+            "name": "Harissa Penne",
+            "price": 214,
+            "stock": 12,
+            "min_stock": 6
+        },
+        {
+            "id": 408,
+            "branch_name": "Downtown Flagship",
+            "category_name": "Signature Drinks",
+            "name": "Spanish Latte",
+            "price": 92,
+            "stock": 30,
+            "min_stock": 12
+        },
+        {
+            "id": 409,
+            "branch_name": "Downtown Flagship",
+            "category_name": "Signature Drinks",
+            "name": "Citrus Sparkling Cooler",
+            "price": 84,
+            "stock": 24,
+            "min_stock": 10
+        },
+        {
+            "id": 410,
+            "branch_name": "Downtown Flagship",
+            "category_name": "Desserts",
+            "name": "Sea Salt Brownie",
+            "price": 74,
+            "stock": 6,
+            "min_stock": 8
+        },
+        {
+            "id": 411,
+            "branch_name": "New Cairo Studio",
+            "category_name": "Breakfast & Brunch",
+            "name": "Cedar Chicken Bowl",
+            "price": 198,
+            "stock": 16,
+            "min_stock": 8
+        },
+        {
+            "id": 412,
+            "branch_name": "New Cairo Studio",
+            "category_name": "Breakfast & Brunch",
+            "name": "Harissa Penne",
+            "price": 214,
+            "stock": 12,
+            "min_stock": 6
+        },
+        {
+            "id": 413,
+            "branch_name": "New Cairo Studio",
+            "category_name": "Signature Drinks",
+            "name": "Spanish Latte",
+            "price": 92,
+            "stock": 30,
+            "min_stock": 12
+        },
+        {
+            "id": 414,
+            "branch_name": "New Cairo Studio",
+            "category_name": "Signature Drinks",
+            "name": "Citrus Sparkling Cooler",
+            "price": 84,
+            "stock": 24,
+            "min_stock": 10
+        },
+        {
+            "id": 415,
+            "branch_name": "New Cairo Studio",
+            "category_name": "Desserts",
+            "name": "Sea Salt Brownie",
+            "price": 74,
+            "stock": 6,
+            "min_stock": 8
+        },
+        {
+            "id": 416,
+            "branch_name": "Maadi Terrace",
+            "category_name": "Breakfast & Brunch",
+            "name": "Cedar Chicken Bowl",
+            "price": 198,
+            "stock": 16,
+            "min_stock": 8
+        },
+        {
+            "id": 417,
+            "branch_name": "Maadi Terrace",
+            "category_name": "Breakfast & Brunch",
+            "name": "Harissa Penne",
+            "price": 214,
+            "stock": 12,
+            "min_stock": 6
+        },
+        {
+            "id": 418,
+            "branch_name": "Maadi Terrace",
+            "category_name": "Signature Drinks",
+            "name": "Spanish Latte",
+            "price": 92,
+            "stock": 30,
+            "min_stock": 12
+        },
+        {
+            "id": 419,
+            "branch_name": "Maadi Terrace",
+            "category_name": "Signature Drinks",
+            "name": "Citrus Sparkling Cooler",
+            "price": 84,
+            "stock": 24,
+            "min_stock": 10
+        },
+        {
+            "id": 420,
+            "branch_name": "Maadi Terrace",
+            "category_name": "Desserts",
+            "name": "Sea Salt Brownie",
+            "price": 74,
+            "stock": 6,
+            "min_stock": 8
+        }
+    ],
+    "tables": [
+        {
+            "id": 217,
+            "branch_name": "Downtown Flagship",
+            "name": "T1 Garden",
+            "seats": 2
+        },
+        {
+            "id": 218,
+            "branch_name": "Downtown Flagship",
+            "name": "T2 Window",
+            "seats": 2
+        },
+        {
+            "id": 219,
+            "branch_name": "Downtown Flagship",
+            "name": "T3 Family",
+            "seats": 4
+        },
+        {
+            "id": 220,
+            "branch_name": "Downtown Flagship",
+            "name": "T4 Lounge",
+            "seats": 4
+        },
+        {
+            "id": 221,
+            "branch_name": "New Cairo Studio",
+            "name": "N1 Patio",
+            "seats": 2
+        },
+        {
+            "id": 222,
+            "branch_name": "New Cairo Studio",
+            "name": "N2 Corner",
+            "seats": 4
+        },
+        {
+            "id": 223,
+            "branch_name": "Maadi Terrace",
+            "name": "M1 Terrace",
+            "seats": 2
+        },
+        {
+            "id": 224,
+            "branch_name": "Maadi Terrace",
+            "name": "M2 Family",
+            "seats": 4
+        }
+    ],
+    "orders": {
+        "mona_visit": {
+            "order_id": 244
+        },
+        "drinks_only": {
+            "order_id": 245
+        },
+        "family_move": {
+            "source_order_id": 246,
+            "target_order_id": 247
+        },
+        "new_cairo": {
+            "order_id": 248
+        },
+        "maadi": {
+            "order_id": 249
+        }
+    },
+    "dashboard_summary": {
+        "total_sales": 1932,
+        "orders_count": 5,
+        "avg_order_value": 386.4,
+        "restaurant_count": 15,
+        "branch_count": 3,
+        "product_count": 15,
+        "employee_count": 10,
+        "active_tables": 0,
+        "cashier_queue": 0,
+        "kds_backlog": 0,
+        "loyalty_members": 5,
+        "payment_mix": [
+            {
+                "method": "card",
+                "total": 1464
+            },
+            {
+                "method": "cash",
+                "total": 468
+            }
+        ],
+        "branch_performance": [
+            {
+                "id": 28,
+                "name": "Downtown Flagship",
+                "location": "Downtown Cairo",
+                "sales": 1396,
+                "orders_count": 3
+            },
+            {
+                "id": 29,
+                "name": "New Cairo Studio",
+                "location": "New Cairo",
+                "sales": 268,
+                "orders_count": 1
+            },
+            {
+                "id": 30,
+                "name": "Maadi Terrace",
+                "location": "Maadi",
+                "sales": 268,
+                "orders_count": 1
+            }
+        ],
+        "top_products": [
+            {
+                "name": "Citrus Sparkling Cooler",
+                "quantity": 3
+            },
+            {
+                "name": "Spanish Latte",
+                "quantity": 3
+            },
+            {
+                "name": "Spanish Latte",
+                "quantity": 2
+            },
+            {
+                "name": "Spanish Latte",
+                "quantity": 2
+            },
+            {
+                "name": "Harissa Penne",
+                "quantity": 2
+            }
+        ],
+        "low_stock_items": [
+            {
+                "id": 453,
+                "name": "Sea Salt Brownie",
+                "stock": 3,
+                "unit": "pcs"
+            },
+            {
+                "id": 456,
+                "name": "Sea Salt Brownie",
+                "stock": 3,
+                "unit": "pcs"
+            },
+            {
+                "id": 459,
+                "name": "Sea Salt Brownie",
+                "stock": 3,
+                "unit": "pcs"
+            },
+            {
+                "id": 452,
+                "name": "Cedar Chicken Bowl",
+                "stock": 7,
+                "unit": "pcs"
+            },
+            {
+                "id": 455,
+                "name": "Cedar Chicken Bowl",
+                "stock": 7,
+                "unit": "pcs"
+            },
+            {
+                "id": 458,
+                "name": "Cedar Chicken Bowl",
+                "stock": 7,
+                "unit": "pcs"
+            }
+        ],
+        "recent_orders": [
+            {
+                "id": 244,
+                "branch_id": 28,
+                "total": 616,
+                "status": "paid",
+                "created_at": "2026-04-03T03:34:33.000000Z",
+                "branch": {
+                    "id": 28,
+                    "name": "Downtown Flagship",
+                    "location": "Downtown Cairo",
+                    "created_at": "2026-04-03T03:34:29.000000Z",
+                    "updated_at": "2026-04-03T03:34:29.000000Z",
+                    "restaurant_id": 15
+                }
+            },
+            {
+                "id": 245,
+                "branch_id": 28,
+                "total": 260,
+                "status": "paid",
+                "created_at": "2026-04-03T03:34:33.000000Z",
+                "branch": {
+                    "id": 28,
+                    "name": "Downtown Flagship",
+                    "location": "Downtown Cairo",
+                    "created_at": "2026-04-03T03:34:29.000000Z",
+                    "updated_at": "2026-04-03T03:34:29.000000Z",
+                    "restaurant_id": 15
+                }
+            },
+            {
+                "id": 246,
+                "branch_id": 28,
+                "total": 612,
+                "status": "closed",
+                "created_at": "2026-04-03T03:34:33.000000Z",
+                "branch": {
+                    "id": 28,
+                    "name": "Downtown Flagship",
+                    "location": "Downtown Cairo",
+                    "created_at": "2026-04-03T03:34:29.000000Z",
+                    "updated_at": "2026-04-03T03:34:29.000000Z",
+                    "restaurant_id": 15
+                }
+            },
+            {
+                "id": 247,
+                "branch_id": 28,
+                "total": 520,
+                "status": "paid",
+                "created_at": "2026-04-03T03:34:33.000000Z",
+                "branch": {
+                    "id": 28,
+                    "name": "Downtown Flagship",
+                    "location": "Downtown Cairo",
+                    "created_at": "2026-04-03T03:34:29.000000Z",
+                    "updated_at": "2026-04-03T03:34:29.000000Z",
+                    "restaurant_id": 15
+                }
+            },
+            {
+                "id": 248,
+                "branch_id": 29,
+                "total": 268,
+                "status": "paid",
+                "created_at": "2026-04-03T03:34:33.000000Z",
+                "branch": {
+                    "id": 29,
+                    "name": "New Cairo Studio",
+                    "location": "New Cairo",
+                    "created_at": "2026-04-03T03:34:29.000000Z",
+                    "updated_at": "2026-04-03T03:34:29.000000Z",
+                    "restaurant_id": 15
+                }
+            }
+        ]
+    },
+    "customer_portal": {
+        "home": {
+            "customer": {
+                "id": 19,
+                "name": "Mona Sami",
+                "email": "mona.sami@example.com",
+                "phone": "01017770001",
+                "loyalty_points": 0
+            },
+            "restaurants": [
+                {
+                    "id": 3,
+                    "name": "Alexandria Catch House",
+                    "kind": "restaurant",
+                    "branch_count": 3,
+                    "cover_image": null,
+                    "featured_items": [
+                        {
+                            "id": 67,
+                            "name": "Angus Burger",
+                            "price": 182,
+                            "image": null
+                        },
+                        {
+                            "id": 82,
+                            "name": "Angus Burger",
+                            "price": 182,
+                            "image": null
+                        },
+                        {
+                            "id": 97,
+                            "name": "Angus Burger",
+                            "price": 182,
+                            "image": null
+                        }
+                    ],
+                    "branches": [
+                        {
+                            "id": 7,
+                            "name": "Alexandria Branch",
+                            "location": "Alexandria Corniche"
+                        },
+                        {
+                            "id": 6,
+                            "name": "Heliopolis Branch",
+                            "location": "Heliopolis"
+                        },
+                        {
+                            "id": 5,
+                            "name": "Zayed Branch",
+                            "location": "Sheikh Zayed"
+                        }
+                    ]
+                },
+                {
+                    "id": 8,
+                    "name": "Bean Harbor Cafe",
+                    "kind": "cafe",
+                    "branch_count": 3,
+                    "cover_image": null,
+                    "featured_items": [
+                        {
+                            "id": 232,
+                            "name": "Butter Croissant",
+                            "price": 44,
+                            "image": null
+                        },
+                        {
+                            "id": 247,
+                            "name": "Butter Croissant",
+                            "price": 44,
+                            "image": null
+                        },
+                        {
+                            "id": 262,
+                            "name": "Butter Croissant",
+                            "price": 44,
+                            "image": null
+                        }
+                    ],
+                    "branches": [
+                        {
+                            "id": 17,
+                            "name": "Maadi Branch",
+                            "location": "Maadi"
+                        },
+                        {
+                            "id": 16,
+                            "name": "New Cairo Branch",
+                            "location": "New Cairo"
+                        },
+                        {
+                            "id": 18,
+                            "name": "Zayed Branch",
+                            "location": "Sheikh Zayed"
+                        }
+                    ]
+                },
+                {
+                    "id": 4,
+                    "name": "Cairo Kebab District",
+                    "kind": "restaurant",
+                    "branch_count": 1,
+                    "cover_image": null,
+                    "featured_items": [
+                        {
+                            "id": 112,
+                            "name": "Angus Burger",
+                            "price": 182,
+                            "image": null
+                        },
+                        {
+                            "id": 114,
+                            "name": "BBQ Chicken Skillet",
+                            "price": 194,
+                            "image": null
+                        },
+                        {
+                            "id": 111,
+                            "name": "Baked Kofta",
+                            "price": 189,
+                            "image": null
+                        }
+                    ],
+                    "branches": [
+                        {
+                            "id": 8,
+                            "name": "Downtown Branch",
+                            "location": "Downtown Cairo"
+                        }
+                    ]
+                },
+                {
+                    "id": 2,
+                    "name": "Cedar Route Kitchen",
+                    "kind": "restaurant",
+                    "branch_count": 1,
+                    "cover_image": null,
+                    "featured_items": [
+                        {
+                            "id": 52,
+                            "name": "Angus Burger",
+                            "price": 182,
+                            "image": null
+                        },
+                        {
+                            "id": 54,
+                            "name": "BBQ Chicken Skillet",
+                            "price": 194,
+                            "image": null
+                        },
+                        {
+                            "id": 51,
+                            "name": "Baked Kofta",
+                            "price": 189,
+                            "image": null
+                        }
+                    ],
+                    "branches": [
+                        {
+                            "id": 4,
+                            "name": "Maadi Branch",
+                            "location": "Maadi"
+                        }
+                    ]
+                },
+                {
+                    "id": 10,
+                    "name": "Corniche Roast Lab",
+                    "kind": "cafe",
+                    "branch_count": 2,
+                    "cover_image": null,
+                    "featured_items": [
+                        {
+                            "id": 292,
+                            "name": "Butter Croissant",
+                            "price": 44,
+                            "image": null
+                        },
+                        {
+                            "id": 307,
+                            "name": "Butter Croissant",
+                            "price": 44,
+                            "image": null
+                        },
+                        {
+                            "id": 294,
+                            "name": "Chocolate Muffin",
+                            "price": 50,
+                            "image": null
+                        }
+                    ],
+                    "branches": [
+                        {
+                            "id": 20,
+                            "name": "Downtown Branch",
+                            "location": "Downtown Cairo"
+                        },
+                        {
+                            "id": 21,
+                            "name": "New Cairo Branch",
+                            "location": "New Cairo"
+                        }
+                    ]
+                },
+                {
+                    "id": 6,
+                    "name": "Desert Ember Steakhouse",
+                    "kind": "restaurant",
+                    "branch_count": 3,
+                    "cover_image": null,
+                    "featured_items": [
+                        {
+                            "id": 142,
+                            "name": "Angus Burger",
+                            "price": 182,
+                            "image": null
+                        },
+                        {
+                            "id": 157,
+                            "name": "Angus Burger",
+                            "price": 182,
+                            "image": null
+                        },
+                        {
+                            "id": 172,
+                            "name": "Angus Burger",
+                            "price": 182,
+                            "image": null
+                        }
+                    ],
+                    "branches": [
+                        {
+                            "id": 12,
+                            "name": "Alexandria Branch",
+                            "location": "Alexandria Corniche"
+                        },
+                        {
+                            "id": 11,
+                            "name": "Heliopolis Branch",
+                            "location": "Heliopolis"
+                        },
+                        {
+                            "id": 10,
+                            "name": "Zayed Branch",
+                            "location": "Sheikh Zayed"
+                        }
+                    ]
+                },
+                {
+                    "id": 13,
+                    "name": "Garden Cup Cafe",
+                    "kind": "cafe",
+                    "branch_count": 1,
+                    "cover_image": null,
+                    "featured_items": [
+                        {
+                            "id": 367,
+                            "name": "Butter Croissant",
+                            "price": 44,
+                            "image": null
+                        },
+                        {
+                            "id": 369,
+                            "name": "Chocolate Muffin",
+                            "price": 50,
+                            "image": null
+                        },
+                        {
+                            "id": 368,
+                            "name": "Cinnamon Roll",
+                            "price": 55,
+                            "image": null
+                        }
+                    ],
+                    "branches": [
+                        {
+                            "id": 25,
+                            "name": "Downtown Branch",
+                            "location": "Downtown Cairo"
+                        }
+                    ]
+                },
+                {
+                    "id": 15,
+                    "name": "Harbor Ember Kitchen",
+                    "kind": "restaurant",
+                    "branch_count": 3,
+                    "cover_image": "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=1200&q=80",
+                    "featured_items": [
+                        {
+                            "id": 406,
+                            "name": "Cedar Chicken Bowl",
+                            "price": 198,
+                            "image": "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=1200&q=80"
+                        },
+                        {
+                            "id": 411,
+                            "name": "Cedar Chicken Bowl",
+                            "price": 198,
+                            "image": "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=1200&q=80"
+                        },
+                        {
+                            "id": 416,
+                            "name": "Cedar Chicken Bowl",
+                            "price": 198,
+                            "image": "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=1200&q=80"
+                        }
+                    ],
+                    "branches": [
+                        {
+                            "id": 28,
+                            "name": "Downtown Flagship",
+                            "location": "Downtown Cairo"
+                        },
+                        {
+                            "id": 30,
+                            "name": "Maadi Terrace",
+                            "location": "Maadi"
+                        },
+                        {
+                            "id": 29,
+                            "name": "New Cairo Studio",
+                            "location": "New Cairo"
+                        }
+                    ]
+                }
+            ],
+            "recent_orders": [],
+            "loyalty_preview": []
+        },
+        "orders": {
+            "data": [
+                {
+                    "id": 244,
+                    "restaurant_id": 15,
+                    "branch_id": 28,
+                    "status": "paid",
+                    "payment_status": "paid",
+                    "payment_method": "card",
+                    "order_type": "dine-in",
+                    "total": 616,
+                    "subtotal": 616,
+                    "created_at": null,
+                    "restaurant_name": "Harbor Ember Kitchen",
+                    "branch_name": "Downtown Flagship",
+                    "branch_location": "Downtown Cairo",
+                    "items": [
+                        {
+                            "id": 568,
+                            "name": "Cedar Chicken Bowl",
+                            "image": "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=1200&q=80",
+                            "quantity": 2,
+                            "total": 396
+                        },
+                        {
+                            "id": 569,
+                            "name": "Spanish Latte",
+                            "image": "https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=1200&q=80",
+                            "quantity": 1,
+                            "total": 136
+                        },
+                        {
+                            "id": 570,
+                            "name": "Citrus Sparkling Cooler",
+                            "image": "https://images.unsplash.com/photo-1544145945-f90425340c7e?auto=format&fit=crop&w=1200&q=80",
+                            "quantity": 1,
+                            "total": 84
+                        },
+                        {
+                            "id": 571,
+                            "name": "Sea Salt Brownie",
+                            "image": "https://images.unsplash.com/photo-1606313564200-e75d5e30476c?auto=format&fit=crop&w=1200&q=80",
+                            "quantity": 1,
+                            "total": 74
+                        }
+                    ],
+                    "payments": [
+                        {
+                            "id": 190,
+                            "method": "card",
+                            "amount": 616
+                        }
+                    ]
+                }
+            ],
+            "meta": {
+                "current_page": 1,
+                "last_page": 1,
+                "per_page": 10,
+                "total": 1
+            }
+        },
+        "loyalty": {
+            "data": [
+                {
+                    "id": 163,
+                    "type": "earn",
+                    "points": 61,
+                    "created_at": "2026-04-03 03:34:33",
+                    "order_id": 244,
+                    "restaurant_id": 15,
+                    "branch_id": 28,
+                    "restaurant_name": "Harbor Ember Kitchen",
+                    "branch_name": "Downtown Flagship"
+                }
+            ],
+            "meta": {
+                "current_page": 1,
+                "last_page": 1,
+                "per_page": 10,
+                "total": 1
+            }
+        }
+    },
+    "steps": [
+        {
+            "step": 1,
+            "surface": "Web Dashboard",
+            "page": "Login",
+            "actor_role": "Platform Admin",
+            "actor_name": "Restaurant Suite Admin",
+            "action": "Signed into the platform dashboard with the seeded admin account.",
+            "result": "Admin session token was issued successfully and cross-restaurant control is available.",
+            "api": {
+                "method": "POST",
+                "uri": "/api/login",
+                "status": 200,
+                "body": {
+                    "token": "1|jcsb0sqNVVh0uEBoig5XNaUoqQvkoXGdTErSmjd59221d889",
+                    "user": {
+                        "id": 1,
+                        "name": "Restaurant Suite Admin",
+                        "email": "admin@restaurant-suite.com",
+                        "role": "admin",
+                        "roles": [
+                            "admin"
+                        ],
+                        "permissions": [
+                            "platform.restaurants.manage",
+                            "platform.branches.manage",
+                            "platform.users.manage",
+                            "platform.roles.manage",
+                            "dashboard.view",
+                            "branches.view",
+                            "branches.manage",
+                            "users.view",
+                            "users.manage",
+                            "roles.view",
+                            "orders.view",
+                            "orders.manage",
+                            "cashier.manage",
+                            "kds.manage",
+                            "tables.view",
+                            "tables.manage",
+                            "menu.view",
+                            "menu.manage",
+                            "categories.view",
+                            "categories.manage",
+                            "products.view",
+                            "products.manage",
+                            "inventory.view",
+                            "inventory.manage",
+                            "suppliers.view",
+                            "suppliers.manage",
+                            "ingredients.view",
+                            "ingredients.manage",
+                            "recipes.view",
+                            "recipes.manage",
+                            "employees.view",
+                            "employees.manage",
+                            "settings.view",
+                            "settings.manage"
+                        ],
+                        "branch_id": null,
+                        "branch": null,
+                        "restaurant_id": null,
+                        "restaurant": null,
+                        "types": []
+                    }
+                }
+            }
+        },
+        {
+            "step": 2,
+            "surface": "Web Dashboard",
+            "page": "Restaurants",
+            "actor_role": "Platform Admin",
+            "actor_name": "Restaurant Suite Admin",
+            "action": "Opened Restaurants, clicked Add Restaurant, entered `Harbor Ember Kitchen`, selected `restaurant`, and clicked Save.",
+            "result": "The new restaurant was created and became available for branch, owner, menu, and employee setup.",
+            "api": {
+                "method": "POST",
+                "uri": "/api/restaurants",
+                "status": 201,
+                "body": {
+                    "name": "Harbor Ember Kitchen",
+                    "kind": "restaurant",
+                    "updated_at": "2026-04-03T03:34:29.000000Z",
+                    "created_at": "2026-04-03T03:34:29.000000Z",
+                    "id": 15
+                }
+            }
+        },
+        {
+            "step": 3,
+            "surface": "Web Dashboard",
+            "page": "Branches",
+            "actor_role": "Platform Admin",
+            "actor_name": "Restaurant Suite Admin",
+            "action": "Opened Branches, clicked Add Branch three times, and created Downtown Flagship, New Cairo Studio, and Maadi Terrace for the new restaurant.",
+            "result": "All three operational branches were created and linked to Harbor Ember Kitchen.",
+            "branches": [
+                {
+                    "id": 28,
+                    "name": "Downtown Flagship",
+                    "location": "Downtown Cairo"
+                },
+                {
+                    "id": 29,
+                    "name": "New Cairo Studio",
+                    "location": "New Cairo"
+                },
+                {
+                    "id": 30,
+                    "name": "Maadi Terrace",
+                    "location": "Maadi"
+                }
+            ]
+        },
+        {
+            "step": 4,
+            "surface": "Web Dashboard",
+            "page": "Users",
+            "actor_role": "Platform Admin",
+            "actor_name": "Restaurant Suite Admin",
+            "action": "Opened Users and provisioned the owner, stakeholder, supervisor, waiter, cashier, and kitchen users for the new restaurant.",
+            "result": "The restaurant now has authenticated accounts for admin control, owner oversight, and branch operations on the waiter, cashier, kitchen, and owner apps.",
+            "accounts": {
+                "owner": {
+                    "name": "Rana Soliman",
+                    "email": "owner.harbor-ember-kitchen@example.com",
+                    "password": "password"
+                },
+                "stakeholder": {
+                    "name": "Hossam Gaber",
+                    "email": "stakeholder.harbor-ember-kitchen@example.com",
+                    "password": "password"
+                },
+                "staff": [
+                    {
+                        "branch_name": "Downtown Flagship",
+                        "name": "Dina Farouk",
+                        "email": "dina.farouk.downtown-flagship@example.com",
+                        "password": "password",
+                        "role": "supervisor",
+                        "types": []
+                    },
+                    {
+                        "branch_name": "Downtown Flagship",
+                        "name": "Karim Adel",
+                        "email": "karim.adel.downtown-flagship@example.com",
+                        "password": "password",
+                        "role": "staff",
+                        "types": [
+                            "waiter"
+                        ]
+                    },
+                    {
+                        "branch_name": "Downtown Flagship",
+                        "name": "Salma Nasser",
+                        "email": "salma.nasser.downtown-flagship@example.com",
+                        "password": "password",
+                        "role": "staff",
+                        "types": [
+                            "cashier"
+                        ]
+                    },
+                    {
+                        "branch_name": "Downtown Flagship",
+                        "name": "Tamer Wael",
+                        "email": "tamer.wael.downtown-flagship@example.com",
+                        "password": "password",
+                        "role": "staff",
+                        "types": [
+                            "kitchen"
+                        ]
+                    },
+                    {
+                        "branch_name": "New Cairo Studio",
+                        "name": "Nour Hassan",
+                        "email": "nour.hassan.new-cairo-studio@example.com",
+                        "password": "password",
+                        "role": "staff",
+                        "types": [
+                            "waiter"
+                        ]
+                    },
+                    {
+                        "branch_name": "New Cairo Studio",
+                        "name": "Ahmed Samy",
+                        "email": "ahmed.samy.new-cairo-studio@example.com",
+                        "password": "password",
+                        "role": "staff",
+                        "types": [
+                            "cashier"
+                        ]
+                    },
+                    {
+                        "branch_name": "New Cairo Studio",
+                        "name": "Mina Wagdy",
+                        "email": "mina.wagdy.new-cairo-studio@example.com",
+                        "password": "password",
+                        "role": "staff",
+                        "types": [
+                            "kitchen"
+                        ]
+                    },
+                    {
+                        "branch_name": "Maadi Terrace",
+                        "name": "Mariam Fares",
+                        "email": "mariam.fares.maadi-terrace@example.com",
+                        "password": "password",
+                        "role": "staff",
+                        "types": [
+                            "waiter"
+                        ]
+                    },
+                    {
+                        "branch_name": "Maadi Terrace",
+                        "name": "Omar Lotfy",
+                        "email": "omar.lotfy.maadi-terrace@example.com",
+                        "password": "password",
+                        "role": "staff",
+                        "types": [
+                            "cashier"
+                        ]
+                    },
+                    {
+                        "branch_name": "Maadi Terrace",
+                        "name": "Lina Atef",
+                        "email": "lina.atef.maadi-terrace@example.com",
+                        "password": "password",
+                        "role": "staff",
+                        "types": [
+                            "kitchen"
+                        ]
+                    }
+                ]
+            }
+        },
+        {
+            "step": 5,
+            "surface": "Web Dashboard",
+            "page": "Login",
+            "actor_role": "Owner",
+            "actor_name": "Rana Soliman",
+            "action": "Signed into the owner dashboard for Harbor Ember Kitchen.",
+            "result": "Owner-scoped session is active and restricted to the new restaurant.",
+            "api": {
+                "method": "POST",
+                "uri": "/api/login",
+                "status": 200,
+                "body": {
+                    "token": "2|B8uOqKcHgrzfKof206YxuOMCy57rr3AULc2backx5110b59d",
+                    "user": {
+                        "id": 192,
+                        "name": "Rana Soliman",
+                        "email": "owner.harbor-ember-kitchen@example.com",
+                        "role": "owner",
+                        "roles": [
+                            "owner"
+                        ],
+                        "permissions": [
+                            "dashboard.view",
+                            "branches.view",
+                            "branches.manage",
+                            "users.view",
+                            "users.manage",
+                            "roles.view",
+                            "orders.view",
+                            "orders.manage",
+                            "cashier.manage",
+                            "kds.manage",
+                            "tables.view",
+                            "tables.manage",
+                            "menu.view",
+                            "menu.manage",
+                            "categories.view",
+                            "categories.manage",
+                            "products.view",
+                            "products.manage",
+                            "inventory.view",
+                            "inventory.manage",
+                            "suppliers.view",
+                            "suppliers.manage",
+                            "ingredients.view",
+                            "ingredients.manage",
+                            "recipes.view",
+                            "recipes.manage",
+                            "employees.view",
+                            "employees.manage",
+                            "settings.view",
+                            "settings.manage"
+                        ],
+                        "branch_id": null,
+                        "branch": null,
+                        "restaurant_id": 15,
+                        "restaurant": {
+                            "id": 15,
+                            "name": "Harbor Ember Kitchen",
+                            "kind": "restaurant"
+                        },
+                        "types": [
+                            "owner"
+                        ]
+                    }
+                }
+            }
+        },
+        {
+            "step": 6,
+            "surface": "Web Dashboard",
+            "page": "Catalog & Tables",
+            "actor_role": "Owner",
+            "actor_name": "Rana Soliman",
+            "action": "Opened Categories, Products, Menus, Tables, Inventory, and Employees to create the launch catalog, dining room map, team records, and low-stock monitoring for each branch.",
+            "result": "Each branch now has a working menu, sellable products, dine-in tables, employee records, and inventory thresholds for the first trading day.",
+            "branch_catalog": {
+                "28": {
+                    "category_count": 3,
+                    "product_count": 5,
+                    "table_count": 4,
+                    "menu_name": "Downtown Flagship All Day Menu"
+                },
+                "29": {
+                    "category_count": 3,
+                    "product_count": 5,
+                    "table_count": 2,
+                    "menu_name": "New Cairo Studio All Day Menu"
+                },
+                "30": {
+                    "category_count": 3,
+                    "product_count": 5,
+                    "table_count": 2,
+                    "menu_name": "Maadi Terrace All Day Menu"
+                }
+            }
+        },
+        {
+            "step": 7,
+            "surface": "Customer App",
+            "page": "Home",
+            "actor_role": "Customer",
+            "actor_name": "Mona Sami",
+            "action": "Logged into the customer app with a new phone number and opened the home screen.",
+            "result": "The new restaurant appears in the marketplace listing, ready for discovery before the first dine-in order is placed.",
+            "api": {
+                "method": "GET",
+                "uri": "/api/customer/home",
+                "status": 200,
+                "body": {
+                    "customer": {
+                        "id": 19,
+                        "name": "Mona Sami",
+                        "email": "mona.sami@example.com",
+                        "phone": "01017770001",
+                        "loyalty_points": 0
+                    },
+                    "restaurants": [
+                        {
+                            "id": 3,
+                            "name": "Alexandria Catch House",
+                            "kind": "restaurant",
+                            "branch_count": 3,
+                            "cover_image": null,
+                            "featured_items": [
+                                {
+                                    "id": 67,
+                                    "name": "Angus Burger",
+                                    "price": 182,
+                                    "image": null
+                                },
+                                {
+                                    "id": 82,
+                                    "name": "Angus Burger",
+                                    "price": 182,
+                                    "image": null
+                                },
+                                {
+                                    "id": 97,
+                                    "name": "Angus Burger",
+                                    "price": 182,
+                                    "image": null
+                                }
+                            ],
+                            "branches": [
+                                {
+                                    "id": 7,
+                                    "name": "Alexandria Branch",
+                                    "location": "Alexandria Corniche"
+                                },
+                                {
+                                    "id": 6,
+                                    "name": "Heliopolis Branch",
+                                    "location": "Heliopolis"
+                                },
+                                {
+                                    "id": 5,
+                                    "name": "Zayed Branch",
+                                    "location": "Sheikh Zayed"
+                                }
+                            ]
+                        },
+                        {
+                            "id": 8,
+                            "name": "Bean Harbor Cafe",
+                            "kind": "cafe",
+                            "branch_count": 3,
+                            "cover_image": null,
+                            "featured_items": [
+                                {
+                                    "id": 232,
+                                    "name": "Butter Croissant",
+                                    "price": 44,
+                                    "image": null
+                                },
+                                {
+                                    "id": 247,
+                                    "name": "Butter Croissant",
+                                    "price": 44,
+                                    "image": null
+                                },
+                                {
+                                    "id": 262,
+                                    "name": "Butter Croissant",
+                                    "price": 44,
+                                    "image": null
+                                }
+                            ],
+                            "branches": [
+                                {
+                                    "id": 17,
+                                    "name": "Maadi Branch",
+                                    "location": "Maadi"
+                                },
+                                {
+                                    "id": 16,
+                                    "name": "New Cairo Branch",
+                                    "location": "New Cairo"
+                                },
+                                {
+                                    "id": 18,
+                                    "name": "Zayed Branch",
+                                    "location": "Sheikh Zayed"
+                                }
+                            ]
+                        },
+                        {
+                            "id": 4,
+                            "name": "Cairo Kebab District",
+                            "kind": "restaurant",
+                            "branch_count": 1,
+                            "cover_image": null,
+                            "featured_items": [
+                                {
+                                    "id": 112,
+                                    "name": "Angus Burger",
+                                    "price": 182,
+                                    "image": null
+                                },
+                                {
+                                    "id": 114,
+                                    "name": "BBQ Chicken Skillet",
+                                    "price": 194,
+                                    "image": null
+                                },
+                                {
+                                    "id": 111,
+                                    "name": "Baked Kofta",
+                                    "price": 189,
+                                    "image": null
+                                }
+                            ],
+                            "branches": [
+                                {
+                                    "id": 8,
+                                    "name": "Downtown Branch",
+                                    "location": "Downtown Cairo"
+                                }
+                            ]
+                        },
+                        {
+                            "id": 2,
+                            "name": "Cedar Route Kitchen",
+                            "kind": "restaurant",
+                            "branch_count": 1,
+                            "cover_image": null,
+                            "featured_items": [
+                                {
+                                    "id": 52,
+                                    "name": "Angus Burger",
+                                    "price": 182,
+                                    "image": null
+                                },
+                                {
+                                    "id": 54,
+                                    "name": "BBQ Chicken Skillet",
+                                    "price": 194,
+                                    "image": null
+                                },
+                                {
+                                    "id": 51,
+                                    "name": "Baked Kofta",
+                                    "price": 189,
+                                    "image": null
+                                }
+                            ],
+                            "branches": [
+                                {
+                                    "id": 4,
+                                    "name": "Maadi Branch",
+                                    "location": "Maadi"
+                                }
+                            ]
+                        },
+                        {
+                            "id": 10,
+                            "name": "Corniche Roast Lab",
+                            "kind": "cafe",
+                            "branch_count": 2,
+                            "cover_image": null,
+                            "featured_items": [
+                                {
+                                    "id": 292,
+                                    "name": "Butter Croissant",
+                                    "price": 44,
+                                    "image": null
+                                },
+                                {
+                                    "id": 307,
+                                    "name": "Butter Croissant",
+                                    "price": 44,
+                                    "image": null
+                                },
+                                {
+                                    "id": 294,
+                                    "name": "Chocolate Muffin",
+                                    "price": 50,
+                                    "image": null
+                                }
+                            ],
+                            "branches": [
+                                {
+                                    "id": 20,
+                                    "name": "Downtown Branch",
+                                    "location": "Downtown Cairo"
+                                },
+                                {
+                                    "id": 21,
+                                    "name": "New Cairo Branch",
+                                    "location": "New Cairo"
+                                }
+                            ]
+                        },
+                        {
+                            "id": 6,
+                            "name": "Desert Ember Steakhouse",
+                            "kind": "restaurant",
+                            "branch_count": 3,
+                            "cover_image": null,
+                            "featured_items": [
+                                {
+                                    "id": 142,
+                                    "name": "Angus Burger",
+                                    "price": 182,
+                                    "image": null
+                                },
+                                {
+                                    "id": 157,
+                                    "name": "Angus Burger",
+                                    "price": 182,
+                                    "image": null
+                                },
+                                {
+                                    "id": 172,
+                                    "name": "Angus Burger",
+                                    "price": 182,
+                                    "image": null
+                                }
+                            ],
+                            "branches": [
+                                {
+                                    "id": 12,
+                                    "name": "Alexandria Branch",
+                                    "location": "Alexandria Corniche"
+                                },
+                                {
+                                    "id": 11,
+                                    "name": "Heliopolis Branch",
+                                    "location": "Heliopolis"
+                                },
+                                {
+                                    "id": 10,
+                                    "name": "Zayed Branch",
+                                    "location": "Sheikh Zayed"
+                                }
+                            ]
+                        },
+                        {
+                            "id": 13,
+                            "name": "Garden Cup Cafe",
+                            "kind": "cafe",
+                            "branch_count": 1,
+                            "cover_image": null,
+                            "featured_items": [
+                                {
+                                    "id": 367,
+                                    "name": "Butter Croissant",
+                                    "price": 44,
+                                    "image": null
+                                },
+                                {
+                                    "id": 369,
+                                    "name": "Chocolate Muffin",
+                                    "price": 50,
+                                    "image": null
+                                },
+                                {
+                                    "id": 368,
+                                    "name": "Cinnamon Roll",
+                                    "price": 55,
+                                    "image": null
+                                }
+                            ],
+                            "branches": [
+                                {
+                                    "id": 25,
+                                    "name": "Downtown Branch",
+                                    "location": "Downtown Cairo"
+                                }
+                            ]
+                        },
+                        {
+                            "id": 15,
+                            "name": "Harbor Ember Kitchen",
+                            "kind": "restaurant",
+                            "branch_count": 3,
+                            "cover_image": "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=1200&q=80",
+                            "featured_items": [
+                                {
+                                    "id": 406,
+                                    "name": "Cedar Chicken Bowl",
+                                    "price": 198,
+                                    "image": "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=1200&q=80"
+                                },
+                                {
+                                    "id": 411,
+                                    "name": "Cedar Chicken Bowl",
+                                    "price": 198,
+                                    "image": "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=1200&q=80"
+                                },
+                                {
+                                    "id": 416,
+                                    "name": "Cedar Chicken Bowl",
+                                    "price": 198,
+                                    "image": "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=1200&q=80"
+                                }
+                            ],
+                            "branches": [
+                                {
+                                    "id": 28,
+                                    "name": "Downtown Flagship",
+                                    "location": "Downtown Cairo"
+                                },
+                                {
+                                    "id": 30,
+                                    "name": "Maadi Terrace",
+                                    "location": "Maadi"
+                                },
+                                {
+                                    "id": 29,
+                                    "name": "New Cairo Studio",
+                                    "location": "New Cairo"
+                                }
+                            ]
+                        }
+                    ],
+                    "recent_orders": [],
+                    "loyalty_preview": []
+                }
+            }
+        },
+        {
+            "step": 8,
+            "surface": "Waiter App",
+            "page": "Table T1 Garden",
+            "actor_role": "Waiter",
+            "actor_name": "Karim Adel",
+            "action": "Opened T1 Garden, attached Mona Sami to the table, added full meals and drinks with modifiers, then saved the dine-in order.",
+            "result": "Order #244 was created on Downtown Flagship and the table became occupied.",
+            "api": {
+                "method": "POST",
+                "uri": "/api/mobile/orders",
+                "status": 201,
+                "body": {
+                    "order": {
+                        "id": 244,
+                        "branch_id": 28,
+                        "table_id": 217,
+                        "order_type": "dine-in",
+                        "status": "pending",
+                        "subtotal": 752,
+                        "tax": 0,
+                        "discount": 0,
+                        "total": 752,
+                        "created_at": "2026-04-03T03:34:33.000000Z",
+                        "updated_at": "2026-04-03T03:34:33.000000Z",
+                        "order_date": "2026-04-03 03:34:33",
+                        "employee_id": null,
+                        "discount_type": "fixed",
+                        "coupon_code": null,
+                        "payment_method": null,
+                        "paid_at": null,
+                        "payment_status": "unpaid",
+                        "kds_sent_at": null,
+                        "customer_id": 19,
+                        "items": [
+                            {
+                                "id": 568,
+                                "order_id": 244,
+                                "product_id": 406,
+                                "quantity": 2,
+                                "price": 198,
+                                "total": 396,
+                                "created_at": "2026-04-03T03:34:33.000000Z",
+                                "updated_at": "2026-04-03T03:34:33.000000Z",
+                                "discount": 0,
+                                "discount_type": "fixed",
+                                "status": "pending",
+                                "change_note": "One without onion on the pass.",
+                                "refunded_quantity": null,
+                                "refunded_amount": null,
+                                "parent_item_id": null,
+                                "item_note": "One without onion on the pass.",
+                                "kds_status": "pending",
+                                "kds_sent_at": null,
+                                "product": {
+                                    "id": 406,
+                                    "category_id": 136,
+                                    "branch_id": 28,
+                                    "name": "Cedar Chicken Bowl",
+                                    "price": 198,
+                                    "is_available": 1,
+                                    "created_at": "2026-04-03T03:34:31.000000Z",
+                                    "updated_at": "2026-04-03T03:34:33.000000Z",
+                                    "image": "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=1200&q=80",
+                                    "sku": "XHGOGQGO",
+                                    "min_stock": "8",
+                                    "stock": 14
+                                },
+                                "answers": [],
+                                "modifiers": []
+                            },
+                            {
+                                "id": 569,
+                                "order_id": 244,
+                                "product_id": 408,
+                                "quantity": 2,
+                                "price": 136,
+                                "total": 272,
+                                "created_at": "2026-04-03T03:34:33.000000Z",
+                                "updated_at": "2026-04-03T03:34:33.000000Z",
+                                "discount": 0,
+                                "discount_type": "fixed",
+                                "status": "pending",
+                                "change_note": "Less sweet for the second cup.",
+                                "refunded_quantity": null,
+                                "refunded_amount": null,
+                                "parent_item_id": null,
+                                "item_note": "Less sweet for the second cup.",
+                                "kds_status": "pending",
+                                "kds_sent_at": null,
+                                "product": {
+                                    "id": 408,
+                                    "category_id": 137,
+                                    "branch_id": 28,
+                                    "name": "Spanish Latte",
+                                    "price": 92,
+                                    "is_available": 1,
+                                    "created_at": "2026-04-03T03:34:31.000000Z",
+                                    "updated_at": "2026-04-03T03:34:33.000000Z",
+                                    "image": "https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=1200&q=80",
+                                    "sku": "1NJZGQVA",
+                                    "min_stock": "12",
+                                    "stock": 28
+                                },
+                                "answers": [],
+                                "modifiers": [
+                                    {
+                                        "id": 190,
+                                        "order_item_id": 569,
+                                        "modifier_id": 4,
+                                        "created_at": "2026-04-03T03:34:33.000000Z",
+                                        "updated_at": "2026-04-03T03:34:33.000000Z",
+                                        "raw_modifier": null,
+                                        "modifier": {
+                                            "id": 4,
+                                            "name": "Oat Milk",
+                                            "price": 20,
+                                            "created_at": "2026-04-03T03:33:49.000000Z",
+                                            "updated_at": "2026-04-03T03:33:49.000000Z",
+                                            "restaurant_id": null
+                                        }
+                                    },
+                                    {
+                                        "id": 191,
+                                        "order_item_id": 569,
+                                        "modifier_id": 5,
+                                        "created_at": "2026-04-03T03:34:33.000000Z",
+                                        "updated_at": "2026-04-03T03:34:33.000000Z",
+                                        "raw_modifier": null,
+                                        "modifier": {
+                                            "id": 5,
+                                            "name": "Extra Shot",
+                                            "price": 24,
+                                            "created_at": "2026-04-03T03:33:49.000000Z",
+                                            "updated_at": "2026-04-03T03:33:49.000000Z",
+                                            "restaurant_id": null
+                                        }
+                                    }
+                                ]
+                            },
+                            {
+                                "id": 570,
+                                "order_id": 244,
+                                "product_id": 409,
+                                "quantity": 1,
+                                "price": 84,
+                                "total": 84,
+                                "created_at": "2026-04-03T03:34:33.000000Z",
+                                "updated_at": "2026-04-03T03:34:33.000000Z",
+                                "discount": 0,
+                                "discount_type": "fixed",
+                                "status": "pending",
+                                "change_note": null,
+                                "refunded_quantity": null,
+                                "refunded_amount": null,
+                                "parent_item_id": null,
+                                "item_note": null,
+                                "kds_status": "pending",
+                                "kds_sent_at": null,
+                                "product": {
+                                    "id": 409,
+                                    "category_id": 137,
+                                    "branch_id": 28,
+                                    "name": "Citrus Sparkling Cooler",
+                                    "price": 84,
+                                    "is_available": 1,
+                                    "created_at": "2026-04-03T03:34:31.000000Z",
+                                    "updated_at": "2026-04-03T03:34:33.000000Z",
+                                    "image": "https://images.unsplash.com/photo-1544145945-f90425340c7e?auto=format&fit=crop&w=1200&q=80",
+                                    "sku": "G4IZ3CDF",
+                                    "min_stock": "10",
+                                    "stock": 23
+                                },
+                                "answers": [],
+                                "modifiers": [
+                                    {
+                                        "id": 192,
+                                        "order_item_id": 570,
+                                        "modifier_id": 1,
+                                        "created_at": "2026-04-03T03:34:33.000000Z",
+                                        "updated_at": "2026-04-03T03:34:33.000000Z",
+                                        "raw_modifier": null,
+                                        "modifier": {
+                                            "id": 1,
+                                            "name": "No Ice",
+                                            "price": 0,
+                                            "created_at": "2026-04-03T03:33:49.000000Z",
+                                            "updated_at": "2026-04-03T03:33:49.000000Z",
+                                            "restaurant_id": null
+                                        }
+                                    }
+                                ]
+                            }
+                        ],
+                        "table": {
+                            "id": 217,
+                            "branch_id": 28,
+                            "name": "T1 Garden",
+                            "seats": 2,
+                            "created_at": "2026-04-03T03:34:31.000000Z",
+                            "updated_at": "2026-04-03T03:34:33.000000Z",
+                            "status": "occupied"
+                        },
+                        "branch": {
+                            "id": 28,
+                            "name": "Downtown Flagship",
+                            "location": "Downtown Cairo",
+                            "created_at": "2026-04-03T03:34:29.000000Z",
+                            "updated_at": "2026-04-03T03:34:29.000000Z",
+                            "restaurant_id": 15,
+                            "restaurant": {
+                                "id": 15,
+                                "name": "Harbor Ember Kitchen",
+                                "created_at": "2026-04-03T03:34:29.000000Z",
+                                "updated_at": "2026-04-03T03:34:29.000000Z",
+                                "kind": "restaurant"
+                            }
+                        },
+                        "customer": {
+                            "id": 19,
+                            "name": "Mona Sami",
+                            "email": "mona.sami@example.com",
+                            "phone": "01017770001",
+                            "loyalty_points": 0,
+                            "created_at": "2026-04-03T03:34:33.000000Z",
+                            "updated_at": "2026-04-03T03:34:33.000000Z"
+                        },
+                        "payments": []
+                    }
+                }
+            }
+        },
+        {
+            "step": 9,
+            "surface": "Waiter App",
+            "page": "Order Composer",
+            "actor_role": "Waiter",
+            "actor_name": "Karim Adel",
+            "action": "Added dessert to the same open table and sent the full ticket to the kitchen display.",
+            "result": "Kitchen now has a queued dine-in ticket with mains, drinks, and dessert for Mona Sami.",
+            "order_id": 244
+        },
+        {
+            "step": 10,
+            "surface": "Waiter App",
+            "page": "Order Adjustments",
+            "actor_role": "Waiter",
+            "actor_name": "Karim Adel",
+            "action": "Reduced the latte quantity after the guests changed their mind, then refunded the brownie that the table no longer wanted.",
+            "result": "The live order total was recalculated and the refunded dessert dropped out of active service.",
+            "changed_item_id": 569,
+            "refunded_item_id": 571
+        },
+        {
+            "step": 11,
+            "surface": "Kitchen App",
+            "page": "Downtown KDS",
+            "actor_role": "Kitchen",
+            "actor_name": "Tamer Wael",
+            "action": "Opened the KDS board, advanced the active items from queued to preparing, then to ready.",
+            "result": "All non-refunded lines for Mona’s order became ready for cashier handoff.",
+            "api": {
+                "method": "GET",
+                "uri": "/api/mobile/kds/orders",
+                "status": 200,
+                "body": {
+                    "data": [
+                        {
+                            "id": 244,
+                            "table_name": "T1 Garden",
+                            "waiter": "",
+                            "kds_sent_at": "2026-04-03 03:34:33",
+                            "created_at": "2026-04-03T03:34:33.000000Z",
+                            "items": [
+                                {
+                                    "id": 568,
+                                    "quantity": 2,
+                                    "product": {
+                                        "name": "Cedar Chicken Bowl"
+                                    },
+                                    "note": null,
+                                    "status": "pending",
+                                    "kds_status": "queued",
+                                    "modifiers": [],
+                                    "item_note": "One without onion on the pass.",
+                                    "change_note": "One without onion on the pass."
+                                },
+                                {
+                                    "id": 569,
+                                    "quantity": 1,
+                                    "product": {
+                                        "name": "Spanish Latte"
+                                    },
+                                    "note": null,
+                                    "status": "changed",
+                                    "kds_status": "queued",
+                                    "modifiers": [
+                                        {
+                                            "name": "Oat Milk"
+                                        },
+                                        {
+                                            "name": "Extra Shot"
+                                        }
+                                    ],
+                                    "item_note": "Less sweet for the second cup.",
+                                    "change_note": "Guest kept one latte only."
+                                },
+                                {
+                                    "id": 570,
+                                    "quantity": 1,
+                                    "product": {
+                                        "name": "Citrus Sparkling Cooler"
+                                    },
+                                    "note": null,
+                                    "status": "pending",
+                                    "kds_status": "queued",
+                                    "modifiers": [
+                                        {
+                                            "name": "No Ice"
+                                        }
+                                    ],
+                                    "item_note": null,
+                                    "change_note": null
+                                }
+                            ]
+                        }
+                    ]
+                }
+            }
+        },
+        {
+            "step": 12,
+            "surface": "Cashier App",
+            "page": "Settlement Queue",
+            "actor_role": "Cashier",
+            "actor_name": "Salma Nasser",
+            "action": "Pulled Mona’s ready order into cashier, confirmed the final total, and completed payment by card.",
+            "result": "The order closed as paid, the table reopened, and Mona earned loyalty points for the completed visit.",
+            "api": {
+                "method": "POST",
+                "uri": "/api/mobile/orders/244/pay",
+                "status": 200,
+                "body": {
+                    "order": {
+                        "id": 244,
+                        "branch_id": 28,
+                        "table_id": 217,
+                        "order_type": "dine-in",
+                        "status": "paid",
+                        "subtotal": 616,
+                        "tax": 0,
+                        "discount": 0,
+                        "total": 616,
+                        "created_at": "2026-04-03T03:34:33.000000Z",
+                        "updated_at": "2026-04-03T03:34:33.000000Z",
+                        "order_date": "2026-04-03 03:34:33",
+                        "employee_id": null,
+                        "discount_type": "fixed",
+                        "coupon_code": null,
+                        "payment_method": "card",
+                        "paid_at": "2026-04-03 03:34:33",
+                        "payment_status": "paid",
+                        "kds_sent_at": "2026-04-03 03:34:33",
+                        "customer_id": 19,
+                        "table": {
+                            "id": 217,
+                            "branch_id": 28,
+                            "name": "T1 Garden",
+                            "seats": 2,
+                            "created_at": "2026-04-03T03:34:31.000000Z",
+                            "updated_at": "2026-04-03T03:34:33.000000Z",
+                            "status": "open"
+                        },
+                        "customer": {
+                            "id": 19,
+                            "name": "Mona Sami",
+                            "email": "mona.sami@example.com",
+                            "phone": "01017770001",
+                            "loyalty_points": 61,
+                            "created_at": "2026-04-03T03:34:33.000000Z",
+                            "updated_at": "2026-04-03T03:34:33.000000Z"
+                        },
+                        "payments": [
+                            {
+                                "id": 190,
+                                "order_id": 244,
+                                "method": "card",
+                                "amount": 616,
+                                "created_at": "2026-04-03T03:34:33.000000Z",
+                                "updated_at": "2026-04-03T03:34:33.000000Z"
+                            }
+                        ],
+                        "branch": {
+                            "id": 28,
+                            "name": "Downtown Flagship",
+                            "location": "Downtown Cairo",
+                            "created_at": "2026-04-03T03:34:29.000000Z",
+                            "updated_at": "2026-04-03T03:34:29.000000Z",
+                            "restaurant_id": 15,
+                            "restaurant": {
+                                "id": 15,
+                                "name": "Harbor Ember Kitchen",
+                                "created_at": "2026-04-03T03:34:29.000000Z",
+                                "updated_at": "2026-04-03T03:34:29.000000Z",
+                                "kind": "restaurant"
+                            }
+                        },
+                        "items": [
+                            {
+                                "id": 568,
+                                "order_id": 244,
+                                "product_id": 406,
+                                "quantity": 2,
+                                "price": 198,
+                                "total": 396,
+                                "created_at": "2026-04-03T03:34:33.000000Z",
+                                "updated_at": "2026-04-03T03:34:33.000000Z",
+                                "discount": 0,
+                                "discount_type": "fixed",
+                                "status": "pending",
+                                "change_note": "One without onion on the pass.",
+                                "refunded_quantity": null,
+                                "refunded_amount": null,
+                                "parent_item_id": null,
+                                "item_note": "One without onion on the pass.",
+                                "kds_status": "ready",
+                                "kds_sent_at": "2026-04-03 03:34:33",
+                                "product": {
+                                    "id": 406,
+                                    "category_id": 136,
+                                    "branch_id": 28,
+                                    "name": "Cedar Chicken Bowl",
+                                    "price": 198,
+                                    "is_available": 1,
+                                    "created_at": "2026-04-03T03:34:31.000000Z",
+                                    "updated_at": "2026-04-03T03:34:33.000000Z",
+                                    "image": "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=1200&q=80",
+                                    "sku": "XHGOGQGO",
+                                    "min_stock": "8",
+                                    "stock": 14
+                                }
+                            },
+                            {
+                                "id": 569,
+                                "order_id": 244,
+                                "product_id": 408,
+                                "quantity": 1,
+                                "price": 136,
+                                "total": 136,
+                                "created_at": "2026-04-03T03:34:33.000000Z",
+                                "updated_at": "2026-04-03T03:34:33.000000Z",
+                                "discount": 0,
+                                "discount_type": "fixed",
+                                "status": "changed",
+                                "change_note": "Guest kept one latte only.",
+                                "refunded_quantity": null,
+                                "refunded_amount": null,
+                                "parent_item_id": null,
+                                "item_note": "Less sweet for the second cup.",
+                                "kds_status": "ready",
+                                "kds_sent_at": "2026-04-03 03:34:33",
+                                "product": {
+                                    "id": 408,
+                                    "category_id": 137,
+                                    "branch_id": 28,
+                                    "name": "Spanish Latte",
+                                    "price": 92,
+                                    "is_available": 1,
+                                    "created_at": "2026-04-03T03:34:31.000000Z",
+                                    "updated_at": "2026-04-03T03:34:33.000000Z",
+                                    "image": "https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=1200&q=80",
+                                    "sku": "1NJZGQVA",
+                                    "min_stock": "12",
+                                    "stock": 29
+                                }
+                            },
+                            {
+                                "id": 570,
+                                "order_id": 244,
+                                "product_id": 409,
+                                "quantity": 1,
+                                "price": 84,
+                                "total": 84,
+                                "created_at": "2026-04-03T03:34:33.000000Z",
+                                "updated_at": "2026-04-03T03:34:33.000000Z",
+                                "discount": 0,
+                                "discount_type": "fixed",
+                                "status": "pending",
+                                "change_note": null,
+                                "refunded_quantity": null,
+                                "refunded_amount": null,
+                                "parent_item_id": null,
+                                "item_note": null,
+                                "kds_status": "ready",
+                                "kds_sent_at": "2026-04-03 03:34:33",
+                                "product": {
+                                    "id": 409,
+                                    "category_id": 137,
+                                    "branch_id": 28,
+                                    "name": "Citrus Sparkling Cooler",
+                                    "price": 84,
+                                    "is_available": 1,
+                                    "created_at": "2026-04-03T03:34:31.000000Z",
+                                    "updated_at": "2026-04-03T03:34:33.000000Z",
+                                    "image": "https://images.unsplash.com/photo-1544145945-f90425340c7e?auto=format&fit=crop&w=1200&q=80",
+                                    "sku": "G4IZ3CDF",
+                                    "min_stock": "10",
+                                    "stock": 23
+                                }
+                            },
+                            {
+                                "id": 571,
+                                "order_id": 244,
+                                "product_id": 410,
+                                "quantity": 1,
+                                "price": 74,
+                                "total": 74,
+                                "created_at": "2026-04-03T03:34:33.000000Z",
+                                "updated_at": "2026-04-03T03:34:33.000000Z",
+                                "discount": 0,
+                                "discount_type": "fixed",
+                                "status": "refunded",
+                                "change_note": "Dessert returned before service.",
+                                "refunded_quantity": 1,
+                                "refunded_amount": 74,
+                                "parent_item_id": null,
+                                "item_note": "Send after mains.",
+                                "kds_status": "refunded",
+                                "kds_sent_at": "2026-04-03 03:34:33",
+                                "product": {
+                                    "id": 410,
+                                    "category_id": 138,
+                                    "branch_id": 28,
+                                    "name": "Sea Salt Brownie",
+                                    "price": 74,
+                                    "is_available": 1,
+                                    "created_at": "2026-04-03T03:34:31.000000Z",
+                                    "updated_at": "2026-04-03T03:34:33.000000Z",
+                                    "image": "https://images.unsplash.com/photo-1606313564200-e75d5e30476c?auto=format&fit=crop&w=1200&q=80",
+                                    "sku": "20TCT0PE",
+                                    "min_stock": "8",
+                                    "stock": 6
+                                }
+                            }
+                        ]
+                    }
+                }
+            }
+        },
+        {
+            "step": 13,
+            "surface": "Waiter + Kitchen + Cashier",
+            "page": "T2 Window",
+            "actor_role": "Service Team",
+            "actor_name": "Karim Adel / Tamer Wael / Salma Nasser",
+            "action": "Processed a drinks-only dine-in visit from order creation through kitchen readiness and cash settlement.",
+            "result": "The first branch now has both card and cash sales on the same trading day.",
+            "order_id": 245
+        },
+        {
+            "step": 14,
+            "surface": "Waiter + Kitchen + Cashier",
+            "page": "T3 Family to T4 Lounge",
+            "actor_role": "Service Team",
+            "actor_name": "Karim Adel / Tamer Wael / Salma Nasser",
+            "action": "Moved a family table mid-service from T3 Family to T4 Lounge, reduced a drink line, completed kitchen production, and settled the final bill with split payment.",
+            "result": "The system preserved the audit trail of the table move while still allowing the visit to finish and pay successfully.",
+            "source_order_id": 246,
+            "target_order_id": 247
+        },
+        {
+            "step": 15,
+            "surface": "Multi-Branch Operations",
+            "page": "New Cairo Studio + Maadi Terrace",
+            "actor_role": "Branch Teams",
+            "actor_name": "Parallel service crews",
+            "action": "Processed light paid service in the second and third branches so the owner can review branch comparison, payment mix, and cross-branch performance on the first day.",
+            "result": "The restaurant now has paid activity across all branches for the end-of-day owner review.",
+            "orders": [
+                248,
+                249
+            ]
+        },
+        {
+            "step": 16,
+            "surface": "Customer App",
+            "page": "Orders & Rewards",
+            "actor_role": "Customer",
+            "actor_name": "Mona Sami",
+            "action": "Reopened the customer app after payment to check visit history and loyalty.",
+            "result": "The first dine-in visit now appears in order history with updated loyalty points and the correct restaurant and branch names.",
+            "orders_count": 1,
+            "loyalty_count": 1
+        },
+        {
+            "step": 17,
+            "surface": "Web Dashboard",
+            "page": "Owner Dashboard",
+            "actor_role": "Owner",
+            "actor_name": "Rana Soliman",
+            "action": "Opened the live dashboard at close of day to review revenue, orders, payment mix, branch performance, low stock, and recent orders.",
+            "result": "The dashboard reflects the completed first day across three branches, including paid revenue, mixed tenders, loyalty activity, and low-stock warnings.",
+            "api": {
+                "method": "GET",
+                "uri": "/api/dashboard/summary",
+                "status": 200,
+                "body": {
+                    "total_sales": 1932,
+                    "orders_count": 5,
+                    "avg_order_value": 386.4,
+                    "restaurant_count": 15,
+                    "branch_count": 3,
+                    "product_count": 15,
+                    "employee_count": 10,
+                    "active_tables": 0,
+                    "cashier_queue": 0,
+                    "kds_backlog": 0,
+                    "loyalty_members": 5,
+                    "payment_mix": [
+                        {
+                            "method": "card",
+                            "total": 1464
+                        },
+                        {
+                            "method": "cash",
+                            "total": 468
+                        }
+                    ],
+                    "branch_performance": [
+                        {
+                            "id": 28,
+                            "name": "Downtown Flagship",
+                            "location": "Downtown Cairo",
+                            "sales": 1396,
+                            "orders_count": 3
+                        },
+                        {
+                            "id": 29,
+                            "name": "New Cairo Studio",
+                            "location": "New Cairo",
+                            "sales": 268,
+                            "orders_count": 1
+                        },
+                        {
+                            "id": 30,
+                            "name": "Maadi Terrace",
+                            "location": "Maadi",
+                            "sales": 268,
+                            "orders_count": 1
+                        }
+                    ],
+                    "top_products": [
+                        {
+                            "name": "Citrus Sparkling Cooler",
+                            "quantity": 3
+                        },
+                        {
+                            "name": "Spanish Latte",
+                            "quantity": 3
+                        },
+                        {
+                            "name": "Spanish Latte",
+                            "quantity": 2
+                        },
+                        {
+                            "name": "Spanish Latte",
+                            "quantity": 2
+                        },
+                        {
+                            "name": "Harissa Penne",
+                            "quantity": 2
+                        }
+                    ],
+                    "low_stock_items": [
+                        {
+                            "id": 453,
+                            "name": "Sea Salt Brownie",
+                            "stock": 3,
+                            "unit": "pcs"
+                        },
+                        {
+                            "id": 456,
+                            "name": "Sea Salt Brownie",
+                            "stock": 3,
+                            "unit": "pcs"
+                        },
+                        {
+                            "id": 459,
+                            "name": "Sea Salt Brownie",
+                            "stock": 3,
+                            "unit": "pcs"
+                        },
+                        {
+                            "id": 452,
+                            "name": "Cedar Chicken Bowl",
+                            "stock": 7,
+                            "unit": "pcs"
+                        },
+                        {
+                            "id": 455,
+                            "name": "Cedar Chicken Bowl",
+                            "stock": 7,
+                            "unit": "pcs"
+                        },
+                        {
+                            "id": 458,
+                            "name": "Cedar Chicken Bowl",
+                            "stock": 7,
+                            "unit": "pcs"
+                        }
+                    ],
+                    "recent_orders": [
+                        {
+                            "id": 244,
+                            "branch_id": 28,
+                            "total": 616,
+                            "status": "paid",
+                            "created_at": "2026-04-03T03:34:33.000000Z",
+                            "branch": {
+                                "id": 28,
+                                "name": "Downtown Flagship",
+                                "location": "Downtown Cairo",
+                                "created_at": "2026-04-03T03:34:29.000000Z",
+                                "updated_at": "2026-04-03T03:34:29.000000Z",
+                                "restaurant_id": 15
+                            }
+                        },
+                        {
+                            "id": 245,
+                            "branch_id": 28,
+                            "total": 260,
+                            "status": "paid",
+                            "created_at": "2026-04-03T03:34:33.000000Z",
+                            "branch": {
+                                "id": 28,
+                                "name": "Downtown Flagship",
+                                "location": "Downtown Cairo",
+                                "created_at": "2026-04-03T03:34:29.000000Z",
+                                "updated_at": "2026-04-03T03:34:29.000000Z",
+                                "restaurant_id": 15
+                            }
+                        },
+                        {
+                            "id": 246,
+                            "branch_id": 28,
+                            "total": 612,
+                            "status": "closed",
+                            "created_at": "2026-04-03T03:34:33.000000Z",
+                            "branch": {
+                                "id": 28,
+                                "name": "Downtown Flagship",
+                                "location": "Downtown Cairo",
+                                "created_at": "2026-04-03T03:34:29.000000Z",
+                                "updated_at": "2026-04-03T03:34:29.000000Z",
+                                "restaurant_id": 15
+                            }
+                        },
+                        {
+                            "id": 247,
+                            "branch_id": 28,
+                            "total": 520,
+                            "status": "paid",
+                            "created_at": "2026-04-03T03:34:33.000000Z",
+                            "branch": {
+                                "id": 28,
+                                "name": "Downtown Flagship",
+                                "location": "Downtown Cairo",
+                                "created_at": "2026-04-03T03:34:29.000000Z",
+                                "updated_at": "2026-04-03T03:34:29.000000Z",
+                                "restaurant_id": 15
+                            }
+                        },
+                        {
+                            "id": 248,
+                            "branch_id": 29,
+                            "total": 268,
+                            "status": "paid",
+                            "created_at": "2026-04-03T03:34:33.000000Z",
+                            "branch": {
+                                "id": 29,
+                                "name": "New Cairo Studio",
+                                "location": "New Cairo",
+                                "created_at": "2026-04-03T03:34:29.000000Z",
+                                "updated_at": "2026-04-03T03:34:29.000000Z",
+                                "restaurant_id": 15
+                            }
+                        }
+                    ]
+                }
+            }
+        }
+    ],
+    "captures": [
+        {
+            "file": "admin-restaurants.png",
+            "route": "/#/restaurants",
+            "user": "admin",
+            "token": "1|jcsb0sqNVVh0uEBoig5XNaUoqQvkoXGdTErSmjd59221d889",
+            "user_json": "{\"id\":1,\"name\":\"Restaurant Suite Admin\",\"email\":\"admin@restaurant-suite.com\",\"role\":\"admin\",\"roles\":[\"admin\"],\"permissions\":[\"platform.restaurants.manage\",\"platform.branches.manage\",\"platform.users.manage\",\"platform.roles.manage\",\"dashboard.view\",\"branches.view\",\"branches.manage\",\"users.view\",\"users.manage\",\"roles.view\",\"orders.view\",\"orders.manage\",\"cashier.manage\",\"kds.manage\",\"tables.view\",\"tables.manage\",\"menu.view\",\"menu.manage\",\"categories.view\",\"categories.manage\",\"products.view\",\"products.manage\",\"inventory.view\",\"inventory.manage\",\"suppliers.view\",\"suppliers.manage\",\"ingredients.view\",\"ingredients.manage\",\"recipes.view\",\"recipes.manage\",\"employees.view\",\"employees.manage\",\"settings.view\",\"settings.manage\"],\"branch_id\":null,\"branch\":null,\"restaurant_id\":null,\"restaurant\":null,\"types\":[]}"
+        },
+        {
+            "file": "admin-branches.png",
+            "route": "/#/branches",
+            "user": "admin",
+            "token": "1|jcsb0sqNVVh0uEBoig5XNaUoqQvkoXGdTErSmjd59221d889",
+            "user_json": "{\"id\":1,\"name\":\"Restaurant Suite Admin\",\"email\":\"admin@restaurant-suite.com\",\"role\":\"admin\",\"roles\":[\"admin\"],\"permissions\":[\"platform.restaurants.manage\",\"platform.branches.manage\",\"platform.users.manage\",\"platform.roles.manage\",\"dashboard.view\",\"branches.view\",\"branches.manage\",\"users.view\",\"users.manage\",\"roles.view\",\"orders.view\",\"orders.manage\",\"cashier.manage\",\"kds.manage\",\"tables.view\",\"tables.manage\",\"menu.view\",\"menu.manage\",\"categories.view\",\"categories.manage\",\"products.view\",\"products.manage\",\"inventory.view\",\"inventory.manage\",\"suppliers.view\",\"suppliers.manage\",\"ingredients.view\",\"ingredients.manage\",\"recipes.view\",\"recipes.manage\",\"employees.view\",\"employees.manage\",\"settings.view\",\"settings.manage\"],\"branch_id\":null,\"branch\":null,\"restaurant_id\":null,\"restaurant\":null,\"types\":[]}"
+        },
+        {
+            "file": "admin-users.png",
+            "route": "/#/users",
+            "user": "admin",
+            "token": "1|jcsb0sqNVVh0uEBoig5XNaUoqQvkoXGdTErSmjd59221d889",
+            "user_json": "{\"id\":1,\"name\":\"Restaurant Suite Admin\",\"email\":\"admin@restaurant-suite.com\",\"role\":\"admin\",\"roles\":[\"admin\"],\"permissions\":[\"platform.restaurants.manage\",\"platform.branches.manage\",\"platform.users.manage\",\"platform.roles.manage\",\"dashboard.view\",\"branches.view\",\"branches.manage\",\"users.view\",\"users.manage\",\"roles.view\",\"orders.view\",\"orders.manage\",\"cashier.manage\",\"kds.manage\",\"tables.view\",\"tables.manage\",\"menu.view\",\"menu.manage\",\"categories.view\",\"categories.manage\",\"products.view\",\"products.manage\",\"inventory.view\",\"inventory.manage\",\"suppliers.view\",\"suppliers.manage\",\"ingredients.view\",\"ingredients.manage\",\"recipes.view\",\"recipes.manage\",\"employees.view\",\"employees.manage\",\"settings.view\",\"settings.manage\"],\"branch_id\":null,\"branch\":null,\"restaurant_id\":null,\"restaurant\":null,\"types\":[]}"
+        },
+        {
+            "file": "owner-products.png",
+            "route": "/#/products",
+            "user": "owner",
+            "token": "2|B8uOqKcHgrzfKof206YxuOMCy57rr3AULc2backx5110b59d",
+            "user_json": "{\"id\":192,\"name\":\"Rana Soliman\",\"email\":\"owner.harbor-ember-kitchen@example.com\",\"role\":\"owner\",\"roles\":[\"owner\"],\"permissions\":[\"dashboard.view\",\"branches.view\",\"branches.manage\",\"users.view\",\"users.manage\",\"roles.view\",\"orders.view\",\"orders.manage\",\"cashier.manage\",\"kds.manage\",\"tables.view\",\"tables.manage\",\"menu.view\",\"menu.manage\",\"categories.view\",\"categories.manage\",\"products.view\",\"products.manage\",\"inventory.view\",\"inventory.manage\",\"suppliers.view\",\"suppliers.manage\",\"ingredients.view\",\"ingredients.manage\",\"recipes.view\",\"recipes.manage\",\"employees.view\",\"employees.manage\",\"settings.view\",\"settings.manage\"],\"branch_id\":null,\"branch\":null,\"restaurant_id\":15,\"restaurant\":{\"id\":15,\"name\":\"Harbor Ember Kitchen\",\"kind\":\"restaurant\"},\"types\":[\"owner\"]}"
+        },
+        {
+            "file": "owner-menus.png",
+            "route": "/#/menus",
+            "user": "owner",
+            "token": "2|B8uOqKcHgrzfKof206YxuOMCy57rr3AULc2backx5110b59d",
+            "user_json": "{\"id\":192,\"name\":\"Rana Soliman\",\"email\":\"owner.harbor-ember-kitchen@example.com\",\"role\":\"owner\",\"roles\":[\"owner\"],\"permissions\":[\"dashboard.view\",\"branches.view\",\"branches.manage\",\"users.view\",\"users.manage\",\"roles.view\",\"orders.view\",\"orders.manage\",\"cashier.manage\",\"kds.manage\",\"tables.view\",\"tables.manage\",\"menu.view\",\"menu.manage\",\"categories.view\",\"categories.manage\",\"products.view\",\"products.manage\",\"inventory.view\",\"inventory.manage\",\"suppliers.view\",\"suppliers.manage\",\"ingredients.view\",\"ingredients.manage\",\"recipes.view\",\"recipes.manage\",\"employees.view\",\"employees.manage\",\"settings.view\",\"settings.manage\"],\"branch_id\":null,\"branch\":null,\"restaurant_id\":15,\"restaurant\":{\"id\":15,\"name\":\"Harbor Ember Kitchen\",\"kind\":\"restaurant\"},\"types\":[\"owner\"]}"
+        },
+        {
+            "file": "owner-tables.png",
+            "route": "/#/tables",
+            "user": "owner",
+            "token": "2|B8uOqKcHgrzfKof206YxuOMCy57rr3AULc2backx5110b59d",
+            "user_json": "{\"id\":192,\"name\":\"Rana Soliman\",\"email\":\"owner.harbor-ember-kitchen@example.com\",\"role\":\"owner\",\"roles\":[\"owner\"],\"permissions\":[\"dashboard.view\",\"branches.view\",\"branches.manage\",\"users.view\",\"users.manage\",\"roles.view\",\"orders.view\",\"orders.manage\",\"cashier.manage\",\"kds.manage\",\"tables.view\",\"tables.manage\",\"menu.view\",\"menu.manage\",\"categories.view\",\"categories.manage\",\"products.view\",\"products.manage\",\"inventory.view\",\"inventory.manage\",\"suppliers.view\",\"suppliers.manage\",\"ingredients.view\",\"ingredients.manage\",\"recipes.view\",\"recipes.manage\",\"employees.view\",\"employees.manage\",\"settings.view\",\"settings.manage\"],\"branch_id\":null,\"branch\":null,\"restaurant_id\":15,\"restaurant\":{\"id\":15,\"name\":\"Harbor Ember Kitchen\",\"kind\":\"restaurant\"},\"types\":[\"owner\"]}"
+        },
+        {
+            "file": "owner-employees.png",
+            "route": "/#/employees",
+            "user": "owner",
+            "token": "2|B8uOqKcHgrzfKof206YxuOMCy57rr3AULc2backx5110b59d",
+            "user_json": "{\"id\":192,\"name\":\"Rana Soliman\",\"email\":\"owner.harbor-ember-kitchen@example.com\",\"role\":\"owner\",\"roles\":[\"owner\"],\"permissions\":[\"dashboard.view\",\"branches.view\",\"branches.manage\",\"users.view\",\"users.manage\",\"roles.view\",\"orders.view\",\"orders.manage\",\"cashier.manage\",\"kds.manage\",\"tables.view\",\"tables.manage\",\"menu.view\",\"menu.manage\",\"categories.view\",\"categories.manage\",\"products.view\",\"products.manage\",\"inventory.view\",\"inventory.manage\",\"suppliers.view\",\"suppliers.manage\",\"ingredients.view\",\"ingredients.manage\",\"recipes.view\",\"recipes.manage\",\"employees.view\",\"employees.manage\",\"settings.view\",\"settings.manage\"],\"branch_id\":null,\"branch\":null,\"restaurant_id\":15,\"restaurant\":{\"id\":15,\"name\":\"Harbor Ember Kitchen\",\"kind\":\"restaurant\"},\"types\":[\"owner\"]}"
+        },
+        {
+            "file": "owner-orders.png",
+            "route": "/#/orders",
+            "user": "owner",
+            "token": "2|B8uOqKcHgrzfKof206YxuOMCy57rr3AULc2backx5110b59d",
+            "user_json": "{\"id\":192,\"name\":\"Rana Soliman\",\"email\":\"owner.harbor-ember-kitchen@example.com\",\"role\":\"owner\",\"roles\":[\"owner\"],\"permissions\":[\"dashboard.view\",\"branches.view\",\"branches.manage\",\"users.view\",\"users.manage\",\"roles.view\",\"orders.view\",\"orders.manage\",\"cashier.manage\",\"kds.manage\",\"tables.view\",\"tables.manage\",\"menu.view\",\"menu.manage\",\"categories.view\",\"categories.manage\",\"products.view\",\"products.manage\",\"inventory.view\",\"inventory.manage\",\"suppliers.view\",\"suppliers.manage\",\"ingredients.view\",\"ingredients.manage\",\"recipes.view\",\"recipes.manage\",\"employees.view\",\"employees.manage\",\"settings.view\",\"settings.manage\"],\"branch_id\":null,\"branch\":null,\"restaurant_id\":15,\"restaurant\":{\"id\":15,\"name\":\"Harbor Ember Kitchen\",\"kind\":\"restaurant\"},\"types\":[\"owner\"]}"
+        },
+        {
+            "file": "owner-dashboard-end-of-day.png",
+            "route": "/#/dashboard",
+            "user": "owner",
+            "token": "2|B8uOqKcHgrzfKof206YxuOMCy57rr3AULc2backx5110b59d",
+            "user_json": "{\"id\":192,\"name\":\"Rana Soliman\",\"email\":\"owner.harbor-ember-kitchen@example.com\",\"role\":\"owner\",\"roles\":[\"owner\"],\"permissions\":[\"dashboard.view\",\"branches.view\",\"branches.manage\",\"users.view\",\"users.manage\",\"roles.view\",\"orders.view\",\"orders.manage\",\"cashier.manage\",\"kds.manage\",\"tables.view\",\"tables.manage\",\"menu.view\",\"menu.manage\",\"categories.view\",\"categories.manage\",\"products.view\",\"products.manage\",\"inventory.view\",\"inventory.manage\",\"suppliers.view\",\"suppliers.manage\",\"ingredients.view\",\"ingredients.manage\",\"recipes.view\",\"recipes.manage\",\"employees.view\",\"employees.manage\",\"settings.view\",\"settings.manage\"],\"branch_id\":null,\"branch\":null,\"restaurant_id\":15,\"restaurant\":{\"id\":15,\"name\":\"Harbor Ember Kitchen\",\"kind\":\"restaurant\"},\"types\":[\"owner\"]}"
+        }
+    ]
+}

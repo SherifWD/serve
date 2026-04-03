@@ -28,6 +28,14 @@ class _KitchenWorkspacePageState extends ConsumerState<KitchenWorkspacePage> {
         .toList(growable: false);
   }
 
+  int _countItems(List<KdsTicket> tickets, String status) {
+    return tickets.fold<int>(
+      0,
+      (sum, ticket) =>
+          sum + ticket.items.where((item) => item.kdsStatus == status).length,
+    );
+  }
+
   Future<void> _refreshBoard() async {
     setState(() {
       _future = ref.read(suiteRepositoryProvider).fetchKitchenBoard();
@@ -263,6 +271,9 @@ class _KitchenWorkspacePageState extends ConsumerState<KitchenWorkspacePage> {
         final queuedTickets = _filterTickets(tickets, 'queued');
         final preparingTickets = _filterTickets(tickets, 'preparing');
         final readyTickets = _filterTickets(tickets, 'ready');
+        final queuedItems = _countItems(tickets, 'queued');
+        final preparingItems = _countItems(tickets, 'preparing');
+        final readyItems = _countItems(tickets, 'ready');
         final wide = MediaQuery.of(context).size.width > 1180;
 
         return Container(
@@ -283,6 +294,9 @@ class _KitchenWorkspacePageState extends ConsumerState<KitchenWorkspacePage> {
                   queued: queuedTickets.length,
                   preparing: preparingTickets.length,
                   ready: readyTickets.length,
+                  queuedItems: queuedItems,
+                  preparingItems: preparingItems,
+                  readyItems: readyItems,
                 ),
                 const SizedBox(height: 16),
                 if (tickets.isEmpty)
@@ -305,6 +319,7 @@ class _KitchenWorkspacePageState extends ConsumerState<KitchenWorkspacePage> {
                           subtitle: 'Tap ticket to start all items',
                           color: const Color(0xFFF59E0B),
                           tickets: queuedTickets,
+                          itemCount: queuedItems,
                           laneStatus: 'queued',
                           onTicketTap: _advanceTicket,
                           onItemTap: _advanceItem,
@@ -317,6 +332,7 @@ class _KitchenWorkspacePageState extends ConsumerState<KitchenWorkspacePage> {
                           subtitle: 'Tap ticket to mark everything ready',
                           color: const Color(0xFF38BDF8),
                           tickets: preparingTickets,
+                          itemCount: preparingItems,
                           laneStatus: 'preparing',
                           onTicketTap: _advanceTicket,
                           onItemTap: _advanceItem,
@@ -326,9 +342,11 @@ class _KitchenWorkspacePageState extends ConsumerState<KitchenWorkspacePage> {
                       Expanded(
                         child: _KitchenLane(
                           title: 'Ready',
-                          subtitle: 'Tap ticket to send the whole order to service',
+                          subtitle:
+                              'Tap ticket to send the whole order to service',
                           color: const Color(0xFF34D399),
                           tickets: readyTickets,
+                          itemCount: readyItems,
                           laneStatus: 'ready',
                           onTicketTap: _advanceTicket,
                           onItemTap: _advanceItem,
@@ -344,6 +362,7 @@ class _KitchenWorkspacePageState extends ConsumerState<KitchenWorkspacePage> {
                         subtitle: 'Tap ticket to start all items',
                         color: const Color(0xFFF59E0B),
                         tickets: queuedTickets,
+                        itemCount: queuedItems,
                         laneStatus: 'queued',
                         onTicketTap: _advanceTicket,
                         onItemTap: _advanceItem,
@@ -354,6 +373,7 @@ class _KitchenWorkspacePageState extends ConsumerState<KitchenWorkspacePage> {
                         subtitle: 'Tap ticket to mark everything ready',
                         color: const Color(0xFF38BDF8),
                         tickets: preparingTickets,
+                        itemCount: preparingItems,
                         laneStatus: 'preparing',
                         onTicketTap: _advanceTicket,
                         onItemTap: _advanceItem,
@@ -361,9 +381,11 @@ class _KitchenWorkspacePageState extends ConsumerState<KitchenWorkspacePage> {
                       const SizedBox(height: 14),
                       _KitchenLane(
                         title: 'Ready',
-                        subtitle: 'Tap ticket to send the whole order to service',
+                        subtitle:
+                            'Tap ticket to send the whole order to service',
                         color: const Color(0xFF34D399),
                         tickets: readyTickets,
+                        itemCount: readyItems,
                         laneStatus: 'ready',
                         onTicketTap: _advanceTicket,
                         onItemTap: _advanceItem,
@@ -384,11 +406,17 @@ class _KitchenHero extends StatelessWidget {
     required this.queued,
     required this.preparing,
     required this.ready,
+    required this.queuedItems,
+    required this.preparingItems,
+    required this.readyItems,
   });
 
   final int queued;
   final int preparing;
   final int ready;
+  final int queuedItems;
+  final int preparingItems;
+  final int readyItems;
 
   @override
   Widget build(BuildContext context) {
@@ -410,10 +438,11 @@ class _KitchenHero extends StatelessWidget {
                   children: [
                     Text(
                       'Kitchen KDS',
-                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w900,
-                          ),
+                      style:
+                          Theme.of(context).textTheme.headlineSmall?.copyWith(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w900,
+                              ),
                     ),
                     const SizedBox(height: 8),
                     const Text(
@@ -423,7 +452,14 @@ class _KitchenHero extends StatelessWidget {
                   ],
                 ),
               ),
-              const _BoardHint(label: 'Minimal KDS mode'),
+              const Wrap(
+                spacing: 10,
+                runSpacing: 10,
+                children: [
+                  _BoardHint(label: 'Tap ticket = move all'),
+                  _BoardHint(label: 'Tap item = next step'),
+                ],
+              ),
             ],
           ),
           const SizedBox(height: 18),
@@ -434,16 +470,19 @@ class _KitchenHero extends StatelessWidget {
               _KitchenMetric(
                 title: 'Queued',
                 value: '$queued',
+                detail: '$queuedItems items',
                 color: const Color(0xFFF59E0B),
               ),
               _KitchenMetric(
                 title: 'Preparing',
                 value: '$preparing',
+                detail: '$preparingItems items',
                 color: const Color(0xFF38BDF8),
               ),
               _KitchenMetric(
                 title: 'Ready',
                 value: '$ready',
+                detail: '$readyItems items',
                 color: const Color(0xFF34D399),
               ),
             ],
@@ -460,6 +499,7 @@ class _KitchenLane extends StatelessWidget {
     required this.subtitle,
     required this.color,
     required this.tickets,
+    required this.itemCount,
     required this.laneStatus,
     required this.onTicketTap,
     required this.onItemTap,
@@ -469,6 +509,7 @@ class _KitchenLane extends StatelessWidget {
   final String subtitle;
   final Color color;
   final List<KdsTicket> tickets;
+  final int itemCount;
   final String laneStatus;
   final Future<void> Function(KdsTicket ticket, String laneStatus) onTicketTap;
   final Future<void> Function(OrderItemLine item) onItemTap;
@@ -515,7 +556,7 @@ class _KitchenLane extends StatelessWidget {
                     borderRadius: BorderRadius.circular(16),
                   ),
                   child: Text(
-                    '${tickets.length}',
+                    '${tickets.length} / $itemCount',
                     style: TextStyle(
                       color: color,
                       fontWeight: FontWeight.w900,
@@ -645,7 +686,7 @@ class _KitchenTicketCard extends StatelessWidget {
                 ),
               const SizedBox(height: 4),
               const Text(
-                'Tap card to move all items in this ticket.',
+                'Tap card to move the full ticket. Tap any item to move only that line.',
                 style: TextStyle(
                   color: Colors.white54,
                   fontWeight: FontWeight.w600,
@@ -818,11 +859,13 @@ class _KitchenMetric extends StatelessWidget {
   const _KitchenMetric({
     required this.title,
     required this.value,
+    required this.detail,
     required this.color,
   });
 
   final String title;
   final String value;
+  final String detail;
   final Color color;
 
   @override
@@ -845,6 +888,11 @@ class _KitchenMetric extends StatelessWidget {
                   color: color,
                   fontWeight: FontWeight.w900,
                 ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            detail,
+            style: const TextStyle(color: Colors.white54),
           ),
         ],
       ),

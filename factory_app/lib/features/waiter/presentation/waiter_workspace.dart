@@ -64,53 +64,67 @@ class _WaiterWorkspacePageState extends ConsumerState<WaiterWorkspacePage> {
           0,
           (sum, table) => sum + table.orderTotal,
         );
+        final wide = MediaQuery.of(context).size.width > 1180;
 
-        return DefaultTabController(
-          length: 4,
-          child: Column(
-            children: [
-              _WaiterHero(
-                tableCount: tables.length,
-                activeChecks: occupied.length,
-                activeCovers: covers,
-                liveSales: liveSales,
-              ),
-              const SizedBox(height: 16),
-              const Align(
-                alignment: Alignment.centerLeft,
-                child: TabBar(
-                  isScrollable: true,
-                  tabAlignment: TabAlignment.start,
-                  tabs: [
-                    Tab(text: 'Floor'),
-                    Tab(text: 'Live checks'),
-                    Tab(text: 'Menu cues'),
-                    Tab(text: 'Service'),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 16),
-              Expanded(
-                child: TabBarView(
-                  children: [
-                    _FloorTab(
+        return Column(
+          children: [
+            _WaiterHero(
+              tableCount: tables.length,
+              activeChecks: occupied.length,
+              activeCovers: covers,
+              liveSales: liveSales,
+            ),
+            const SizedBox(height: 16),
+            Expanded(
+              child: wide
+                  ? _WaiterWideLayout(
                       tables: tables,
-                      onRefresh: _refreshTables,
+                      menuFuture: _menuFuture,
+                      onRefreshTables: _refreshTables,
+                      onRefreshMenu: _refreshMenu,
+                    )
+                  : DefaultTabController(
+                      length: 4,
+                      child: Column(
+                        children: [
+                          const Align(
+                            alignment: Alignment.centerLeft,
+                            child: TabBar(
+                              isScrollable: true,
+                              tabAlignment: TabAlignment.start,
+                              tabs: [
+                                Tab(text: 'Floor'),
+                                Tab(text: 'Live checks'),
+                                Tab(text: 'Menu cues'),
+                                Tab(text: 'Service'),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          Expanded(
+                            child: TabBarView(
+                              children: [
+                                _FloorTab(
+                                  tables: tables,
+                                  onRefresh: _refreshTables,
+                                ),
+                                _LiveChecksTab(
+                                  tables: tables,
+                                  onRefresh: _refreshTables,
+                                ),
+                                _MenuCuesTab(
+                                  future: _menuFuture,
+                                  onRefresh: _refreshMenu,
+                                ),
+                                const _ServicePlaybookTab(),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                    _LiveChecksTab(
-                      tables: tables,
-                      onRefresh: _refreshTables,
-                    ),
-                    _MenuCuesTab(
-                      future: _menuFuture,
-                      onRefresh: _refreshMenu,
-                    ),
-                    const _ServicePlaybookTab(),
-                  ],
-                ),
-              ),
-            ],
-          ),
+            ),
+          ],
         );
       },
     );
@@ -156,10 +170,11 @@ class _WaiterHero extends StatelessWidget {
                   children: [
                     Text(
                       'Tableside service board',
-                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w900,
-                          ),
+                      style:
+                          Theme.of(context).textTheme.headlineSmall?.copyWith(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w900,
+                              ),
                     ),
                     const SizedBox(height: 8),
                     const Text(
@@ -203,6 +218,124 @@ class _WaiterHero extends StatelessWidget {
             ],
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _WaiterWideLayout extends StatelessWidget {
+  const _WaiterWideLayout({
+    required this.tables,
+    required this.menuFuture,
+    required this.onRefreshTables,
+    required this.onRefreshMenu,
+  });
+
+  final List<TableOverview> tables;
+  final Future<List<MenuCategoryData>> menuFuture;
+  final Future<void> Function() onRefreshTables;
+  final Future<void> Function() onRefreshMenu;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          flex: 8,
+          child: _FloorTab(
+            tables: tables,
+            onRefresh: onRefreshTables,
+          ),
+        ),
+        const SizedBox(width: 16),
+        SizedBox(
+          width: 420,
+          child: Column(
+            children: [
+              Expanded(
+                flex: 5,
+                child: _WorkspacePanel(
+                  title: 'Live checks',
+                  subtitle: 'See active tables and jump straight into service.',
+                  child: _LiveChecksTab(
+                    tables: tables,
+                    onRefresh: onRefreshTables,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Expanded(
+                flex: 4,
+                child: _WorkspacePanel(
+                  title: 'Menu cues',
+                  subtitle:
+                      'Keep top sellers, images, and modifier prompts visible.',
+                  child: _MenuCuesTab(
+                    future: menuFuture,
+                    onRefresh: onRefreshMenu,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              const Expanded(
+                flex: 3,
+                child: _WorkspacePanel(
+                  title: 'Service rhythm',
+                  subtitle: 'Short operator guidance for a cleaner floor flow.',
+                  child: _ServicePlaybookTab(),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _WorkspacePanel extends StatelessWidget {
+  const _WorkspacePanel({
+    required this.title,
+    required this.subtitle,
+    required this.child,
+  });
+
+  final String title;
+  final String subtitle;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.78),
+        borderRadius: BorderRadius.circular(28),
+        border: Border.all(color: const Color(0xFFE8DDD2)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(18, 18, 18, 12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              title,
+              style: Theme.of(context)
+                  .textTheme
+                  .titleLarge
+                  ?.copyWith(fontWeight: FontWeight.w800),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              subtitle,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: const Color(0xFF6B7280),
+                  ),
+            ),
+            const SizedBox(height: 12),
+            Expanded(child: child),
+          ],
+        ),
       ),
     );
   }
@@ -440,11 +573,14 @@ class _ServicePlaybookTab extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Table map first for faster tap targets and less navigation.'),
+              Text(
+                  'Table map first for faster tap targets and less navigation.'),
               SizedBox(height: 10),
-              Text('Live checks keep table value visible before moving to cashier.'),
+              Text(
+                  'Live checks keep table value visible before moving to cashier.'),
               SizedBox(height: 10),
-              Text('Order detail supports modifiers, change quantity, refunds, move table, and send-to-kitchen.'),
+              Text(
+                  'Order detail supports modifiers, change quantity, refunds, move table, and send-to-kitchen.'),
             ],
           ),
         ),
@@ -476,15 +612,88 @@ class _QuickActionStrip extends StatelessWidget {
       scrollDirection: Axis.horizontal,
       child: Row(
         children: [
-          _ServiceBadge(label: 'Open table'),
-          SizedBox(width: 8),
-          _ServiceBadge(label: 'Attach guest'),
-          SizedBox(width: 8),
-          _ServiceBadge(label: 'Add modifiers'),
-          SizedBox(width: 8),
-          _ServiceBadge(label: 'Send to kitchen'),
-          SizedBox(width: 8),
-          _ServiceBadge(label: 'Send to cashier'),
+          _QuickActionCard(
+            icon: Icons.table_bar_outlined,
+            label: 'Open table',
+            caption: 'Start dine-in',
+          ),
+          SizedBox(width: 10),
+          _QuickActionCard(
+            icon: Icons.person_add_alt_1_outlined,
+            label: 'Attach guest',
+            caption: 'Track loyalty',
+          ),
+          SizedBox(width: 10),
+          _QuickActionCard(
+            icon: Icons.tune_rounded,
+            label: 'Add modifiers',
+            caption: 'Upsell cleanly',
+          ),
+          SizedBox(width: 10),
+          _QuickActionCard(
+            icon: Icons.soup_kitchen_outlined,
+            label: 'Send to kitchen',
+            caption: 'Fire the course',
+          ),
+          SizedBox(width: 10),
+          _QuickActionCard(
+            icon: Icons.point_of_sale_outlined,
+            label: 'Send to cashier',
+            caption: 'Close the check',
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _QuickActionCard extends StatelessWidget {
+  const _QuickActionCard({
+    required this.icon,
+    required this.label,
+    required this.caption,
+  });
+
+  final IconData icon;
+  final String label;
+  final String caption;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 156,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: const Color(0xFFE7DED2)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: const Color(0xFFFFE7D4),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Icon(icon, color: const Color(0xFFE86C2F)),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            label,
+            style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w800,
+                ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            caption,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: const Color(0xFF6B7280),
+                ),
+          ),
         ],
       ),
     );
@@ -510,15 +719,15 @@ class _TableTile extends StatelessWidget {
       child: Card(
         color: table.isOccupied ? const Color(0xFFFFF3E9) : Colors.white,
         child: Padding(
-          padding: const EdgeInsets.all(18),
+          padding: const EdgeInsets.all(14),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
                 children: [
                   Container(
-                    width: 48,
-                    height: 48,
+                    width: 40,
+                    height: 40,
                     decoration: BoxDecoration(
                       color: table.isOccupied
                           ? const Color(0xFFFFDFC8)
@@ -534,40 +743,53 @@ class _TableTile extends StatelessWidget {
                   ),
                   const Spacer(),
                   _MiniStatus(
-                    label: table.isOccupied ? 'Occupied' : 'Ready',
+                    label: table.isOccupied ? 'Busy' : 'Ready',
                     color: table.isOccupied
                         ? const Color(0xFFE86C2F)
                         : const Color(0xFF0F766E),
                   ),
                 ],
               ),
-              const SizedBox(height: 14),
+              const SizedBox(height: 10),
               Text(
                 table.name,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
                 style: Theme.of(context)
                     .textTheme
-                    .titleLarge
+                    .titleMedium
                     ?.copyWith(fontWeight: FontWeight.w800),
               ),
-              const SizedBox(height: 6),
+              const SizedBox(height: 4),
               Text('${table.seats} covers'),
-              const Spacer(),
-              if (table.isOccupied) ...[
-                Text(
-                  currency.format(table.orderTotal),
-                  style: Theme.of(context)
-                      .textTheme
-                      .headlineSmall
-                      ?.copyWith(fontWeight: FontWeight.w900),
+              const SizedBox(height: 8),
+              Expanded(
+                child: Align(
+                  alignment: Alignment.bottomLeft,
+                  child: table.isOccupied
+                      ? Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              currency.format(table.orderTotal),
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .titleMedium
+                                  ?.copyWith(fontWeight: FontWeight.w900),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              '${table.itemCount} items',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: Theme.of(context).textTheme.bodySmall,
+                            ),
+                          ],
+                        )
+                      : const Text('Tap to start dine-in'),
                 ),
-                const SizedBox(height: 6),
-                Text(
-                  '${table.itemCount} items${table.customerName == null ? '' : ' • ${table.customerName}'}',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ] else
-                const Text('Tap to open a new dine-in flow'),
+              ),
             ],
           ),
         ),

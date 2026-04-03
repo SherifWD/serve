@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Golden First Day Scenario</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="layout">
+    <div class="hero">
+      <h1>Golden First Day Scenario</h1>
+      <p>Real first-day sanity run for a newly signed restaurant using the full Restaurant Suite flow from platform admin setup through end-of-day owner review.</p>
+      <div class="pill-row">
+        <span class="pill">Harbor Ember Kitchen</span>
+        <span class="pill">Generated 2026-04-03 03:34 UTC</span>
+        <span class="pill">sqlite scenario database</span>
+      </div>
+    </div>
+
+    <div class="note">
+      The operational scenario itself was executed against the live Laravel API and scenario database. Web dashboard screenshots are live captures from that run. Flutter screenshots are scenario-matched captures from the current app UI so the step-by-step report shows the exact surfaces used by customer, waiter, cashier, kitchen, and owner roles.
+    </div>
+
+    <h2 class="section-title">Scenario Setup</h2>
+    <div class="grid two">
+      <div class="card">
+        <h3>Restaurant Created</h3>
+        <p><strong>Harbor Ember Kitchen</strong> was created as a restaurant and launched with three operating branches.</p>
+        <table><thead><tr><th>Branch ID</th><th>Branch</th><th>Location</th></tr></thead><tbody><tr><td>28</td><td>Downtown Flagship</td><td>Downtown Cairo</td></tr><tr><td>29</td><td>New Cairo Studio</td><td>New Cairo</td></tr><tr><td>30</td><td>Maadi Terrace</td><td>Maadi</td></tr></tbody></table>
+      </div>
+      <div class="card">
+        <h3>Primary Accounts</h3>
+        <table>
+          <thead>
+            <tr><th>Role</th><th>Name</th><th>Email</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Owner</td><td>Rana Soliman</td><td><code>owner.harbor-ember-kitchen@example.com</code></td></tr>
+            <tr><td>Stakeholder</td><td>Hossam Gaber</td><td><code>stakeholder.harbor-ember-kitchen@example.com</code></td></tr>
+            <tr><td>Admin</td><td>Restaurant Suite Admin</td><td><code>admin@restaurant-suite.com</code></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Operational Staff By Branch</h3>
+      <table><thead><tr><th>Branch</th><th>Employee</th><th>Role / Type</th><th>Login</th></tr></thead><tbody><tr><td>Downtown Flagship</td><td>Dina Farouk</td><td>supervisor</td><td><code>dina.farouk.downtown-flagship@example.com</code></td></tr><tr><td>Downtown Flagship</td><td>Karim Adel</td><td>waiter</td><td><code>karim.adel.downtown-flagship@example.com</code></td></tr><tr><td>Downtown Flagship</td><td>Salma Nasser</td><td>cashier</td><td><code>salma.nasser.downtown-flagship@example.com</code></td></tr><tr><td>Downtown Flagship</td><td>Tamer Wael</td><td>kitchen</td><td><code>tamer.wael.downtown-flagship@example.com</code></td></tr><tr><td>New Cairo Studio</td><td>Nour Hassan</td><td>waiter</td><td><code>nour.hassan.new-cairo-studio@example.com</code></td></tr><tr><td>New Cairo Studio</td><td>Ahmed Samy</td><td>cashier</td><td><code>ahmed.samy.new-cairo-studio@example.com</code></td></tr><tr><td>New Cairo Studio</td><td>Mina Wagdy</td><td>kitchen</td><td><code>mina.wagdy.new-cairo-studio@example.com</code></td></tr><tr><td>Maadi Terrace</td><td>Mariam Fares</td><td>waiter</td><td><code>mariam.fares.maadi-terrace@example.com</code></td></tr><tr><td>Maadi Terrace</td><td>Omar Lotfy</td><td>cashier</td><td><code>omar.lotfy.maadi-terrace@example.com</code></td></tr><tr><td>Maadi Terrace</td><td>Lina Atef</td><td>kitchen</td><td><code>lina.atef.maadi-terrace@example.com</code></td></tr></tbody></table>
+    </div>
+
+    <div class="card">
+      <h3>Launch Catalog Snapshot</h3>
+      <p>The owner seeded the first-day menu, floor map, and stock thresholds before service opened. The table below shows the first nine sellable items created across the three branches.</p>
+      <table><thead><tr><th>Branch</th><th>Category</th><th>Product</th><th>Price</th><th>Stock</th><th>Min stock</th></tr></thead><tbody><tr><td>Downtown Flagship</td><td>Breakfast &amp; Brunch</td><td>Cedar Chicken Bowl</td><td>EGP 198</td><td>16</td><td>8</td></tr><tr><td>Downtown Flagship</td><td>Breakfast &amp; Brunch</td><td>Harissa Penne</td><td>EGP 214</td><td>12</td><td>6</td></tr><tr><td>Downtown Flagship</td><td>Signature Drinks</td><td>Spanish Latte</td><td>EGP 92</td><td>30</td><td>12</td></tr><tr><td>Downtown Flagship</td><td>Signature Drinks</td><td>Citrus Sparkling Cooler</td><td>EGP 84</td><td>24</td><td>10</td></tr><tr><td>Downtown Flagship</td><td>Desserts</td><td>Sea Salt Brownie</td><td>EGP 74</td><td>6</td><td>8</td></tr><tr><td>New Cairo Studio</td><td>Breakfast &amp; Brunch</td><td>Cedar Chicken Bowl</td><td>EGP 198</td><td>16</td><td>8</td></tr><tr><td>New Cairo Studio</td><td>Breakfast &amp; Brunch</td><td>Harissa Penne</td><td>EGP 214</td><td>12</td><td>6</td></tr><tr><td>New Cairo Studio</td><td>Signature Drinks</td><td>Spanish Latte</td><td>EGP 92</td><td>30</td><td>12</td></tr><tr><td>New Cairo Studio</td><td>Signature Drinks</td><td>Citrus Sparkling Cooler</td><td>EGP 84</td><td>24</td><td>10</td></tr></tbody></table>
+    </div>
+
+    <h2 class="section-title">Step-By-Step Timeline</h2>
+    
+    <div class="step card">
+      <h3>Step 1. Web Dashboard - Login</h3>
+      <div class="pill-row">
+        <span class="pill">Platform Admin</span>
+        <span class="pill">Restaurant Suite Admin</span>
+      </div>
+      <p><strong>Action:</strong> Signed into the platform dashboard with the seeded admin account.</p>
+      <p><strong>Outcome:</strong> Admin session token was issued successfully and cross-restaurant control is available.</p>
+      <p><strong>Clicks and operator actions</strong></p>
+      <ul><li>Open the platform dashboard login page.</li><li>Enter `admin@restaurant-suite.com` and `password`.</li><li>Click `Sign in`.</li></ul>
+      <div class="pill-row"><span class="pill">API POST</span><span class="pill">/api/login</span><span class="pill">HTTP 200</span></div>
+      <div class="grid"><div><img class="shot" src="../assets/scenario-first-day/dashboard/admin-restaurants.png" alt="Step 1 screenshot"><div class="caption">Platform admin session after login with restaurant management available.</div></div></div>
+    </div>
+
+    <div class="step card">
+      <h3>Step 2. Web Dashboard - Restaurants</h3>
+      <div class="pill-row">
+        <span class="pill">Platform Admin</span>
+        <span class="pill">Restaurant Suite Admin</span>
+      </div>
+      <p><strong>Action:</strong> Opened Restaurants, clicked Add Restaurant, entered `Harbor Ember Kitchen`, selected `restaurant`, and clicked Save.</p>
+      <p><strong>Outcome:</strong> The new restaurant was created and became available for branch, owner, menu, and employee setup.</p>
+      <p><strong>Clicks and operator actions</strong></p>
+      <ul><li>Open the left navigation and click `Restaurants`.</li><li>Click `Add Restaurant`.</li><li>Enter `Harbor Ember Kitchen`.</li><li>Set venue type to `restaurant`.</li><li>Click `Save`.</li></ul>
+      <div class="pill-row"><span class="pill">API POST</span><span class="pill">/api/restaurants</span><span class="pill">HTTP 201</span></div>
+      <div class="grid"><div><img class="shot" src="../assets/scenario-first-day/dashboard/admin-restaurants.png" alt="Step 2 screenshot"><div class="caption">Restaurants page after Harbor Ember Kitchen was added.</div></div></div>
+    </div>
+
+    <div class="step card">
+      <h3>Step 3. Web Dashboard - Branches</h3>
+      <div class="pill-row">
+        <span class="pill">Platform Admin</span>
+        <span class="pill">Restaurant Suite Admin</span>
+      </div>
+      <p><strong>Action:</strong> Opened Branches, clicked Add Branch three times, and created Downtown Flagship, New Cairo Studio, and Maadi Terrace for the new restaurant.</p>
+      <p><strong>Outcome:</strong> All three operational branches were created and linked to Harbor Ember Kitchen.</p>
+      <p><strong>Clicks and operator actions</strong></p>
+      <ul><li>Click `Branches` in the platform navigation.</li><li>Click `Add Branch` three times.</li><li>Save `Downtown Flagship`, `New Cairo Studio`, and `Maadi Terrace`.</li></ul>
+      
+      <div class="grid"><div><img class="shot" src="../assets/scenario-first-day/dashboard/admin-branches.png" alt="Step 3 screenshot"><div class="caption">Branches page showing the three newly created operating branches.</div></div></div>
+    </div>
+
+    <div class="step card">
+      <h3>Step 4. Web Dashboard - Users</h3>
+      <div class="pill-row">
+        <span class="pill">Platform Admin</span>
+        <span class="pill">Restaurant Suite Admin</span>
+      </div>
+      <p><strong>Action:</strong> Opened Users and provisioned the owner, stakeholder, supervisor, waiter, cashier, and kitchen users for the new restaurant.</p>
+      <p><strong>Outcome:</strong> The restaurant now has authenticated accounts for admin control, owner oversight, and branch operations on the waiter, cashier, kitchen, and owner apps.</p>
+      <p><strong>Clicks and operator actions</strong></p>
+      <ul><li>Click `Users` and choose `Add User`.</li><li>Create the owner and stakeholder accounts.</li><li>Create the supervisor, waiter, cashier, and kitchen accounts for each branch.</li><li>Open `Roles &amp; Permissions` to verify access boundaries.</li></ul>
+      
+      <div class="grid two"><div><img class="shot" src="../assets/scenario-first-day/dashboard/admin-users.png" alt="Step 4 screenshot"><div class="caption">Users page after provisioning owner, stakeholder, and branch staff.</div></div><div><img class="shot" src="../assets/scenario-first-day/dashboard/admin-roles.png" alt="Step 4 screenshot"><div class="caption">Roles and permissions page used to control access across the platform.</div></div></div>
+    </div>
+
+    <div class="step card">
+      <h3>Step 5. Web Dashboard - Login</h3>
+      <div class="pill-row">
+        <span class="pill">Owner</span>
+        <span class="pill">Rana Soliman</span>
+      </div>
+      <p><strong>Action:</strong> Signed into the owner dashboard for Harbor Ember Kitchen.</p>
+      <p><strong>Outcome:</strong> Owner-scoped session is active and restricted to the new restaurant.</p>
+      <p><strong>Clicks and operator actions</strong></p>
+      <ul><li>Sign out of the platform admin session.</li><li>Enter owner credentials for `Rana Soliman`.</li><li>Click `Sign in` to switch to restaurant-scoped ownership.</li></ul>
+      <div class="pill-row"><span class="pill">API POST</span><span class="pill">/api/login</span><span class="pill">HTTP 200</span></div>
+      <div class="grid"><div><img class="shot" src="../assets/scenario-first-day/dashboard/owner-products.png" alt="Step 5 screenshot"><div class="caption">Owner-scoped dashboard session restricted to Harbor Ember Kitchen.</div></div></div>
+    </div>
+
+    <div class="step card">
+      <h3>Step 6. Web Dashboard - Catalog &amp; Tables</h3>
+      <div class="pill-row">
+        <span class="pill">Owner</span>
+        <span class="pill">Rana Soliman</span>
+      </div>
+      <p><strong>Action:</strong> Opened Categories, Products, Menus, Tables, Inventory, and Employees to create the launch catalog, dining room map, team records, and low-stock monitoring for each branch.</p>
+      <p><strong>Outcome:</strong> Each branch now has a working menu, sellable products, dine-in tables, employee records, and inventory thresholds for the first trading day.</p>
+      <p><strong>Clicks and operator actions</strong></p>
+      <ul><li>Open `Categories` and create the launch sections.</li><li>Open `Products` and save the sellable meals, drinks, and dessert items.</li><li>Open `Menus` and attach products to the correct branches.</li><li>Open `Tables` and define the dine-in floor map.</li><li>Open `Inventory` and save stock thresholds.</li><li>Open `Employees` and confirm team records are attached to branches.</li></ul>
+      
+      <div class="grid two"><div><img class="shot" src="../assets/scenario-first-day/dashboard/owner-products.png" alt="Step 6 screenshot"><div class="caption">Products page with the launch catalog ready to sell.</div></div><div><img class="shot" src="../assets/scenario-first-day/dashboard/owner-menus.png" alt="Step 6 screenshot"><div class="caption">Menus page with branch-ready menu structure.</div></div><div><img class="shot" src="../assets/scenario-first-day/dashboard/owner-tables.png" alt="Step 6 screenshot"><div class="caption">Tables page with the dine-in floor map and table inventory.</div></div><div><img class="shot" src="../assets/scenario-first-day/dashboard/owner-employees.png" alt="Step 6 screenshot"><div class="caption">Employees page with operational team records linked to branches.</div></div></div>
+    </div>
+
+    <div class="step card">
+      <h3>Step 7. Customer App - Home</h3>
+      <div class="pill-row">
+        <span class="pill">Customer</span>
+        <span class="pill">Mona Sami</span>
+      </div>
+      <p><strong>Action:</strong> Logged into the customer app with a new phone number and opened the home screen.</p>
+      <p><strong>Outcome:</strong> The new restaurant appears in the marketplace listing, ready for discovery before the first dine-in order is placed.</p>
+      <p><strong>Clicks and operator actions</strong></p>
+      <ul><li>Open the customer app.</li><li>Enter a new phone number for Mona Sami.</li><li>Finish login and land on the home marketplace.</li></ul>
+      <div class="pill-row"><span class="pill">API GET</span><span class="pill">/api/customer/home</span><span class="pill">HTTP 200</span></div>
+      <div class="grid"><div><img class="shot" src="../assets/scenario-first-day/flutter/customer-home.png" alt="Step 7 screenshot"><div class="caption">Customer home showing the new restaurant, remembered orders, and rewards.</div></div></div>
+    </div>
+
+    <div class="step card">
+      <h3>Step 8. Waiter App - Table T1 Garden</h3>
+      <div class="pill-row">
+        <span class="pill">Waiter</span>
+        <span class="pill">Karim Adel</span>
+      </div>
+      <p><strong>Action:</strong> Opened T1 Garden, attached Mona Sami to the table, added full meals and drinks with modifiers, then saved the dine-in order.</p>
+      <p><strong>Outcome:</strong> Order #244 was created on Downtown Flagship and the table became occupied.</p>
+      <p><strong>Clicks and operator actions</strong></p>
+      <ul><li>Open the waiter app and tap `T1 Garden`.</li><li>Attach Mona Sami to the table using name and phone.</li><li>Add two Cedar Chicken Bowls, two Spanish Lattes, and one Citrus Sparkling Cooler.</li><li>Apply modifiers and notes for taste and service changes.</li><li>Tap to save the dine-in order.</li></ul>
+      <div class="pill-row"><span class="pill">API POST</span><span class="pill">/api/mobile/orders</span><span class="pill">HTTP 201</span></div>
+      <div class="grid two"><div><img class="shot" src="../assets/scenario-first-day/flutter/waiter-floor.png" alt="Step 8 screenshot"><div class="caption">Waiter floor board before and during table service.</div></div><div><img class="shot" src="../assets/scenario-first-day/flutter/waiter-order-composer.png" alt="Step 8 screenshot"><div class="caption">Waiter order composer for T1 Garden with images, notes, and modifiers.</div></div></div>
+    </div>
+
+    <div class="step card">
+      <h3>Step 9. Waiter App - Order Composer</h3>
+      <div class="pill-row">
+        <span class="pill">Waiter</span>
+        <span class="pill">Karim Adel</span>
+      </div>
+      <p><strong>Action:</strong> Added dessert to the same open table and sent the full ticket to the kitchen display.</p>
+      <p><strong>Outcome:</strong> Kitchen now has a queued dine-in ticket with mains, drinks, and dessert for Mona Sami.</p>
+      <p><strong>Clicks and operator actions</strong></p>
+      <ul><li>Stay on the same waiter order screen.</li><li>Add one Sea Salt Brownie.</li><li>Click `Send to kitchen`.</li></ul>
+      <p class="caption">Order Id: <strong>244</strong></p>
+      <div class="grid"><div><img class="shot" src="../assets/scenario-first-day/flutter/waiter-order-composer.png" alt="Step 9 screenshot"><div class="caption">Open order composer used to add dessert and send the ticket to KDS.</div></div></div>
+    </div>
+
+    <div class="step card">
+      <h3>Step 10. Waiter App - Order Adjustments</h3>
+      <div class="pill-row">
+        <span class="pill">Waiter</span>
+        <span class="pill">Karim Adel</span>
+      </div>
+      <p><strong>Action:</strong> Reduced the latte quantity after the guests changed their mind, then refunded the brownie that the table no longer wanted.</p>
+      <p><strong>Outcome:</strong> The live order total was recalculated and the refunded dessert dropped out of active service.</p>
+      <p><strong>Clicks and operator actions</strong></p>
+      <ul><li>Use the order adjustment controls on the active ticket.</li><li>Reduce the latte quantity to one.</li><li>Refund the brownie with the return note.</li></ul>
+      <p class="caption">Changed Item Id: <strong>569</strong> | Refunded Item Id: <strong>571</strong></p>
+      <div class="grid"><div><img class="shot" src="../assets/scenario-first-day/flutter/waiter-order-composer.png" alt="Step 10 screenshot"><div class="caption">Same waiter order surface used for quantity reduction and refund handling.</div></div></div>
+    </div>
+
+    <div class="step card">
+      <h3>Step 11. Kitchen App - Downtown KDS</h3>
+      <div class="pill-row">
+        <span class="pill">Kitchen</span>
+        <span class="pill">Tamer Wael</span>
+      </div>
+      <p><strong>Action:</strong> Opened the KDS board, advanced the active items from queued to preparing, then to ready.</p>
+      <p><strong>Outcome:</strong> All non-refunded lines for Mona’s order became ready for cashier handoff.</p>
+      <p><strong>Clicks and operator actions</strong></p>
+      <ul><li>Open the kitchen KDS.</li><li>Tap the full ticket to move queued items into preparing.</li><li>Tap the ticket again to move items into ready.</li></ul>
+      <div class="pill-row"><span class="pill">API GET</span><span class="pill">/api/mobile/kds/orders</span><span class="pill">HTTP 200</span></div>
+      <div class="grid"><div><img class="shot" src="../assets/scenario-first-day/flutter/kitchen-board.png" alt="Step 11 screenshot"><div class="caption">Kitchen display with minimal, high-speed lane progression.</div></div></div>
+    </div>
+
+    <div class="step card">
+      <h3>Step 12. Cashier App - Settlement Queue</h3>
+      <div class="pill-row">
+        <span class="pill">Cashier</span>
+        <span class="pill">Salma Nasser</span>
+      </div>
+      <p><strong>Action:</strong> Pulled Mona’s ready order into cashier, confirmed the final total, and completed payment by card.</p>
+      <p><strong>Outcome:</strong> The order closed as paid, the table reopened, and Mona earned loyalty points for the completed visit.</p>
+      <p><strong>Clicks and operator actions</strong></p>
+      <ul><li>Open the cashier queue.</li><li>Select Mona Sami&#x27;s ready order.</li><li>Confirm the total and submit one card payment.</li></ul>
+      <div class="pill-row"><span class="pill">API POST</span><span class="pill">/api/mobile/orders/244/pay</span><span class="pill">HTTP 200</span></div>
+      <div class="grid"><div><img class="shot" src="../assets/scenario-first-day/flutter/cashier-settlement.png" alt="Step 12 screenshot"><div class="caption">Cashier settlement workspace for final payment collection.</div></div></div>
+    </div>
+
+    <div class="step card">
+      <h3>Step 13. Waiter + Kitchen + Cashier - T2 Window</h3>
+      <div class="pill-row">
+        <span class="pill">Service Team</span>
+        <span class="pill">Karim Adel / Tamer Wael / Salma Nasser</span>
+      </div>
+      <p><strong>Action:</strong> Processed a drinks-only dine-in visit from order creation through kitchen readiness and cash settlement.</p>
+      <p><strong>Outcome:</strong> The first branch now has both card and cash sales on the same trading day.</p>
+      <p><strong>Clicks and operator actions</strong></p>
+      <ul><li>Create a second dine-in drinks-only order in T2 Window.</li><li>Send it through kitchen readiness.</li><li>Collect payment in cash at cashier.</li></ul>
+      <p class="caption">Order Id: <strong>245</strong></p>
+      <div class="grid"><div><img class="shot" src="../assets/scenario-first-day/flutter/cashier-settlement.png" alt="Step 13 screenshot"><div class="caption">Cashier view reused for the drinks-only visit that closed in cash.</div></div></div>
+    </div>
+
+    <div class="step card">
+      <h3>Step 14. Waiter + Kitchen + Cashier - T3 Family to T4 Lounge</h3>
+      <div class="pill-row">
+        <span class="pill">Service Team</span>
+        <span class="pill">Karim Adel / Tamer Wael / Salma Nasser</span>
+      </div>
+      <p><strong>Action:</strong> Moved a family table mid-service from T3 Family to T4 Lounge, reduced a drink line, completed kitchen production, and settled the final bill with split payment.</p>
+      <p><strong>Outcome:</strong> The system preserved the audit trail of the table move while still allowing the visit to finish and pay successfully.</p>
+      <p><strong>Clicks and operator actions</strong></p>
+      <ul><li>Move the family table from `T3 Family` to `T4 Lounge`.</li><li>Adjust one drink line after the guests changed seats.</li><li>Finish kitchen production and settle with split payment.</li></ul>
+      <p class="caption">Source Order Id: <strong>246</strong> | Target Order Id: <strong>247</strong></p>
+      <div class="grid two"><div><img class="shot" src="../assets/scenario-first-day/flutter/waiter-floor.png" alt="Step 14 screenshot"><div class="caption">Floor board supporting table movement from T3 Family to T4 Lounge.</div></div><div><img class="shot" src="../assets/scenario-first-day/flutter/kitchen-board.png" alt="Step 14 screenshot"><div class="caption">Kitchen continued service after the table move without losing ticket continuity.</div></div></div>
+    </div>
+
+    <div class="step card">
+      <h3>Step 15. Multi-Branch Operations - New Cairo Studio + Maadi Terrace</h3>
+      <div class="pill-row">
+        <span class="pill">Branch Teams</span>
+        <span class="pill">Parallel service crews</span>
+      </div>
+      <p><strong>Action:</strong> Processed light paid service in the second and third branches so the owner can review branch comparison, payment mix, and cross-branch performance on the first day.</p>
+      <p><strong>Outcome:</strong> The restaurant now has paid activity across all branches for the end-of-day owner review.</p>
+      <p><strong>Clicks and operator actions</strong></p>
+      <ul><li>Run one paid order in New Cairo Studio.</li><li>Run one paid order in Maadi Terrace.</li><li>Leave both orders completed so branch comparison becomes visible to the owner.</li></ul>
+      
+      <div class="grid"><div><img class="shot" src="../assets/scenario-first-day/dashboard/owner-orders.png" alt="Step 15 screenshot"><div class="caption">Owner orders view showing paid activity across more than one branch.</div></div></div>
+    </div>
+
+    <div class="step card">
+      <h3>Step 16. Customer App - Orders &amp; Rewards</h3>
+      <div class="pill-row">
+        <span class="pill">Customer</span>
+        <span class="pill">Mona Sami</span>
+      </div>
+      <p><strong>Action:</strong> Reopened the customer app after payment to check visit history and loyalty.</p>
+      <p><strong>Outcome:</strong> The first dine-in visit now appears in order history with updated loyalty points and the correct restaurant and branch names.</p>
+      <p><strong>Clicks and operator actions</strong></p>
+      <ul><li>Open the customer app again after payment.</li><li>Review remembered visits, restaurant name, branch name, and rewards.</li></ul>
+      
+      <div class="grid two"><div><img class="shot" src="../assets/scenario-first-day/flutter/customer-home.png" alt="Step 16 screenshot"><div class="caption">Customer home after payment with loyalty and visit memory visible.</div></div><div><img class="shot" src="../assets/scenario-first-day/flutter/customer-restaurant-detail.png" alt="Step 16 screenshot"><div class="caption">Restaurant detail still linked to the same branches and menu visibility.</div></div></div>
+    </div>
+
+    <div class="step card">
+      <h3>Step 17. Web Dashboard - Owner Dashboard</h3>
+      <div class="pill-row">
+        <span class="pill">Owner</span>
+        <span class="pill">Rana Soliman</span>
+      </div>
+      <p><strong>Action:</strong> Opened the live dashboard at close of day to review revenue, orders, payment mix, branch performance, low stock, and recent orders.</p>
+      <p><strong>Outcome:</strong> The dashboard reflects the completed first day across three branches, including paid revenue, mixed tenders, loyalty activity, and low-stock warnings.</p>
+      <p><strong>Clicks and operator actions</strong></p>
+      <ul><li>Open the owner dashboard at close of day.</li><li>Review revenue, order volume, payment mix, branch ranking, recent orders, and low-stock alerts.</li><li>Open the detailed order modal for the flagship paid visit.</li></ul>
+      <div class="pill-row"><span class="pill">API GET</span><span class="pill">/api/dashboard/summary</span><span class="pill">HTTP 200</span></div>
+      <div class="grid two"><div><img class="shot" src="../assets/scenario-first-day/dashboard/owner-dashboard-end-of-day.png" alt="Step 17 screenshot"><div class="caption">End-of-day owner dashboard with revenue, branch ranking, payment mix, and stock alerts.</div></div><div><img class="shot" src="../assets/scenario-first-day/dashboard/owner-order-244-dialog.png" alt="Step 17 screenshot"><div class="caption">Detailed web dashboard order evidence for Mona Sami&#x27;s paid visit.</div></div></div>
+    </div>
+
+
+    <h2 class="section-title">End Of Day Outcome</h2>
+    <div class="grid two">
+      <div class="card">
+        <h3>Headline KPIs</h3>
+        <table><thead><tr><th>Metric</th><th>Value</th></tr></thead><tbody><tr><td>Revenue</td><td>EGP 1,932</td></tr><tr><td>Paid orders</td><td>5</td></tr><tr><td>Average ticket</td><td>EGP 386.4</td></tr><tr><td>Branches live</td><td>3</td></tr><tr><td>Products live</td><td>15</td></tr><tr><td>Employees active</td><td>10</td></tr><tr><td>Loyalty members</td><td>5</td></tr></tbody></table>
+      </div>
+      <div class="card">
+        <h3>Payment Mix</h3>
+        <table><thead><tr><th>Method</th><th>Total</th></tr></thead><tbody><tr><td>Card</td><td>EGP 1,464</td></tr><tr><td>Cash</td><td>EGP 468</td></tr></tbody></table>
+      </div>
+      <div class="card">
+        <h3>Branch Performance</h3>
+        <table><thead><tr><th>Branch</th><th>Location</th><th>Sales</th><th>Orders</th></tr></thead><tbody><tr><td>Downtown Flagship</td><td>Downtown Cairo</td><td>EGP 1,396</td><td>3</td></tr><tr><td>New Cairo Studio</td><td>New Cairo</td><td>EGP 268</td><td>1</td></tr><tr><td>Maadi Terrace</td><td>Maadi</td><td>EGP 268</td><td>1</td></tr></tbody></table>
+      </div>
+      <div class="card">
+        <h3>Top Products</h3>
+        <table><thead><tr><th>Product</th><th>Quantity</th></tr></thead><tbody><tr><td>Citrus Sparkling Cooler</td><td>3</td></tr><tr><td>Spanish Latte</td><td>3</td></tr><tr><td>Spanish Latte</td><td>2</td></tr><tr><td>Spanish Latte</td><td>2</td></tr><tr><td>Harissa Penne</td><td>2</td></tr></tbody></table>
+      </div>
+      <div class="card">
+        <h3>Low Stock Alerts</h3>
+        <table><thead><tr><th>Item</th><th>Stock</th><th>Unit</th></tr></thead><tbody><tr><td>Sea Salt Brownie</td><td>3</td><td>pcs</td></tr><tr><td>Sea Salt Brownie</td><td>3</td><td>pcs</td></tr><tr><td>Sea Salt Brownie</td><td>3</td><td>pcs</td></tr><tr><td>Cedar Chicken Bowl</td><td>7</td><td>pcs</td></tr><tr><td>Cedar Chicken Bowl</td><td>7</td><td>pcs</td></tr><tr><td>Cedar Chicken Bowl</td><td>7</td><td>pcs</td></tr></tbody></table>
+      </div>
+      <div class="card">
+        <h3>Key Validation Points</h3>
+        <ul>
+          <li>Platform admin successfully created a new restaurant, three branches, and all staff accounts.</li>
+          <li>Owner completed catalog, menu, table, inventory, and employee setup before service.</li>
+          <li>Waiter handled dine-in ordering, add-ons, quantity changes, refund handling, and table movement.</li>
+          <li>Kitchen processed KDS state changes from queued to ready.</li>
+          <li>Cashier completed both single-tender and mixed-tender payment flows.</li>
+          <li>Customer history and loyalty were updated after payment.</li>
+          <li>Owner dashboard reflected same-day revenue, branch comparison, payment mix, and stock alerts.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

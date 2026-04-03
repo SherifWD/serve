@@ -15,7 +15,7 @@ extension AppFlavorX on AppFlavor {
   String get title {
     switch (this) {
       case AppFlavor.suite:
-        return 'Restaurant Suite';
+        return 'Restaurant Staff App';
       case AppFlavor.customer:
         return 'Restaurant Customer App';
       case AppFlavor.waiter:
@@ -32,7 +32,7 @@ extension AppFlavorX on AppFlavor {
   String get shellLabel {
     switch (this) {
       case AppFlavor.suite:
-        return 'Multi-role suite';
+        return 'Staff suite';
       case AppFlavor.customer:
         return 'Customer';
       case AppFlavor.waiter:

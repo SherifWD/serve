@@ -78,7 +78,7 @@ public function setOrderItemStatus(Request $request, OrderItem $item)
     ]);
 
     // Must be same branch
-    if ($request->user()->branch_id !== $item->order->branch_id) {
+    if ((int) $request->user()->branch_id !== (int) $item->order->branch_id) {
         return response()->json(['error' => 'Unauthorized'], 403);
     }
 

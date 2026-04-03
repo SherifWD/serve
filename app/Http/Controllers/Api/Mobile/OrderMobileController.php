@@ -77,7 +77,7 @@ $orders->each(function($order){
     }
 public function sendToCashier(Request $request, Order $order)
 {
-    if ($request->user()->branch_id !== $order->branch_id) {
+    if ((int) $request->user()->branch_id !== (int) $order->branch_id) {
         return response()->json(['error' => 'Unauthorized'], 403);
     }
 
@@ -193,7 +193,7 @@ if ($order) {
         $customer = $this->resolveCustomer($data);
 
         // Branch guard (optional)
-        if ($request->user() && $table->branch_id !== $request->user()->branch_id) {
+        if ($request->user() && (int) $table->branch_id !== (int) $request->user()->branch_id) {
             return response()->json(['error' => 'Unauthorized'], 403);
         }
 
@@ -385,7 +385,7 @@ if ($order) {
 public function sendToKDS(Request $request, Order $order)
 {
     // Authz: same branch
-    if ($request->user()->branch_id !== $order->branch_id) {
+    if ((int) $request->user()->branch_id !== (int) $order->branch_id) {
         return response()->json(['error' => 'Unauthorized'], 403);
     }
 

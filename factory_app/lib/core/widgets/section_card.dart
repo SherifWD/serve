@@ -19,11 +19,24 @@ class SectionCard extends StatelessWidget {
           children: [
             Row(
               children: [
-                Text(title,
+                Expanded(
+                  child: Text(
+                    title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: theme.textTheme.titleMedium
-                        ?.copyWith(fontWeight: FontWeight.w700)),
-                const Spacer(),
-                if (trailing != null) trailing!,
+                        ?.copyWith(fontWeight: FontWeight.w700),
+                  ),
+                ),
+                if (trailing != null) ...[
+                  const SizedBox(width: 12),
+                  Flexible(
+                    child: Align(
+                      alignment: Alignment.centerRight,
+                      child: trailing!,
+                    ),
+                  ),
+                ],
               ],
             ),
             const SizedBox(height: 12),

@@ -1,6 +1,6 @@
-# Restaurant Suite Flutter Apps
+# Restaurant Suite Staff App
 
-This Flutter project now supports both a shared multi-role suite and dedicated role entrypoints.
+This Flutter project is the staff operations app. It supports a shared staff suite shell and dedicated role entrypoints for branch devices.
 
 ## Prerequisites
 
@@ -13,21 +13,24 @@ This Flutter project now supports both a shared multi-role suite and dedicated r
 /Applications/Flutter/flutter/bin/flutter pub get
 ```
 
-## Run The Multi-Role Suite
+## Run The Staff Suite
 
 ```bash
 /Applications/Flutter/flutter/bin/flutter run -t lib/main.dart
 ```
 
-## Run Dedicated Apps
+## Run Dedicated Staff Apps
 
 ```bash
-/Applications/Flutter/flutter/bin/flutter run -t lib/main_customer.dart
 /Applications/Flutter/flutter/bin/flutter run -t lib/main_waiter.dart
 /Applications/Flutter/flutter/bin/flutter run -t lib/main_cashier.dart
 /Applications/Flutter/flutter/bin/flutter run -t lib/main_kitchen.dart
 /Applications/Flutter/flutter/bin/flutter run -t lib/main_owner.dart
 ```
+
+## Customer App
+
+The customer experience now runs from the separate Flutter project at [customer_app](/Applications/XAMPP/xamppfiles/htdocs/pos_restaurant/customer_app).
 
 ## Override API Base URL
 

@@ -255,6 +255,13 @@ class _CashierWorkspacePageState extends ConsumerState<CashierWorkspacePage> {
                   0,
                   (sum, order) => sum + order.outstandingAmount,
                 ),
+                averageTicket: orders.isEmpty
+                    ? 0
+                    : orders.fold<double>(
+                          0,
+                          (sum, order) => sum + order.total,
+                        ) /
+                        orders.length,
               ),
               const SizedBox(height: 16),
               if (wide)
@@ -371,10 +378,12 @@ class _CashierHeader extends StatelessWidget {
   const _CashierHeader({
     required this.pendingCount,
     required this.dueNow,
+    required this.averageTicket,
   });
 
   final int pendingCount;
   final double dueNow;
+  final double averageTicket;
 
   @override
   Widget build(BuildContext context) {
@@ -391,9 +400,13 @@ class _CashierHeader extends StatelessWidget {
         ),
         borderRadius: BorderRadius.circular(30),
       ),
-      child: Row(
+      child: Wrap(
+        spacing: 14,
+        runSpacing: 14,
+        crossAxisAlignment: WrapCrossAlignment.center,
         children: [
-          Expanded(
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 520),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -406,21 +419,23 @@ class _CashierHeader extends StatelessWidget {
                 ),
                 const SizedBox(height: 8),
                 const Text(
-                  'Queue left, ticket center, payment controls right. Built for faster settlement and split tenders.',
+                  'Queue left, ticket center, payment panel right. Faster handoff, clearer tender balance, and less cashier hesitation under pressure.',
                   style: TextStyle(color: Colors.white70, height: 1.35),
                 ),
               ],
             ),
           ),
-          const SizedBox(width: 16),
           _HeaderMetric(
             label: 'Queue',
             value: '$pendingCount',
           ),
-          const SizedBox(width: 12),
           _HeaderMetric(
             label: 'Due now',
             value: currency.format(dueNow),
+          ),
+          _HeaderMetric(
+            label: 'Avg ticket',
+            value: currency.format(averageTicket),
           ),
         ],
       ),
@@ -506,9 +521,18 @@ class _QueuePanel extends StatelessWidget {
                             ],
                           ),
                           const SizedBox(height: 6),
-                          Text(
-                            order.tableName ?? 'Walk-in',
-                            style: const TextStyle(fontWeight: FontWeight.w700),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  order.tableName ?? 'Walk-in',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ),
+                              _InfoPill(label: order.orderType.toUpperCase()),
+                            ],
                           ),
                           const SizedBox(height: 4),
                           Text(
@@ -574,7 +598,8 @@ class _TicketPanel extends StatelessWidget {
               children: [
                 _InfoPill(label: 'Type: ${order.orderType}'),
                 _InfoPill(label: 'Paid: ${currency.format(order.paidAmount)}'),
-                _InfoPill(label: 'Due: ${currency.format(order.outstandingAmount)}'),
+                _InfoPill(
+                    label: 'Due: ${currency.format(order.outstandingAmount)}'),
               ],
             ),
             const SizedBox(height: 18),
@@ -695,6 +720,15 @@ class _PaymentPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final currency = NumberFormat.currency(symbol: 'EGP ');
+    final draftedTotal = drafts.fold<double>(
+      0,
+      (sum, draft) =>
+          sum + (double.tryParse(draft.amountController.text.trim()) ?? 0),
+    );
+    final remaining =
+        (order.outstandingAmount - draftedTotal).clamp(0, double.infinity);
+    final changeDue =
+        (draftedTotal - order.outstandingAmount).clamp(0, double.infinity);
 
     return Card(
       child: Padding(
@@ -729,6 +763,41 @@ class _PaymentPanel extends StatelessWidget {
                   ),
             ),
             const SizedBox(height: 14),
+            Row(
+              children: [
+                Expanded(
+                  child: _PaymentSummaryCard(
+                    label: 'Drafted',
+                    value: currency.format(draftedTotal),
+                    tone: const Color(0xFF0F766E),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: _PaymentSummaryCard(
+                    label: 'Remaining',
+                    value: currency.format(remaining),
+                    tone: const Color(0xFFE86C2F),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: _PaymentSummaryCard(
+                    label: 'Change',
+                    value: currency.format(changeDue),
+                    tone: const Color(0xFF1D4ED8),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Tender stack',
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w800,
+                  ),
+            ),
+            const SizedBox(height: 10),
             for (var i = 0; i < drafts.length; i++) ...[
               _TenderDraftCard(
                 draft: drafts[i],
@@ -756,6 +825,10 @@ class _PaymentPanel extends StatelessWidget {
                   label: '100',
                   onTap: () => onQuickAmount(100),
                 ),
+                _QuickPayButton(
+                  label: '200',
+                  onTap: () => onQuickAmount(200),
+                ),
               ],
             ),
             const SizedBox(height: 14),
@@ -770,11 +843,56 @@ class _PaymentPanel extends StatelessWidget {
               child: ElevatedButton.icon(
                 onPressed: onSubmit,
                 icon: const Icon(Icons.check_circle_outline),
-                label: const Text('Settle order'),
+                label: Text(
+                  remaining > 0 ? 'Record payment' : 'Settle order',
+                ),
               ),
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _PaymentSummaryCard extends StatelessWidget {
+  const _PaymentSummaryCard({
+    required this.label,
+    required this.value,
+    required this.tone,
+  });
+
+  final String label;
+  final String value;
+  final Color tone;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: tone.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: tone.withValues(alpha: 0.18)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: const Color(0xFF6B7280),
+                ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            value,
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w800,
+                  color: tone,
+                ),
+          ),
+        ],
       ),
     );
   }
@@ -807,8 +925,7 @@ class _TenderDraftCard extends StatelessWidget {
           color: selected ? const Color(0xFFFFF0E4) : const Color(0xFFF7F3EE),
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color:
-                selected ? const Color(0xFFE86C2F) : Colors.transparent,
+            color: selected ? const Color(0xFFE86C2F) : Colors.transparent,
           ),
         ),
         child: Column(
@@ -825,8 +942,7 @@ class _TenderDraftCard extends StatelessWidget {
                     items: const [
                       DropdownMenuItem(value: 'cash', child: Text('Cash')),
                       DropdownMenuItem(value: 'card', child: Text('Card')),
-                      DropdownMenuItem(
-                          value: 'wallet', child: Text('Wallet')),
+                      DropdownMenuItem(value: 'wallet', child: Text('Wallet')),
                     ],
                     onChanged: (value) {
                       if (value != null) onMethodChanged(value);
