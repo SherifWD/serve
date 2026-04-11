@@ -474,7 +474,8 @@ class _FakeSuiteRepository extends SuiteRepository {
   @override
   Future<CustomerOrder> fetchCustomerOrderDetail(int orderId) async {
     final orders = (await fetchCustomerOrders()).items;
-    return orders.firstWhere((item) => item.id == orderId, orElse: () => orders.first);
+    return orders.firstWhere((item) => item.id == orderId,
+        orElse: () => orders.first);
   }
 
   @override
@@ -644,7 +645,12 @@ class _FakeSuiteRepository extends SuiteRepository {
   }
 
   @override
-  Future<OwnerSummary> fetchOwnerSummary({int? branchId}) async {
+  Future<OwnerSummary> fetchOwnerSummary({
+    int? branchId,
+    String? preset,
+    String? startDate,
+    String? endDate,
+  }) async {
     return const OwnerSummary(
       totalSales: 15420,
       ordersCount: 126,

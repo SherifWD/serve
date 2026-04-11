@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import 'package:printing/printing.dart';
 
 import '../../../core/models/app_models.dart';
 import '../../../core/widgets/state_views.dart';
@@ -15,11 +16,98 @@ class OwnerWorkspacePage extends ConsumerStatefulWidget {
 
 class _OwnerWorkspacePageState extends ConsumerState<OwnerWorkspacePage> {
   late Future<OwnerSummary> _future;
+  _OwnerDatePreset _datePreset = _OwnerDatePreset.today;
+  late DateTime _startDate;
+  late DateTime _endDate;
 
   @override
   void initState() {
     super.initState();
-    _future = ref.read(suiteRepositoryProvider).fetchOwnerSummary();
+    final today = DateUtils.dateOnly(DateTime.now());
+    _startDate = today;
+    _endDate = today;
+    _future = _loadSummary();
+  }
+
+  Future<OwnerSummary> _loadSummary() {
+    return ref.read(suiteRepositoryProvider).fetchOwnerSummary(
+          preset: _datePreset.apiValue,
+          startDate: _datePreset == _OwnerDatePreset.custom
+              ? _apiDate(_startDate)
+              : null,
+          endDate: _datePreset == _OwnerDatePreset.custom
+              ? _apiDate(_endDate)
+              : null,
+        );
+  }
+
+  String _apiDate(DateTime date) => DateFormat('yyyy-MM-dd').format(date);
+
+  void _setPreset(_OwnerDatePreset preset) {
+    final today = DateUtils.dateOnly(DateTime.now());
+    setState(() {
+      _datePreset = preset;
+      switch (preset) {
+        case _OwnerDatePreset.today:
+          _startDate = today;
+          _endDate = today;
+        case _OwnerDatePreset.week:
+          _startDate = today.subtract(const Duration(days: 6));
+          _endDate = today;
+        case _OwnerDatePreset.month:
+          _startDate = DateTime(today.year, today.month);
+          _endDate = today;
+        case _OwnerDatePreset.custom:
+          break;
+      }
+      _future = _loadSummary();
+    });
+  }
+
+  Future<void> _pickDate({required bool start}) async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: start ? _startDate : _endDate,
+      firstDate: DateTime(2020),
+      lastDate: DateTime.now().add(const Duration(days: 1)),
+    );
+
+    if (picked == null) return;
+
+    setState(() {
+      _datePreset = _OwnerDatePreset.custom;
+      if (start) {
+        _startDate = DateUtils.dateOnly(picked);
+        if (_startDate.isAfter(_endDate)) _endDate = _startDate;
+      } else {
+        _endDate = DateUtils.dateOnly(picked);
+        if (_endDate.isBefore(_startDate)) _startDate = _endDate;
+      }
+      _future = _loadSummary();
+    });
+  }
+
+  Future<void> _printOwnerReceipt() async {
+    try {
+      final document =
+          await ref.read(suiteRepositoryProvider).generateOwnerReceipt(
+                preset: _datePreset.apiValue,
+                startDate: _datePreset == _OwnerDatePreset.custom
+                    ? _apiDate(_startDate)
+                    : null,
+                endDate: _datePreset == _OwnerDatePreset.custom
+                    ? _apiDate(_endDate)
+                    : null,
+              );
+      await Printing.layoutPdf(
+        name: document.filename,
+        onLayout: (_) async => document.bytes,
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(e.toString())));
+    }
   }
 
   @override
@@ -36,7 +124,7 @@ class _OwnerWorkspacePageState extends ConsumerState<OwnerWorkspacePage> {
           return ErrorView(
             message: snapshot.error.toString(),
             onRetry: () => setState(() {
-              _future = ref.read(suiteRepositoryProvider).fetchOwnerSummary();
+              _future = _loadSummary();
             }),
           );
         }
@@ -56,7 +144,7 @@ class _OwnerWorkspacePageState extends ConsumerState<OwnerWorkspacePage> {
           child: RefreshIndicator(
             onRefresh: () async {
               setState(() {
-                _future = ref.read(suiteRepositoryProvider).fetchOwnerSummary();
+                _future = _loadSummary();
               });
               await _future;
             },
@@ -64,6 +152,16 @@ class _OwnerWorkspacePageState extends ConsumerState<OwnerWorkspacePage> {
               padding: const EdgeInsets.all(16),
               children: [
                 _OwnerHero(summary: summary, currency: currency),
+                const SizedBox(height: 16),
+                _OwnerDateFilterBar(
+                  preset: _datePreset,
+                  startDate: _startDate,
+                  endDate: _endDate,
+                  onPresetChanged: _setPreset,
+                  onPickStart: () => _pickDate(start: true),
+                  onPickEnd: () => _pickDate(start: false),
+                  onPrintReceipt: _printOwnerReceipt,
+                ),
                 const SizedBox(height: 16),
                 Wrap(
                   spacing: 14,
@@ -105,6 +203,13 @@ class _OwnerWorkspacePageState extends ConsumerState<OwnerWorkspacePage> {
                       icon: Icons.point_of_sale_outlined,
                     ),
                     _OwnerKpiCard(
+                      title: 'KDS backlog',
+                      value: '${summary.kdsBacklog}',
+                      caption: 'Queued or cooking',
+                      color: const Color(0xFF22D3EE),
+                      icon: Icons.restaurant_menu_outlined,
+                    ),
+                    _OwnerKpiCard(
                       title: 'Loyalty',
                       value: '${summary.loyaltyMembers}',
                       caption: 'Tracked guests',
@@ -114,32 +219,10 @@ class _OwnerWorkspacePageState extends ConsumerState<OwnerWorkspacePage> {
                   ],
                 ),
                 const SizedBox(height: 16),
-                if (wide)
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(
-                        flex: 6,
-                        child: _BranchPerformancePanel(
-                          branches: summary.branchPerformance,
-                          currency: currency,
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        flex: 4,
-                        child: _LiveOpsPanel(summary: summary),
-                      ),
-                    ],
-                  )
-                else ...[
-                  _BranchPerformancePanel(
-                    branches: summary.branchPerformance,
-                    currency: currency,
-                  ),
-                  const SizedBox(height: 16),
-                  _LiveOpsPanel(summary: summary),
-                ],
+                _BranchPerformancePanel(
+                  branches: summary.branchPerformance,
+                  currency: currency,
+                ),
                 const SizedBox(height: 16),
                 if (wide)
                   Row(
@@ -180,6 +263,105 @@ class _OwnerWorkspacePageState extends ConsumerState<OwnerWorkspacePage> {
           ),
         );
       },
+    );
+  }
+}
+
+enum _OwnerDatePreset {
+  today,
+  week,
+  month,
+  custom;
+
+  String get apiValue {
+    switch (this) {
+      case _OwnerDatePreset.today:
+        return 'today';
+      case _OwnerDatePreset.week:
+        return 'week';
+      case _OwnerDatePreset.month:
+        return 'month';
+      case _OwnerDatePreset.custom:
+        return 'custom';
+    }
+  }
+
+  String get label {
+    switch (this) {
+      case _OwnerDatePreset.today:
+        return 'Today';
+      case _OwnerDatePreset.week:
+        return 'Week';
+      case _OwnerDatePreset.month:
+        return 'Month';
+      case _OwnerDatePreset.custom:
+        return 'From-to';
+    }
+  }
+}
+
+class _OwnerDateFilterBar extends StatelessWidget {
+  const _OwnerDateFilterBar({
+    required this.preset,
+    required this.startDate,
+    required this.endDate,
+    required this.onPresetChanged,
+    required this.onPickStart,
+    required this.onPickEnd,
+    required this.onPrintReceipt,
+  });
+
+  final _OwnerDatePreset preset;
+  final DateTime startDate;
+  final DateTime endDate;
+  final ValueChanged<_OwnerDatePreset> onPresetChanged;
+  final VoidCallback onPickStart;
+  final VoidCallback onPickEnd;
+  final Future<void> Function() onPrintReceipt;
+
+  @override
+  Widget build(BuildContext context) {
+    final formatter = DateFormat('MMM d, yyyy');
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFF111827),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
+      ),
+      child: Wrap(
+        spacing: 12,
+        runSpacing: 12,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        children: [
+          for (final option in _OwnerDatePreset.values)
+            ChoiceChip(
+              label: Text(option.label),
+              selected: preset == option,
+              onSelected: (_) => onPresetChanged(option),
+            ),
+          OutlinedButton.icon(
+            onPressed: onPickStart,
+            icon: const Icon(Icons.calendar_today_outlined),
+            label: Text(preset == _OwnerDatePreset.custom
+                ? 'From ${formatter.format(startDate)}'
+                : 'From date'),
+          ),
+          OutlinedButton.icon(
+            onPressed: onPickEnd,
+            icon: const Icon(Icons.event_outlined),
+            label: Text(preset == _OwnerDatePreset.custom
+                ? 'To ${formatter.format(endDate)}'
+                : 'To date'),
+          ),
+          FilledButton.icon(
+            onPressed: onPrintReceipt,
+            icon: const Icon(Icons.print_outlined),
+            label: const Text('Print date receipt'),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -230,15 +412,12 @@ class _OwnerHero extends StatelessWidget {
                   children: [
                     _HeroActionChip(
                       icon: Icons.store_mall_directory_outlined,
-                      label: '${summary.branchPerformance.length} branches live',
+                      label:
+                          '${summary.branchPerformance.length} branches live',
                     ),
                     _HeroActionChip(
                       icon: Icons.inventory_2_outlined,
                       label: '${summary.lowStockItems.length} stock alerts',
-                    ),
-                    _HeroActionChip(
-                      icon: Icons.sync_alt_outlined,
-                      label: '${summary.kdsBacklog} KDS backlog',
                     ),
                   ],
                 ),
@@ -257,7 +436,7 @@ class _OwnerHero extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  'Today at a glance',
+                  'Period at a glance',
                   style: TextStyle(color: Colors.white70),
                 ),
                 const SizedBox(height: 10),
@@ -375,7 +554,8 @@ class _BranchPerformancePanel extends StatelessWidget {
                             width: 38,
                             height: 38,
                             decoration: BoxDecoration(
-                              color: const Color(0xFFE86C2F).withValues(alpha: 0.2),
+                              color: const Color(0xFFE86C2F)
+                                  .withValues(alpha: 0.2),
                               borderRadius: BorderRadius.circular(14),
                             ),
                             alignment: Alignment.center,
@@ -433,41 +613,6 @@ class _BranchPerformancePanel extends StatelessWidget {
                   ),
               ],
             ),
-    );
-  }
-}
-
-class _LiveOpsPanel extends StatelessWidget {
-  const _LiveOpsPanel({required this.summary});
-
-  final OwnerSummary summary;
-
-  @override
-  Widget build(BuildContext context) {
-    return _OwnerPanel(
-      title: 'Live operations',
-      subtitle: 'The pressure points that need attention right now',
-      child: Column(
-        children: [
-          _LiveOpsRow(
-            title: 'Cashier queue',
-            value: '${summary.cashierQueue}',
-            color: const Color(0xFFF97316),
-          ),
-          const SizedBox(height: 12),
-          _LiveOpsRow(
-            title: 'KDS backlog',
-            value: '${summary.kdsBacklog}',
-            color: const Color(0xFF38BDF8),
-          ),
-          const SizedBox(height: 12),
-          _LiveOpsRow(
-            title: 'Active tables',
-            value: '${summary.activeTables}',
-            color: const Color(0xFF34D399),
-          ),
-        ],
-      ),
     );
   }
 }
@@ -573,9 +718,33 @@ class _StockAlertPanel extends StatelessWidget {
                       Icons.warning_amber_outlined,
                       color: Color(0xFFF97316),
                     ),
-                    title: Text(
-                      item['name']?.toString() ?? 'Ingredient',
-                      style: const TextStyle(color: Colors.white),
+                    title: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          item['name']?.toString() ?? 'Ingredient',
+                          style: const TextStyle(color: Colors.white),
+                        ),
+                        const SizedBox(height: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.08),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            item['branch_name']?.toString() ?? 'Branch not set',
+                            style: const TextStyle(
+                              color: Colors.white70,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                     trailing: Text(
                       '${item['stock']} ${item['unit'] ?? ''}',
@@ -655,48 +824,8 @@ class _HeroActionChip extends StatelessWidget {
           const SizedBox(width: 8),
           Text(
             label,
-            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _LiveOpsRow extends StatelessWidget {
-  const _LiveOpsRow({
-    required this.title,
-    required this.value,
-    required this.color,
-  });
-
-  final String title;
-  final String value;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.04),
-        borderRadius: BorderRadius.circular(18),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(
-              title,
-              style: const TextStyle(color: Colors.white70),
-            ),
-          ),
-          Text(
-            value,
-            style: TextStyle(
-              color: color,
-              fontWeight: FontWeight.w900,
-              fontSize: 20,
-            ),
+            style: const TextStyle(
+                color: Colors.white, fontWeight: FontWeight.w700),
           ),
         ],
       ),

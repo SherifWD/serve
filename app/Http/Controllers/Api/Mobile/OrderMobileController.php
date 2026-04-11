@@ -622,12 +622,28 @@ public function receipt(Request $request, $id)
     }
 
     $scope = $request->input('scope', 'full');
-    if (!in_array($scope, ['full', 'paid', 'unprinted'], true)) {
+    if (!in_array($scope, ['full', 'paid', 'unprinted', 'last'], true)) {
         return response()->json(['error' => 'Invalid receipt scope.'], 422);
     }
 
     $itemIds = $this->parseItemIds($request->input('item_ids'));
     $payment = null;
+    $existingReceipt = null;
+
+    if ($scope === 'last' || $request->boolean('reprint')) {
+        $existingReceipt = Receipt::query()
+            ->where('order_id', $order->id)
+            ->latest('id')
+            ->first();
+
+        if (!$existingReceipt) {
+            return response()->json(['error' => 'No previous receipt found for this order.'], 404);
+        }
+
+        $content = json_decode((string) $existingReceipt->content, true);
+        $itemIds = $this->parseItemIds($content['item_ids'] ?? null);
+        $scope = $content['scope'] ?? 'full';
+    }
 
     if ($request->filled('payment_id')) {
         $payment = $order->payments->firstWhere('id', (int) $request->input('payment_id'));
@@ -683,18 +699,18 @@ public function receipt(Request $request, $id)
     }
 
     $receiptTotal = round((float) $receiptItems->sum('total'), 2);
-    $receipt = Receipt::create([
-        'order_id' => $order->id,
-        'receipt_number' => $this->nextReceiptNumber($order),
-        'content' => json_encode([
+    $receipt = $existingReceipt ?? Receipt::create([
             'order_id' => $order->id,
-            'scope' => $scope,
-            'payment_id' => $payment?->id,
-            'item_ids' => $receiptItems->pluck('id')->values()->all(),
-            'total' => $receiptTotal,
-            'created_at' => now()->toISOString(),
-        ]),
-    ]);
+            'receipt_number' => $this->nextReceiptNumber($order),
+            'content' => json_encode([
+                'order_id' => $order->id,
+                'scope' => $scope,
+                'payment_id' => $payment?->id,
+                'item_ids' => $receiptItems->pluck('id')->values()->all(),
+                'total' => $receiptTotal,
+                'created_at' => now()->toISOString(),
+            ]),
+        ]);
 
     $pdf = \PDF::loadView('receipts.order', compact('order', 'receipt', 'receiptItems', 'receiptTotal', 'scope'));
     return $pdf->download("receipt_{$receipt->receipt_number}.pdf");

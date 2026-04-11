@@ -15,6 +15,7 @@ use App\Models\Employee;
 use App\Models\InventoryItem;
 use App\Models\Table;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Carbon;
 
 class OwnerDashboardController extends Controller
 {
@@ -25,6 +26,9 @@ class OwnerDashboardController extends Controller
         $restaurantId = $viewer->isPlatformAdmin()
             ? $request->input('restaurant_id')
             : $viewer?->restaurant_id;
+        $dateRange = $this->resolveDateRange($request);
+        $dateStart = $dateRange['start'];
+        $dateEnd = $dateRange['end'];
         $paidScope = function ($query) {
             $query->where(function ($inner) {
                 $inner->where('payment_status', 'paid')
@@ -36,12 +40,14 @@ class OwnerDashboardController extends Controller
         $totalSalesQuery = Order::query()->where($paidScope);
         if ($restaurantId) $totalSalesQuery->whereHas('branch', fn ($q) => $q->where('restaurant_id', $restaurantId));
         if ($branchId) $totalSalesQuery->where('branch_id', $branchId);
+        $this->applyOrderDateRange($totalSalesQuery, $dateStart, $dateEnd);
         $totalSales = $totalSalesQuery->sum('total');
 
         // Total Orders (paid only)
         $ordersQuery = Order::query()->where($paidScope);
         if ($restaurantId) $ordersQuery->whereHas('branch', fn ($q) => $q->where('restaurant_id', $restaurantId));
         if ($branchId) $ordersQuery->where('branch_id', $branchId);
+        $this->applyOrderDateRange($ordersQuery, $dateStart, $dateEnd);
         $totalOrders = $ordersQuery->count();
 
         // Average Order Value
@@ -68,7 +74,8 @@ class OwnerDashboardController extends Controller
             ->where(function ($query) {
                 $query->where('orders.payment_status', 'paid')
                     ->orWhere('orders.status', 'paid');
-            });
+            })
+            ->whereBetween('orders.order_date', [$dateStart->toDateString(), $dateEnd->toDateString()]);
         if ($restaurantId) $topProductsQuery->join('branches', 'branches.id', '=', 'orders.branch_id')
             ->where('branches.restaurant_id', $restaurantId);
         if ($branchId) $topProductsQuery->where('orders.branch_id', $branchId);
@@ -87,7 +94,8 @@ class OwnerDashboardController extends Controller
 
         // Low Inventory Ingredients (< 10 in stock)
         $lowInventoryQuery = InventoryItem::query()
-            ->select('id', 'name', 'quantity', 'unit', 'min_stock')
+            ->select('id', 'branch_id', 'name', 'quantity', 'unit', 'min_stock')
+            ->with('branch:id,name')
             ->whereColumn('quantity', '<=', 'min_stock')
             ->orderBy('quantity', 'asc');
         if ($restaurantId) {
@@ -102,6 +110,8 @@ class OwnerDashboardController extends Controller
                 'name' => $item->name,
                 'stock' => (float) $item->quantity,
                 'unit' => $item->unit,
+                'branch_id' => $item->branch_id,
+                'branch_name' => $item->branch?->name,
             ]);
 
         // Recent Orders
@@ -109,6 +119,7 @@ class OwnerDashboardController extends Controller
             ->orderByDesc('created_at');
         if ($restaurantId) $recentOrdersQuery->whereHas('branch', fn ($q) => $q->where('restaurant_id', $restaurantId));
         if ($branchId) $recentOrdersQuery->where('branch_id', $branchId);
+        $this->applyOrderDateRange($recentOrdersQuery, $dateStart, $dateEnd);
         $recentOrders = $recentOrdersQuery->limit(5)->get(['id', 'branch_id', 'total', 'status', 'created_at']);
 
         $activeTablesQuery = Table::query();
@@ -134,7 +145,8 @@ class OwnerDashboardController extends Controller
             ->where(function ($query) {
                 $query->where('orders.payment_status', 'paid')
                     ->orWhere('orders.status', 'paid');
-            });
+            })
+            ->whereBetween('orders.order_date', [$dateStart->toDateString(), $dateEnd->toDateString()]);
         if ($restaurantId) $paymentMixQuery->join('branches', 'branches.id', '=', 'orders.branch_id')
             ->where('branches.restaurant_id', $restaurantId);
         if ($branchId) $paymentMixQuery->where('orders.branch_id', $branchId);
@@ -149,11 +161,13 @@ class OwnerDashboardController extends Controller
 
         $branchPerformanceQuery = Branch::query()
             ->when($restaurantId, fn ($q) => $q->where('restaurant_id', $restaurantId))
-            ->withSum(['orders as paid_sales' => function ($query) use ($paidScope) {
+            ->withSum(['orders as paid_sales' => function ($query) use ($paidScope, $dateStart, $dateEnd) {
                 $query->where($paidScope);
+                $this->applyOrderDateRange($query, $dateStart, $dateEnd);
             }], 'total')
-            ->withCount(['orders as paid_orders_count' => function ($query) use ($paidScope) {
+            ->withCount(['orders as paid_orders_count' => function ($query) use ($paidScope, $dateStart, $dateEnd) {
                 $query->where($paidScope);
+                $this->applyOrderDateRange($query, $dateStart, $dateEnd);
             }]);
         if ($branchId) $branchPerformanceQuery->where('id', $branchId);
         $branchPerformance = $branchPerformanceQuery->orderByDesc('paid_sales')->limit(6)->get()
@@ -202,6 +216,106 @@ class OwnerDashboardController extends Controller
             'top_products'  => $topProducts,
             'low_stock_items' => $lowInventory,
             'recent_orders' => $recentOrders,
+            'date_range' => [
+                'preset' => $dateRange['preset'],
+                'start_date' => $dateStart->toDateString(),
+                'end_date' => $dateEnd->toDateString(),
+            ],
         ]);
+    }
+
+    public function receipt(Request $request)
+    {
+        $viewer = $request->user();
+        $branchId = $request->input('branch_id');
+        $restaurantId = $viewer->isPlatformAdmin()
+            ? $request->input('restaurant_id')
+            : $viewer?->restaurant_id;
+        $dateRange = $this->resolveDateRange($request);
+        $dateStart = $dateRange['start'];
+        $dateEnd = $dateRange['end'];
+
+        $orders = Order::query()
+            ->with(['branch.restaurant', 'table', 'customer', 'items.product', 'items.modifiers.modifier', 'payments'])
+            ->where(function ($query) {
+                $query->where('payment_status', 'paid')
+                    ->orWhere('status', 'paid');
+            })
+            ->whereBetween('order_date', [$dateStart->toDateString(), $dateEnd->toDateString()])
+            ->when($restaurantId, fn ($query) => $query->whereHas('branch', fn ($branchQuery) => $branchQuery->where('restaurant_id', $restaurantId)))
+            ->when($branchId, fn ($query) => $query->where('branch_id', $branchId))
+            ->orderBy('order_date')
+            ->orderBy('id')
+            ->get();
+
+        $productSummary = $orders
+            ->flatMap(fn ($order) => $order->items->map(fn ($item) => [
+                'product_id' => $item->product_id,
+                'name' => $item->product?->name ?? 'Unknown',
+                'quantity' => (int) $item->quantity,
+                'total' => (float) $item->total,
+                'returned' => in_array($item->status, ['returned', 'refunded'], true) ? (int) $item->quantity : 0,
+            ]))
+            ->groupBy('product_id')
+            ->map(function ($items) {
+                return [
+                    'name' => $items->first()['name'],
+                    'quantity' => $items->sum('quantity'),
+                    'returned' => $items->sum('returned'),
+                    'total' => round($items->sum('total'), 2),
+                ];
+            })
+            ->sortByDesc('total')
+            ->values();
+
+        $report = [
+            'start_date' => $dateStart->toDateString(),
+            'end_date' => $dateEnd->toDateString(),
+            'order_count' => $orders->count(),
+            'total_sales' => round((float) $orders->sum('total'), 2),
+            'paid_amount' => round((float) $orders->flatMap(fn ($order) => $order->payments)->sum('amount'), 2),
+            'product_summary' => $productSummary,
+        ];
+
+        @ini_set('memory_limit', '512M');
+
+        $pdf = \PDF::loadView('receipts.owner-period', compact('orders', 'report'));
+
+        return $pdf->download("owner_receipt_{$report['start_date']}_{$report['end_date']}.pdf");
+    }
+
+    private function resolveDateRange(Request $request): array
+    {
+        $preset = strtolower((string) $request->input('preset', 'today'));
+        $startInput = $request->input('start_date', $request->input('from'));
+        $endInput = $request->input('end_date', $request->input('to'));
+
+        if ($startInput || $endInput) {
+            $start = $startInput ? Carbon::parse($startInput) : Carbon::today();
+            $end = $endInput ? Carbon::parse($endInput) : $start;
+            $preset = 'custom';
+        } else {
+            $today = Carbon::today();
+            [$start, $end] = match ($preset) {
+                'week' => [$today->copy()->subDays(6), $today],
+                'month' => [$today->copy()->startOfMonth(), $today],
+                default => [$today, $today],
+            };
+        }
+
+        if ($end->lt($start)) {
+            [$start, $end] = [$end, $start];
+        }
+
+        return [
+            'preset' => $preset,
+            'start' => $start->startOfDay(),
+            'end' => $end->endOfDay(),
+        ];
+    }
+
+    private function applyOrderDateRange($query, Carbon $start, Carbon $end): void
+    {
+        $query->whereBetween('order_date', [$start->toDateString(), $end->toDateString()]);
     }
 }

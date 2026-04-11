@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import 'package:printing/printing.dart';
 
 import '../../../core/models/app_models.dart';
 import '../../../core/widgets/state_views.dart';
@@ -70,11 +71,30 @@ class _CashierWorkspacePageState extends ConsumerState<CashierWorkspacePage> {
 
   double _paymentTargetAmount(StaffOrderSnapshot? order) {
     if (order == null) return 0;
-    if (_selectedItemIds.isEmpty) return order.outstandingAmount;
+    final activeUnpaidItems = order.items
+        .where((item) => !item.isVoided)
+        .fold<double>(0, (sum, item) => sum + item.unpaidAmount);
 
-    return order.items
+    if (_selectedItemIds.isEmpty) {
+      if (order.outstandingAmount > 0) return order.outstandingAmount;
+      if (order.status == 'cashier' && order.paymentStatus != 'paid') {
+        return activeUnpaidItems > 0 ? activeUnpaidItems : order.total;
+      }
+      return 0;
+    }
+
+    final selectedUnpaid = order.items
         .where((item) => _selectedItemIds.contains(item.id))
         .fold<double>(0, (sum, item) => sum + item.unpaidAmount);
+
+    if (selectedUnpaid > 0) return selectedUnpaid;
+
+    return order.items
+        .where((item) =>
+            _selectedItemIds.contains(item.id) &&
+            !item.isVoided &&
+            !item.isPaid)
+        .fold<double>(0, (sum, item) => sum + item.total);
   }
 
   void _resetDrafts() {
@@ -210,18 +230,47 @@ class _CashierWorkspacePageState extends ConsumerState<CashierWorkspacePage> {
     if (order == null) return;
 
     try {
-      await ref.read(suiteRepositoryProvider).generateReceipt(
+      final document = await ref.read(suiteRepositoryProvider).generateReceipt(
             orderId: order.id,
             itemIds: _selectedItemIds.toList(growable: false),
             scope: _selectedItemIds.isEmpty ? 'full' : 'paid',
           );
+      await Printing.layoutPdf(
+        name: document.filename,
+        onLayout: (_) async => document.bytes,
+      );
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(_selectedItemIds.isEmpty
-              ? 'Receipt generated'
-              : 'Selected-item receipt generated'),
+              ? 'Print dialog opened for the full receipt'
+              : 'Print dialog opened for the selected items'),
         ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(e.toString())));
+    }
+  }
+
+  Future<void> _reprintLastReceipt() async {
+    final order = _selectedOrder;
+    if (order == null) return;
+
+    try {
+      final document = await ref.read(suiteRepositoryProvider).generateReceipt(
+            orderId: order.id,
+            scope: 'last',
+            reprint: true,
+          );
+      await Printing.layoutPdf(
+        name: document.filename,
+        onLayout: (_) async => document.bytes,
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Print dialog opened for last receipt')),
       );
     } catch (e) {
       if (!mounted) return;
@@ -353,6 +402,7 @@ class _CashierWorkspacePageState extends ConsumerState<CashierWorkspacePage> {
                         selectedItemIds: _selectedItemIds,
                         onItemSelectionChanged: _toggleItemSelection,
                         onReceipt: _pullReceiptForSelection,
+                        onReprint: _reprintLastReceipt,
                       ),
                     ),
                     const SizedBox(width: 16),
@@ -398,6 +448,7 @@ class _CashierWorkspacePageState extends ConsumerState<CashierWorkspacePage> {
                             selectedItemIds: _selectedItemIds,
                             onItemSelectionChanged: _toggleItemSelection,
                             onReceipt: _pullReceiptForSelection,
+                            onReprint: _reprintLastReceipt,
                           ),
                         ),
                         const SizedBox(width: 16),
@@ -439,6 +490,7 @@ class _CashierWorkspacePageState extends ConsumerState<CashierWorkspacePage> {
                   selectedItemIds: _selectedItemIds,
                   onItemSelectionChanged: _toggleItemSelection,
                   onReceipt: _pullReceiptForSelection,
+                  onReprint: _reprintLastReceipt,
                 ),
                 const SizedBox(height: 16),
                 _PaymentPanel(
@@ -651,12 +703,14 @@ class _TicketPanel extends StatelessWidget {
     required this.selectedItemIds,
     required this.onItemSelectionChanged,
     required this.onReceipt,
+    required this.onReprint,
   });
 
   final StaffOrderSnapshot order;
   final Set<int> selectedItemIds;
   final void Function(OrderItemLine item, bool selected) onItemSelectionChanged;
   final Future<void> Function() onReceipt;
+  final Future<void> Function() onReprint;
 
   @override
   Widget build(BuildContext context) {
@@ -694,12 +748,24 @@ class _TicketPanel extends StatelessWidget {
                     _TicketStatusBadge(
                         label: order.paymentStatus.toUpperCase()),
                     const SizedBox(height: 8),
-                    OutlinedButton.icon(
-                      onPressed: onReceipt,
-                      icon: const Icon(Icons.receipt_long_outlined),
-                      label: Text(selectedItemIds.isEmpty
-                          ? 'Receipt'
-                          : 'Receipt selected'),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      alignment: WrapAlignment.end,
+                      children: [
+                        FilledButton.tonalIcon(
+                          onPressed: onReceipt,
+                          icon: const Icon(Icons.print_outlined),
+                          label: Text(selectedItemIds.isEmpty
+                              ? 'Print receipt'
+                              : 'Print selected'),
+                        ),
+                        OutlinedButton.icon(
+                          onPressed: onReprint,
+                          icon: const Icon(Icons.replay_outlined),
+                          label: const Text('Reprint last'),
+                        ),
+                      ],
                     ),
                   ],
                 ),

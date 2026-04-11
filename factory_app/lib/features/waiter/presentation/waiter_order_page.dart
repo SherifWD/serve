@@ -753,7 +753,7 @@ Color _kitchenStatusColor(String? status) {
   }
 }
 
-class _MenuComposerCard extends StatelessWidget {
+class _MenuComposerCard extends StatefulWidget {
   const _MenuComposerCard({
     required this.menu,
     required this.modifiers,
@@ -763,6 +763,28 @@ class _MenuComposerCard extends StatelessWidget {
   final List<MenuCategoryData> menu;
   final List<ModifierData> modifiers;
   final void Function(MenuProduct product, MenuCategoryData category) onAdd;
+
+  @override
+  State<_MenuComposerCard> createState() => _MenuComposerCardState();
+}
+
+class _MenuComposerCardState extends State<_MenuComposerCard> {
+  int? _openCategoryId;
+
+  @override
+  void initState() {
+    super.initState();
+    _openCategoryId = widget.menu.isEmpty ? null : widget.menu.first.id;
+  }
+
+  @override
+  void didUpdateWidget(covariant _MenuComposerCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.menu.any((category) => category.id == _openCategoryId)) {
+      return;
+    }
+    _openCategoryId = widget.menu.isEmpty ? null : widget.menu.first.id;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -781,58 +803,96 @@ class _MenuComposerCard extends StatelessWidget {
             ),
             const SizedBox(height: 4),
             const Text(
-              'Visual dish cards help the waiter recognize items faster while ordering at the table.',
+              'Open one category at a time for a cleaner table-side menu.',
             ),
             const SizedBox(height: 14),
-            for (final category in menu)
+            for (final category in widget.menu)
               Padding(
-                padding: const EdgeInsets.only(bottom: 22),
+                padding: const EdgeInsets.only(bottom: 12),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      category.name,
-                      style: Theme.of(context)
-                          .textTheme
-                          .titleMedium
-                          ?.copyWith(fontWeight: FontWeight.w800),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      '${category.products.length} products • ${category.questions.length} questions • ${modifiers.length} modifiers',
-                      style: const TextStyle(color: Color(0xFF64748B)),
-                    ),
-                    const SizedBox(height: 12),
-                    LayoutBuilder(
-                      builder: (context, constraints) {
-                        final width = constraints.maxWidth;
-                        final crossAxisCount = width > 760
-                            ? 3
-                            : width > 520
-                                ? 2
-                                : 1;
-
-                        return GridView.builder(
-                          shrinkWrap: true,
-                          physics: const NeverScrollableScrollPhysics(),
-                          itemCount: category.products.length,
-                          gridDelegate:
-                              SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: crossAxisCount,
-                            crossAxisSpacing: 12,
-                            mainAxisSpacing: 12,
-                            childAspectRatio: 0.78,
+                    Material(
+                      color: const Color(0xFFF8FAFC),
+                      borderRadius: BorderRadius.circular(12),
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(12),
+                        onTap: () {
+                          setState(() {
+                            _openCategoryId = _openCategoryId == category.id
+                                ? null
+                                : category.id;
+                          });
+                        },
+                        child: Padding(
+                          padding: const EdgeInsets.all(14),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      category.name,
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .titleMedium
+                                          ?.copyWith(
+                                              fontWeight: FontWeight.w800),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      '${category.products.length} products • ${category.questions.length} questions • ${widget.modifiers.length} modifiers',
+                                      style: const TextStyle(
+                                        color: Color(0xFF64748B),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Icon(
+                                _openCategoryId == category.id
+                                    ? Icons.keyboard_arrow_up
+                                    : Icons.keyboard_arrow_down,
+                              ),
+                            ],
                           ),
-                          itemBuilder: (context, index) {
-                            final product = category.products[index];
-                            return _ProductChooserCard(
-                              product: product,
-                              onTap: () => onAdd(product, category),
-                            );
-                          },
-                        );
-                      },
+                        ),
+                      ),
                     ),
+                    if (_openCategoryId == category.id) ...[
+                      const SizedBox(height: 12),
+                      LayoutBuilder(
+                        builder: (context, constraints) {
+                          final width = constraints.maxWidth;
+                          final crossAxisCount = width > 760
+                              ? 3
+                              : width > 520
+                                  ? 2
+                                  : 1;
+
+                          return GridView.builder(
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
+                            itemCount: category.products.length,
+                            gridDelegate:
+                                SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: crossAxisCount,
+                              crossAxisSpacing: 12,
+                              mainAxisSpacing: 12,
+                              childAspectRatio: 0.78,
+                            ),
+                            itemBuilder: (context, index) {
+                              final product = category.products[index];
+                              return _ProductChooserCard(
+                                product: product,
+                                onTap: () => widget.onAdd(product, category),
+                              );
+                            },
+                          );
+                        },
+                      ),
+                    ],
                   ],
                 ),
               ),

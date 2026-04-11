@@ -49,6 +49,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/me', [AuthController::class, 'me']);
 });
 Route::middleware('auth:sanctum')->get('/dashboard/summary', [OwnerDashboardController::class, 'summary']);
+Route::middleware('auth:sanctum')->get('/dashboard/receipt', [OwnerDashboardController::class, 'receipt']);
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('employees/{id}/performance', [EmployeeController::class, 'performance']);
     Route::apiResource('ingredients', IngredientController::class);

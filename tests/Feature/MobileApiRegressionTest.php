@@ -3,6 +3,8 @@
 namespace Tests\Feature;
 
 use App\Models\Employee;
+use App\Models\Branch;
+use App\Models\InventoryItem;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Payment;
@@ -205,6 +207,13 @@ class MobileApiRegressionTest extends TestCase
         $content = json_decode((string) $receipt->content, true);
 
         $this->assertSame([$item->id], $content['item_ids']);
+
+        $receiptCount = Receipt::query()->count();
+
+        $this->get("/api/mobile/orders/{$order->id}/receipt?scope=last")
+            ->assertOk();
+
+        $this->assertSame($receiptCount, Receipt::query()->count());
     }
 
     public function test_waiter_can_return_item_to_kitchen(): void
@@ -225,6 +234,39 @@ class MobileApiRegressionTest extends TestCase
 
         $this->assertSame('returned', $item->status);
         $this->assertSame('returned', $item->kds_status);
+    }
+
+    public function test_owner_summary_includes_date_range_and_branch_stock_label(): void
+    {
+        $branch = Branch::query()->firstOrFail();
+
+        InventoryItem::create([
+            'branch_id' => $branch->id,
+            'name' => 'Water',
+            'unit' => 'bottle',
+            'quantity' => 1,
+            'min_stock' => 5,
+        ]);
+
+        Sanctum::actingAs(User::query()->where('email', 'admin@restaurant-suite.com')->firstOrFail());
+
+        $response = $this->getJson('/api/dashboard/summary?preset=month')
+            ->assertOk()
+            ->assertJsonPath('date_range.preset', 'month');
+
+        $matchingAlert = collect($response->json('low_stock_items'))
+            ->firstWhere('name', 'Water');
+
+        $this->assertSame($branch->name, $matchingAlert['branch_name'] ?? null);
+    }
+
+    public function test_owner_can_download_date_range_receipt(): void
+    {
+        Sanctum::actingAs(User::query()->where('email', 'admin@restaurant-suite.com')->firstOrFail());
+
+        $this->get('/api/dashboard/receipt?preset=month')
+            ->assertOk()
+            ->assertHeader('content-type', 'application/pdf');
     }
 
     private function staffUserForBranch(int $branchId, string $prefix): User

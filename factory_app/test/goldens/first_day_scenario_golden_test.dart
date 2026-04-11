@@ -944,7 +944,12 @@ class _FirstDayScenarioRepository extends SuiteRepository {
   }
 
   @override
-  Future<OwnerSummary> fetchOwnerSummary({int? branchId}) async {
+  Future<OwnerSummary> fetchOwnerSummary({
+    int? branchId,
+    String? preset,
+    String? startDate,
+    String? endDate,
+  }) async {
     return const OwnerSummary(
       totalSales: 1932,
       ordersCount: 5,

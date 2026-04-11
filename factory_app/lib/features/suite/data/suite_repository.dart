@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -260,16 +262,18 @@ class SuiteRepository {
     _throwIfNeeded(response);
   }
 
-  Future<void> generateReceipt({
+  Future<ReceiptDocument> generateReceipt({
     required int orderId,
     List<int> itemIds = const [],
     String scope = 'full',
+    bool reprint = false,
   }) async {
     final response = await _dio.get<List<int>>(
       '/mobile/orders/$orderId/receipt',
       queryParameters: {
-        'scope': itemIds.isEmpty ? scope : 'paid',
+        'scope': reprint ? 'last' : (itemIds.isEmpty ? scope : 'paid'),
         if (itemIds.isNotEmpty) 'item_ids': itemIds.join(','),
+        if (reprint) 'reprint': 1,
       },
       options: Options(
         responseType: ResponseType.bytes,
@@ -282,15 +286,75 @@ class SuiteRepository {
         'Receipt request failed with status ${response.statusCode}',
       );
     }
+
+    return ReceiptDocument(
+      bytes: Uint8List.fromList(response.data ?? const []),
+      filename: _filenameFromDisposition(
+        response.headers.value('content-disposition'),
+        fallback: 'receipt-$orderId.pdf',
+      ),
+    );
   }
 
-  Future<OwnerSummary> fetchOwnerSummary({int? branchId}) async {
+  Future<ReceiptDocument> generateOwnerReceipt({
+    String? preset,
+    String? startDate,
+    String? endDate,
+    int? branchId,
+  }) async {
+    final response = await _dio.get<List<int>>(
+      '/dashboard/receipt',
+      queryParameters: {
+        if (preset != null) 'preset': preset,
+        if (startDate != null) 'start_date': startDate,
+        if (endDate != null) 'end_date': endDate,
+        if (branchId != null) 'branch_id': branchId,
+      },
+      options: Options(
+        responseType: ResponseType.bytes,
+        headers: const {'Accept': 'application/pdf'},
+      ),
+    );
+
+    if ((response.statusCode ?? 500) >= 400) {
+      throw SuiteException(
+        'Owner receipt request failed with status ${response.statusCode}',
+      );
+    }
+
+    return ReceiptDocument(
+      bytes: Uint8List.fromList(response.data ?? const []),
+      filename: _filenameFromDisposition(
+        response.headers.value('content-disposition'),
+        fallback: 'owner-receipt.pdf',
+      ),
+    );
+  }
+
+  Future<OwnerSummary> fetchOwnerSummary({
+    int? branchId,
+    String? preset,
+    String? startDate,
+    String? endDate,
+  }) async {
     final response = await _dio.get(
       '/dashboard/summary',
-      queryParameters: {if (branchId != null) 'branch_id': branchId},
+      queryParameters: {
+        if (branchId != null) 'branch_id': branchId,
+        if (preset != null) 'preset': preset,
+        if (startDate != null) 'start_date': startDate,
+        if (endDate != null) 'end_date': endDate,
+      },
     );
     _throwIfNeeded(response);
     return OwnerSummary.fromJson(_map(response.data));
+  }
+
+  String _filenameFromDisposition(String? disposition,
+      {required String fallback}) {
+    if (disposition == null || disposition.isEmpty) return fallback;
+    final match = RegExp('filename="?([^";]+)"?').firstMatch(disposition);
+    return match?.group(1) ?? fallback;
   }
 
   void _throwIfNeeded(Response<dynamic> response) {
@@ -324,4 +388,14 @@ class SuiteException implements Exception {
 
   @override
   String toString() => message;
+}
+
+class ReceiptDocument {
+  const ReceiptDocument({
+    required this.bytes,
+    required this.filename,
+  });
+
+  final Uint8List bytes;
+  final String filename;
 }
