@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Restaurant Suite Deployment Guide</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="layout">
+    <div class="hero">
+      <h1>Restaurant Suite Deployment Guide</h1>
+      <p>Production runbook for the Laravel API, owner dashboard, staff Flutter app, and customer Flutter app. Updated on April 11, 2026.</p>
+      <div class="pill-row">
+        <span class="pill">Laravel API</span>
+        <span class="pill">Owner dashboard</span>
+        <span class="pill">factory_app</span>
+        <span class="pill">customer_app</span>
+      </div>
+    </div>
+
+    <h2 class="section-title">Local Run</h2>
+    <div class="grid two">
+      <div class="card">
+        <h3>Backend</h3>
+        <pre><code>cd /Applications/XAMPP/xamppfiles/htdocs/pos_restaurant
+composer install
+npm install
+cp .env.example .env
+php artisan key:generate
+touch database/database.sqlite
+php artisan migrate
+php artisan db:seed
+php artisan serve --host=127.0.0.1 --port=8000</code></pre>
+        <p class="meta">Use <code>php artisan db:seed</code> only for demo data. Do not seed demo data into a real restaurant production database.</p>
+      </div>
+      <div class="card">
+        <h3>Queue And Dashboard</h3>
+        <pre><code>php artisan queue:listen --tries=1
+
+cd pos-dashboard
+npm install
+VITE_API_BASE_URL=http://127.0.0.1:8000/api npm run dev -- --host 127.0.0.1 --port 5173</code></pre>
+      </div>
+    </div>
+
+    <h2 class="section-title">Production Server</h2>
+    <div class="grid two">
+      <div class="card">
+        <h3>Baseline</h3>
+        <ul class="tight-list">
+          <li>Ubuntu 22.04 or 24.04 LTS.</li>
+          <li>Nginx or Apache with SSL.</li>
+          <li>PHP 8.2 or newer with Laravel extensions.</li>
+          <li>Composer 2, Node.js 18+, npm.</li>
+          <li>MySQL 8 or MariaDB 10.6+.</li>
+          <li>Supervisor for queue workers.</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>Document Root</h3>
+        <p>Point the API virtual host to <code>/var/www/restaurant-suite/current/public</code>. Do not expose the repository root as the public web root.</p>
+        <pre><code>cd /var/www/restaurant-suite/current
+composer install --no-dev --prefer-dist --optimize-autoloader
+npm ci
+npm run build
+php artisan migrate --force
+php artisan storage:link</code></pre>
+      </div>
+    </div>
+
+    <h2 class="section-title">Production Environment</h2>
+    <div class="card">
+      <pre><code>APP_NAME="Restaurant Suite"
+APP_ENV=production
+APP_DEBUG=false
+APP_URL=https://api.example.com
+
+DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=restaurant_suite
+DB_USERNAME=restaurant_suite
+DB_PASSWORD=replace_with_strong_password
+
+SESSION_DRIVER=database
+CACHE_STORE=database
+QUEUE_CONNECTION=database
+FILESYSTEM_DISK=local
+
+BROADCAST_DRIVER=log
+BROADCAST_CONNECTION=log</code></pre>
+      <p class="meta">Use <code>BROADCAST_DRIVER=log</code> until a real Pusher/Reverb connection is configured in <code>config/broadcasting.php</code>.</p>
+    </div>
+
+    <h2 class="section-title">Nginx Example</h2>
+    <div class="card">
+      <pre><code>server {
+    listen 80;
+    server_name api.example.com;
+    root /var/www/restaurant-suite/current/public;
+    index index.php;
+    charset utf-8;
+
+    location / {
+        try_files $uri $uri/ /index.php?$query_string;
+    }
+
+    location ~ \.php$ {
+        fastcgi_pass unix:/run/php/php8.3-fpm.sock;
+        fastcgi_param SCRIPT_FILENAME $realpath_root$fastcgi_script_name;
+        include fastcgi_params;
+    }
+
+    location ~ /\.(?!well-known).* {
+        deny all;
+    }
+}</code></pre>
+      <p class="meta">After the host works, enable SSL with <code>sudo certbot --nginx -d api.example.com</code>.</p>
+    </div>
+
+    <h2 class="section-title">Queue Worker</h2>
+    <div class="card">
+      <pre><code>[program:restaurant-suite-queue]
+process_name=%(program_name)s_%(process_num)02d
+command=php /var/www/restaurant-suite/current/artisan queue:work database --sleep=3 --tries=3 --timeout=90
+autostart=true
+autorestart=true
+stopasgroup=true
+killasgroup=true
+user=www-data
+numprocs=1
+redirect_stderr=true
+stdout_logfile=/var/www/restaurant-suite/current/storage/logs/queue-worker.log
+stopwaitsecs=3600</code></pre>
+      <pre><code>sudo supervisorctl reread
+sudo supervisorctl update
+sudo supervisorctl start restaurant-suite-queue:*
+php artisan queue:restart</code></pre>
+    </div>
+
+    <h2 class="section-title">Dashboard Build</h2>
+    <div class="card">
+      <pre><code>cd /var/www/restaurant-suite/current/pos-dashboard
+npm ci
+VITE_API_BASE_URL=https://api.example.com/api VITE_DEPLOY_TARGET=prod npm run build
+sudo rsync -a --delete dist/ /var/www/restaurant-suite-dashboard/</code></pre>
+      <p class="meta">If deploying under a subpath, add <code>VITE_APP_BASE=/dashboard/</code>.</p>
+    </div>
+
+    <h2 class="section-title">Flutter Production Builds</h2>
+    <div class="card">
+      <h3>factory_app Web</h3>
+      <pre><code>export FLUTTER=/Applications/Flutter/flutter/bin/flutter
+export API_BASE_URL=https://api.example.com/api
+
+cd /Applications/XAMPP/xamppfiles/htdocs/pos_restaurant/factory_app
+$FLUTTER clean
+$FLUTTER pub get
+$FLUTTER build web --release --target=lib/main.dart --dart-define=API_BASE_URL=$API_BASE_URL --output=build/web_suite
+$FLUTTER build web --release --target=lib/main_waiter.dart --dart-define=API_BASE_URL=$API_BASE_URL --output=build/web_waiter
+$FLUTTER build web --release --target=lib/main_cashier.dart --dart-define=API_BASE_URL=$API_BASE_URL --output=build/web_cashier
+$FLUTTER build web --release --target=lib/main_kitchen.dart --dart-define=API_BASE_URL=$API_BASE_URL --output=build/web_kitchen
+$FLUTTER build web --release --target=lib/main_owner.dart --dart-define=API_BASE_URL=$API_BASE_URL --output=build/web_owner</code></pre>
+    </div>
+
+    <div class="card">
+      <h3>factory_app Android</h3>
+      <pre><code>cd /Applications/XAMPP/xamppfiles/htdocs/pos_restaurant/factory_app
+mkdir -p ../build-artifacts/factory_app
+
+$FLUTTER build appbundle --release --target=lib/main_waiter.dart --dart-define=API_BASE_URL=$API_BASE_URL
+cp build/app/outputs/bundle/release/app-release.aab ../build-artifacts/factory_app/waiter-release.aab
+
+$FLUTTER build apk --release --target=lib/main_waiter.dart --dart-define=API_BASE_URL=$API_BASE_URL
+cp build/app/outputs/flutter-apk/app-release.apk ../build-artifacts/factory_app/waiter-release.apk</code></pre>
+      <p class="meta">Repeat with <code>lib/main.dart</code>, <code>lib/main_cashier.dart</code>, <code>lib/main_kitchen.dart</code>, and <code>lib/main_owner.dart</code>. Add Android product flavors and iOS bundle IDs before releasing separate store apps.</p>
+    </div>
+
+    <div class="card">
+      <h3>customer_app</h3>
+      <pre><code>cd /Applications/XAMPP/xamppfiles/htdocs/pos_restaurant/customer_app
+$FLUTTER clean
+$FLUTTER pub get
+$FLUTTER build web --release --target=lib/main.dart --dart-define=API_BASE_URL=$API_BASE_URL --output=build/web_customer
+$FLUTTER build appbundle --release --target=lib/main.dart --dart-define=API_BASE_URL=$API_BASE_URL
+$FLUTTER build apk --release --target=lib/main.dart --dart-define=API_BASE_URL=$API_BASE_URL</code></pre>
+      <p class="meta">For iOS on macOS, use <code>$FLUTTER build ipa --release --target=lib/main.dart --dart-define=API_BASE_URL=$API_BASE_URL</code>.</p>
+    </div>
+
+    <h2 class="section-title">Update Deployment</h2>
+    <div class="card">
+      <pre><code>cd /var/www/restaurant-suite/current
+php artisan down
+git pull --ff-only
+composer install --no-dev --prefer-dist --optimize-autoloader
+npm ci
+npm run build
+php artisan migrate --force
+php artisan optimize:clear
+php artisan config:cache
+php artisan route:cache
+php artisan view:cache
+php artisan event:cache
+php artisan queue:restart
+php artisan up</code></pre>
+    </div>
+
+    <h2 class="section-title">Smoke Checks</h2>
+    <div class="card">
+      <ul class="tight-list">
+        <li><code>php artisan about</code> and <code>php artisan migrate:status</code> pass on the server.</li>
+        <li>Dashboard login reaches the production API.</li>
+        <li>Waiter can create an order and send items to KDS.</li>
+        <li>KDS can move items through kitchen states, including returned.</li>
+        <li>Cashier can take full payment and selected-item payment.</li>
+        <li>Receipt PDF downloads correctly.</li>
+        <li>Customer app can log in and read paid order history.</li>
+      </ul>
+      <p class="meta">Full markdown version: <code>docs/deployment-guide.md</code>.</p>
+    </div>
+  </div>
+</body>
+</html>

@@ -190,6 +190,20 @@ class SuiteRepository {
     _throwIfNeeded(response);
   }
 
+  Future<void> returnOrderItemToKitchen({
+    required int orderItemId,
+    String? note,
+  }) async {
+    final response = await _dio.patch(
+      '/mobile/order-items/$orderItemId/refund-change',
+      data: {
+        'action': 'return',
+        if (note != null && note.isNotEmpty) 'note': note,
+      },
+    );
+    _throwIfNeeded(response);
+  }
+
   Future<void> moveTable({
     required int fromTableId,
     required int toTableId,
@@ -234,12 +248,40 @@ class SuiteRepository {
   Future<void> payOrder({
     required int orderId,
     required List<Map<String, dynamic>> payments,
+    List<int> itemIds = const [],
   }) async {
     final response = await _dio.post(
       '/mobile/orders/$orderId/pay',
-      data: {'payments': payments},
+      data: {
+        'payments': payments,
+        if (itemIds.isNotEmpty) 'item_ids': itemIds,
+      },
     );
     _throwIfNeeded(response);
+  }
+
+  Future<void> generateReceipt({
+    required int orderId,
+    List<int> itemIds = const [],
+    String scope = 'full',
+  }) async {
+    final response = await _dio.get<List<int>>(
+      '/mobile/orders/$orderId/receipt',
+      queryParameters: {
+        'scope': itemIds.isEmpty ? scope : 'paid',
+        if (itemIds.isNotEmpty) 'item_ids': itemIds.join(','),
+      },
+      options: Options(
+        responseType: ResponseType.bytes,
+        headers: const {'Accept': 'application/pdf'},
+      ),
+    );
+
+    if ((response.statusCode ?? 500) >= 400) {
+      throw SuiteException(
+        'Receipt request failed with status ${response.statusCode}',
+      );
+    }
   }
 
   Future<OwnerSummary> fetchOwnerSummary({int? branchId}) async {

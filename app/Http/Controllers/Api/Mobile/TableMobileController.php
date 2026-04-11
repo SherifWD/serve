@@ -5,52 +5,177 @@ namespace App\Http\Controllers\Api\Mobile;
 use App\Enums\OrderStatus;
 use App\Enums\TableStatus;
 use App\Http\Controllers\Controller;
+use App\Models\Branch;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Table;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class TableMobileController extends Controller
 {
+    private const ACTIVE_ORDER_STATUSES = ['pending', 'open', 'running', 'cashier'];
+    private const NON_ACTIVE_ITEM_STATUSES = ['canceled', 'cancelled', 'refunded'];
+
+    private function nonNegativeStockExpression(float|int $delta): string
+    {
+        $delta = (float) $delta;
+
+        if (DB::connection()->getDriverName() === 'sqlite') {
+            return "CASE WHEN stock + ($delta) < 0 THEN 0 ELSE stock + ($delta) END";
+        }
+
+        return "GREATEST(stock + ($delta), 0)";
+    }
+
+    private function ensureBranchAccessible(Request $request, int $branchId): ?JsonResponse
+    {
+        $user = $request->user();
+
+        if (!$user) {
+            return response()->json(['error' => 'Unauthorized'], 401);
+        }
+
+        if ($user->branch_id) {
+            return (int) $user->branch_id === $branchId
+                ? null
+                : response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        if ($user->restaurant_id) {
+            $allowed = Branch::query()
+                ->whereKey($branchId)
+                ->where('restaurant_id', $user->restaurant_id)
+                ->exists();
+
+            return $allowed
+                ? null
+                : response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        return null;
+    }
+
+    private function tableQueryForUser(Request $request)
+    {
+        $query = Table::query();
+        $user = $request->user();
+
+        if ($user?->branch_id) {
+            $query->where('branch_id', $user->branch_id);
+        } elseif ($user?->restaurant_id) {
+            $query->whereHas('branch', fn ($branchQuery) => $branchQuery->where('restaurant_id', $user->restaurant_id));
+        }
+
+        return $query;
+    }
+
+    private function activeOrders($query)
+    {
+        return $query->whereIn('status', self::ACTIVE_ORDER_STATUSES)
+            ->where(function ($paymentQuery) {
+                $paymentQuery->whereNull('payment_status')
+                    ->orWhere('payment_status', '!=', 'paid');
+            });
+    }
+
+    private function tableRelations(): array
+    {
+        return [
+            'orders' => fn($q) => $this->activeOrders($q)
+                ->select('id','branch_id','table_id','customer_id','order_type','status','payment_status','subtotal','tax','discount','discount_type','total','coupon_code','order_date','kds_sent_at')
+                ->latest('id'),
+            'orders.items' => fn($q) => $q->select(
+                'id','order_id','product_id','quantity','price','total',
+                'status','kds_status','item_note','change_note'
+            ),
+            'orders.payments:id,order_id,method,amount,item_ids,scope',
+            'orders.customer:id,name,phone',
+            'orders.items.product:id,name,image',
+            'orders.items.answers.choice.question',
+            'orders.items.modifiers.modifier',
+        ];
+    }
+
+    private function hydrateTableState(Table $table): void
+    {
+        $order = $table->orders->first();
+        $serviceStatus = 'available';
+
+        if ($order) {
+            $order->items->each(function ($item) use ($order) {
+                $item->setRelation('order', $order);
+                $item->append(['item_note', 'change_note', 'paid_amount', 'payment_status']);
+            });
+
+            $activeItems = $order->items->reject(function ($item) {
+                $status = $item->kds_status ?? $item->status;
+                return in_array($status, self::NON_ACTIVE_ITEM_STATUSES, true);
+            });
+
+            $kdsStatuses = $activeItems
+                ->map(fn ($item) => $item->kds_status ?? $item->status)
+                ->filter()
+                ->values();
+
+            $serviceStatus = match (true) {
+                $order->status === OrderStatus::CASHIER => 'cashier',
+                $kdsStatuses->contains('returned') => 'returned',
+                $kdsStatuses->contains(fn ($status) => in_array($status, ['queued', 'preparing'], true)) => 'kitchen',
+                $kdsStatuses->contains('ready') => 'ready',
+                $kdsStatuses->contains('served') => 'served',
+                default => 'busy',
+            };
+        }
+
+        $table->setAttribute('service_status', $serviceStatus);
+        $table->setAttribute('active_order_status', $order?->status);
+        $table->setAttribute('active_payment_status', $order?->payment_status);
+    }
+
+    private function tableMatchesStatus(Table $table, string $filter): bool
+    {
+        $status = $table->getAttribute('service_status') ?? 'available';
+
+        return match ($filter) {
+            'all' => true,
+            'available', 'open' => $status === 'available',
+            'busy', 'occupied' => $status !== 'available',
+            'kds', 'kitchen' => $status === 'kitchen',
+            'cashier', 'sent_to_cashier' => $status === 'cashier',
+            'ready' => $status === 'ready',
+            'served' => $status === 'served',
+            'returned' => $status === 'returned',
+            default => true,
+        };
+    }
+
     public function index(Request $request)
     {
-        $branchId = $request->user()->branch_id;
+        $tables = $this->tableQueryForUser($request)
+            ->with($this->tableRelations())
+            ->get();
 
-        $tables = Table::where('branch_id', $branchId)
-            ->with([
-  'orders' => fn($q) => $q->where('status','!=', OrderStatus::CLOSED)
-      ->select('id','table_id','customer_id','status','subtotal','tax','discount','discount_type','total','coupon_code','order_date'),
-  'orders.items' => fn($q) => $q->select(
-      'id','order_id','product_id','quantity','price','total',
-      'status','kds_status','item_note','change_note'
-  ),
-  'orders.customer:id,name,phone',
-  'orders.items.product:id,name,image',
-  'orders.items.answers.choice.question',
-  'orders.items.modifiers.modifier',
-])->get();
+        $tables->each(fn ($table) => $this->hydrateTableState($table));
+
+        $filter = strtolower((string) $request->input('status', 'all'));
+        if ($filter !== 'all') {
+            $tables = $tables
+                ->filter(fn ($table) => $this->tableMatchesStatus($table, $filter))
+                ->values();
+        }
 
         return response()->json(['data' => $tables]);
     }
 
    public function show(Request $request, $id)
 {
-    $branchId = $request->user()->branch_id;
+    $table = $this->tableQueryForUser($request)
+        ->with($this->tableRelations())
+        ->findOrFail($id);
 
-    $table = Table::where('branch_id', $branchId)
-        ->with([
-            'orders' => fn($q) => $q->where('status','!=', OrderStatus::CLOSED)
-                ->select('id','table_id','customer_id','status','subtotal','tax','discount','discount_type','total','coupon_code','order_date'),
-            'orders.items' => fn($q) => $q->select(
-                'id','order_id','product_id','quantity','price','total',
-                'status','kds_status','item_note','change_note'
-            ),
-            'orders.customer:id,name,phone',
-            'orders.items.product:id,name,image',
-            'orders.items.answers.choice.question',
-            'orders.items.modifiers.modifier',
-        ])->findOrFail($id);
+    $this->hydrateTableState($table);
 
     return response()->json(['data' => $table]);
 }
@@ -151,19 +276,18 @@ class TableMobileController extends Controller
 
    public function sendToCashier(Request $request, Order $order)
 {
-    if ((int) $request->user()->branch_id !== (int) $order->branch_id) {
-        return response()->json(['error' => 'Unauthorized'], 403);
+    if ($authResponse = $this->ensureBranchAccessible($request, (int) $order->branch_id)) {
+        return $authResponse;
     }
 
     $order->load('items');
-    $allDone = $order->items
-    ->filter(function ($i) {
-        $status = $i->kds_status ?? $i->status; // fallback if NULL
-        return !in_array($status, ['canceled', 'refunded', 'cancelled']);
-    })
-    ->every(function ($i) {
+    $activeItems = $order->items->filter(function ($i) {
         $status = $i->kds_status ?? $i->status;
-        return in_array($status, ['ready', 'served']);
+        return !in_array($status, self::NON_ACTIVE_ITEM_STATUSES, true);
+    });
+    $allDone = $activeItems->isNotEmpty() && $activeItems->every(function ($i) {
+        $status = $i->kds_status ?? $i->status;
+        return in_array($status, ['ready', 'served'], true);
     });
 
     if (!$allDone) {
@@ -172,6 +296,9 @@ class TableMobileController extends Controller
 
     $order->status = 'cashier'; // <— important
     $order->save();
+    if ($order->table && $order->order_type === 'dine-in') {
+        $order->table->update(['status' => TableStatus::CASHIER]);
+    }
 
     // (optional) broadcast to waiter & cashier UIs
     // event(new \App\Events\OrderReadyForCashier($order));
@@ -189,19 +316,24 @@ public function batchSendToCashier(Request $request)
     $ok = []; $failed = [];
     foreach ($data['order_ids'] as $id) {
         $order = Order::with('items')->find($id);
-        $allDone = $order->items
-    ->filter(function ($i) {
-        $status = $i->kds_status ?? $i->status; // fallback if NULL
-        return !in_array($status, ['canceled', 'refunded', 'cancelled']);
-    })
-    ->every(function ($i) {
-        $status = $i->kds_status ?? $i->status;
-        return in_array($status, ['ready', 'served']);
-    });
+        if (!$order || $this->ensureBranchAccessible($request, (int) $order->branch_id)) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+        $activeItems = $order->items->filter(function ($i) {
+            $status = $i->kds_status ?? $i->status;
+            return !in_array($status, self::NON_ACTIVE_ITEM_STATUSES, true);
+        });
+        $allDone = $activeItems->isNotEmpty() && $activeItems->every(function ($i) {
+            $status = $i->kds_status ?? $i->status;
+            return in_array($status, ['ready', 'served'], true);
+        });
 
         if ($allDone) {
             $order->status = 'cashier'; // <— important
             $order->save();
+            if ($order->table && $order->order_type === 'dine-in') {
+                $order->table->update(['status' => TableStatus::CASHIER]);
+            }
             $ok[] = $id;
             // event(new \App\Events\OrderReadyForCashier($order));
         } else {
@@ -219,8 +351,8 @@ public function batchSendToCashier(Request $request)
     public function reopenOrder(Request $request, $orderId)
     {
         $order = Order::with('table')->findOrFail($orderId);
-        if ((int) $order->table->branch_id !== (int) $request->user()->branch_id) {
-            return response()->json(['error' => 'Unauthorized'], 403);
+        if ($authResponse = $this->ensureBranchAccessible($request, (int) $order->table->branch_id)) {
+            return $authResponse;
         }
         if (!in_array($order->status, [OrderStatus::CASHIER, OrderStatus::PAID], true)) {
             return response()->json(['error' => 'Only cashier or paid orders can be reopened.'], 400);
@@ -259,15 +391,28 @@ public function batchSendToCashier(Request $request)
     $item  = OrderItem::with(['order.table','product','answers','modifiers'])->findOrFail($orderItemId);
     $order = $item->order;
 
-    if ((int) $order->table->branch_id !== (int) $request->user()->branch_id) {
-        return response()->json(['error' => 'Unauthorized'], 403);
+    if ($authResponse = $this->ensureBranchAccessible($request, (int) $order->table->branch_id)) {
+        return $authResponse;
     }
 
-    $action = $request->input('action'); // refund, cancel, change
-    $qty    = $request->has('quantity') ? (int)$request->input('quantity') : null;
-    $note   = $request->input('note');
+    $data = $request->validate([
+        'action' => 'required|in:refund,cancel,change,return',
+        'quantity' => 'nullable|integer|min:1',
+        'note' => 'nullable|string|max:255',
+        'restore_stock' => 'nullable|boolean',
+    ]);
+
+    $action = $data['action'];
+    $qty = array_key_exists('quantity', $data) ? (int) $data['quantity'] : null;
+    $note = $data['note'] ?? null;
     $restoreStock = $request->boolean('restore_stock', true);
     $userId = $request->user()->id;
+
+    if ($qty !== null && in_array($action, ['refund', 'cancel'], true) && $qty > (int) $item->quantity) {
+        return response()->json([
+            'error' => 'Quantity cannot exceed the original item quantity.',
+        ], 422);
+    }
 
     $before  = $item->toArray();
     $product = $item->product;
@@ -283,7 +428,7 @@ public function batchSendToCashier(Request $request)
                 DB::table('ingredient_branches')
                     ->where('ingredient_id', $ingredient->id)
                     ->where('branch_id', $branchId)
-                    ->update(['stock' => DB::raw("GREATEST(0, stock + ($delta))")]);
+                    ->update(['stock' => DB::raw($this->nonNegativeStockExpression($delta))]);
             }
         } else {
             // fallback: product stock
@@ -293,7 +438,31 @@ public function batchSendToCashier(Request $request)
 
     return DB::transaction(function () use ($action, $qty, $note, $restoreStock, $userId, $item, $order, $product, $before, $adjustStock) {
 
-        if (in_array($action, ['refund','cancel'], true)) {
+        if ($action === 'return') {
+            $item->status = 'returned';
+            $item->kds_status = 'returned';
+            $item->kds_sent_at = now();
+            $item->change_note = $note;
+            $item->save();
+
+            if (!$order->kds_sent_at) {
+                $order->kds_sent_at = now();
+            }
+            $order->status = OrderStatus::PENDING;
+            $order->save();
+            $order->table?->update(['status' => TableStatus::OCCUPIED]);
+
+            \App\Models\OrderItemHistory::create([
+                'order_item_id' => $item->id,
+                'action' => $action,
+                'snapshot_before' => json_encode($before),
+                'snapshot_after' => json_encode($item->toArray()),
+                'note' => $note,
+                'user_id' => $userId,
+            ]);
+
+            // event(new \App\Events\KDSItemStatusUpdated($item));
+        } elseif (in_array($action, ['refund','cancel'], true)) {
             $statusWord = $action === 'refund' ? 'refunded' : 'canceled';
             $modQty = $qty ?? (int)$item->quantity;
 
@@ -379,9 +548,9 @@ public function batchSendToCashier(Request $request)
             $item->change_note = $note;
             $item->save();
 
-            if ($restoreStock && $newQty < $oldQty) {
-                $diff = $oldQty - $newQty;
-                $adjustStock($product, $diff, +1);
+            if ($restoreStock && $newQty !== $oldQty) {
+                $diff = abs($oldQty - $newQty);
+                $adjustStock($product, $diff, $newQty < $oldQty ? +1 : -1);
             }
 
             \App\Models\OrderItemHistory::create([
@@ -412,6 +581,12 @@ public function batchSendToCashier(Request $request)
 
     public function itemHistory(Request $request, $orderItemId)
     {
+        $item = OrderItem::with('order.table')->findOrFail($orderItemId);
+
+        if ($authResponse = $this->ensureBranchAccessible($request, (int) $item->order->table->branch_id)) {
+            return $authResponse;
+        }
+
         $histories = \App\Models\OrderItemHistory::where('order_item_id', $orderItemId)
             ->with('user:id,name')
             ->orderBy('created_at','desc')

@@ -200,6 +200,7 @@ class _WaiterOrderPageState extends ConsumerState<WaiterOrderPage> {
                           items: bundle.details.items,
                           onDecrease: (item) => _handleDecrease(item),
                           onRefund: (item) => _handleRefund(item),
+                          onReturnToKitchen: (item) => _handleReturn(item),
                         ),
                       ),
                       const SizedBox(width: 16),
@@ -218,6 +219,7 @@ class _WaiterOrderPageState extends ConsumerState<WaiterOrderPage> {
                     items: bundle.details.items,
                     onDecrease: (item) => _handleDecrease(item),
                     onRefund: (item) => _handleRefund(item),
+                    onReturnToKitchen: (item) => _handleReturn(item),
                   ),
                   const SizedBox(height: 16),
                   _MenuComposerCard(
@@ -248,9 +250,9 @@ class _WaiterOrderPageState extends ConsumerState<WaiterOrderPage> {
     final added = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
-            builder: (context) {
-              final navigator = Navigator.of(context);
-              return Padding(
+      builder: (context) {
+        final navigator = Navigator.of(context);
+        return Padding(
           padding: EdgeInsets.only(
             left: 20,
             right: 20,
@@ -466,6 +468,16 @@ class _WaiterOrderPageState extends ConsumerState<WaiterOrderPage> {
     );
   }
 
+  Future<void> _handleReturn(OrderItemLine item) async {
+    await _runAction(
+      () => ref.read(suiteRepositoryProvider).returnOrderItemToKitchen(
+            orderItemId: item.id,
+            note: 'Returned to kitchen from waiter app',
+          ),
+      '${item.name} returned to kitchen',
+    );
+  }
+
   Future<void> _showMoveTableDialog(List<TableOverview> tables) async {
     final candidates = tables
         .where((table) => table.id != widget.table.id && !table.isOccupied)
@@ -547,11 +559,13 @@ class _OrderItemsCard extends StatelessWidget {
     required this.items,
     required this.onDecrease,
     required this.onRefund,
+    required this.onReturnToKitchen,
   });
 
   final List<OrderItemLine> items;
   final ValueChanged<OrderItemLine> onDecrease;
   final ValueChanged<OrderItemLine> onRefund;
+  final ValueChanged<OrderItemLine> onReturnToKitchen;
 
   @override
   Widget build(BuildContext context) {
@@ -636,18 +650,44 @@ class _OrderItemsCard extends StatelessWidget {
                                 ],
                               ),
                             ],
+                            const SizedBox(height: 8),
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              children: [
+                                _OrderLineStatusChip(
+                                  label: item.kitchenStatusLabel,
+                                  color: _kitchenStatusColor(
+                                      item.kdsStatus ?? item.status),
+                                ),
+                                _OrderLineStatusChip(
+                                  label:
+                                      'Payment ${(item.paymentStatus ?? 'unpaid').toUpperCase()}',
+                                  color: item.isPaid
+                                      ? const Color(0xFF059669)
+                                      : const Color(0xFF6B7280),
+                                ),
+                              ],
+                            ),
                           ],
                         ),
                       ),
                       Column(
                         children: [
                           IconButton(
+                            tooltip: 'Reduce quantity',
                             onPressed: () => onDecrease(item),
                             icon: const Icon(Icons.remove_circle_outline),
                           ),
                           IconButton(
+                            tooltip: 'Refund item',
                             onPressed: () => onRefund(item),
                             icon: const Icon(Icons.restart_alt_outlined),
+                          ),
+                          IconButton(
+                            tooltip: 'Return to kitchen',
+                            onPressed: () => onReturnToKitchen(item),
+                            icon: const Icon(Icons.soup_kitchen_outlined),
                           ),
                         ],
                       ),
@@ -659,6 +699,57 @@ class _OrderItemsCard extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+class _OrderLineStatusChip extends StatelessWidget {
+  const _OrderLineStatusChip({
+    required this.label,
+    required this.color,
+  });
+
+  final String label;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: color.withValues(alpha: 0.20)),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: color,
+          fontWeight: FontWeight.w800,
+          fontSize: 12,
+        ),
+      ),
+    );
+  }
+}
+
+Color _kitchenStatusColor(String? status) {
+  switch (status) {
+    case 'queued':
+      return const Color(0xFFF59E0B);
+    case 'preparing':
+      return const Color(0xFF0284C7);
+    case 'ready':
+      return const Color(0xFF059669);
+    case 'served':
+      return const Color(0xFF2563EB);
+    case 'returned':
+      return const Color(0xFFDC2626);
+    case 'refunded':
+    case 'canceled':
+    case 'cancelled':
+      return const Color(0xFF6B7280);
+    default:
+      return const Color(0xFF64748B);
   }
 }
 

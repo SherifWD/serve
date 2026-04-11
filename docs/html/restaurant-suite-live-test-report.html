@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Restaurant Suite Live Test Report</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="layout">
+    <div class="hero">
+      <h1>Restaurant Suite Live Test Report</h1>
+      <p>Post-fix retest executed on April 5, 2026 against freshly seeded demo data, live Laravel APIs, the dashboard browser flow, and both Flutter applications.</p>
+      <div class="pill-row">
+        <span class="pill">50 production-critical live checks passed</span>
+        <span class="pill">Dashboard browser smoke passed</span>
+        <span class="pill">Laravel test suite passed</span>
+        <span class="pill">Customer + staff Flutter suites passed</span>
+      </div>
+    </div>
+
+    <div class="grid three">
+      <div class="card">
+        <div class="eyebrow">Current Verdict</div>
+        <div class="kpi">Ready for controlled production rollout</div>
+        <p>No blocker-level defects remained in the retest. The previously confirmed API-contract, validation, and branch-isolation issues are closed.</p>
+      </div>
+      <div class="card">
+        <div class="eyebrow">Historical Note</div>
+        <div class="kpi">Initial failure run resolved</div>
+        <p>The six defects from the earlier April 5 run were fixed, then the same restaurant lifecycle was executed again from waiter order entry through loyalty visibility.</p>
+      </div>
+      <div class="card">
+        <div class="eyebrow">Residual Watch Items</div>
+        <div class="kpi">Only non-blockers remain</div>
+        <p>The dashboard build still emits a large bundle warning, and deep Flutter web click automation remains limited by canvas semantics, so periodic manual mobile UI checks are still recommended.</p>
+      </div>
+    </div>
+
+    <h2 class="section-title">Environment</h2>
+    <div class="grid two">
+      <div class="card">
+        <h3>Runtime</h3>
+        <ul class="tight-list">
+          <li>Laravel 12.19.3 on PHP 8.4.7</li>
+          <li>Local MariaDB instance on port <code>3307</code></li>
+          <li>Seed source: <code>RestaurantSuiteDemoSeeder</code></li>
+          <li>Backend served at <code>http://127.0.0.1:8000</code></li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>Client Surface</h3>
+        <ul class="tight-list">
+          <li>Dashboard Vite app on <code>http://127.0.0.1:5173</code></li>
+          <li>Staff Flutter web build on <code>http://127.0.0.1:7357</code></li>
+          <li>Customer Flutter web build on <code>http://127.0.0.1:7358</code></li>
+          <li>Browser smoke via Google Chrome 146 + Puppeteer</li>
+        </ul>
+      </div>
+    </div>
+
+    <h2 class="section-title">Retest Summary</h2>
+    <div class="card table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Area</th>
+            <th>Executed Scenario</th>
+            <th>Result</th>
+            <th>Notes</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>Dashboard UI</td><td>Authenticated browser smoke on dashboard, restaurants, branches, users, roles, orders, and tables</td><td><span class="status good">Pass</span></td><td>All 7 routes rendered after injecting a live admin session from the API login flow.</td></tr>
+          <tr><td>Owner API</td><td>Dashboard summary for the active branch</td><td><span class="status good">Pass</span></td><td>Restaurant-scoped KPI summary returned successfully after the fixes.</td></tr>
+          <tr><td>Waiter flow</td><td>Create order, attach customer, add modifiers, append line item, reopen, change quantity, refund item, move table</td><td><span class="status good">Pass</span></td><td>The full operational floor workflow remained stable after the security and contract fixes.</td></tr>
+          <tr><td>KDS flow</td><td>Send to KDS, move items to preparing, move items to ready, cashier gate enforcement</td><td><span class="status good">Pass</span></td><td>Premature cashier handoff still blocks until every active line reaches a ready state.</td></tr>
+          <tr><td>Cashier flow</td><td>Queue visibility, partial payment, mixed tender final settlement, receipt download</td><td><span class="status good">Pass</span></td><td>Payment state transitions remained correct and same-branch receipt download returned PDF successfully.</td></tr>
+          <tr><td>Customer flow</td><td>Customer auth, home, paid orders, order detail, loyalty visibility</td><td><span class="status good">Pass</span></td><td>The paid order became visible immediately in customer history and loyalty showed earned points.</td></tr>
+          <tr><td>Security</td><td>Cross-branch payment and receipt attempts</td><td><span class="status good">Pass</span></td><td>Foreign-branch cashier actions now return <code>403</code>.</td></tr>
+          <tr><td>Security</td><td>Anonymous ingredients and employee-performance access</td><td><span class="status good">Pass</span></td><td>Both endpoints now require auth and returned <code>401</code> to anonymous requests.</td></tr>
+          <tr><td>API contract</td><td><code>GET /api/mobile/orders/{id}</code></td><td><span class="status good">Pass</span></td><td>The endpoint now resolves and returns an order payload instead of attempting a table lookup.</td></tr>
+          <tr><td>Validation</td><td>Invalid refund/change action</td><td><span class="status good">Pass</span></td><td>Unsupported actions now return <code>422</code> with validation errors.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h2 class="section-title">Closed Defects</h2>
+    <div class="card table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Original Failure</th>
+            <th>Fix Applied</th>
+            <th>Retest Result</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="mono">DEF-01</td>
+            <td>Cross-branch cashier could post payments on another branch’s order.</td>
+            <td>Added branch/restaurant access guards in <code>OrderMobileController</code> payment flow.</td>
+            <td><span class="status good">Closed</span> Foreign-branch payment now returns <code>403</code>.</td>
+          </tr>
+          <tr>
+            <td class="mono">DEF-02</td>
+            <td>Ingredients endpoint was public.</td>
+            <td>Moved ingredients and related stock routes behind <code>auth:sanctum</code>.</td>
+            <td><span class="status good">Closed</span> Anonymous access now returns <code>401</code>.</td>
+          </tr>
+          <tr>
+            <td class="mono">DEF-03</td>
+            <td>Cross-branch cashier could download another branch’s receipt.</td>
+            <td>Added order access guard to receipt generation.</td>
+            <td><span class="status good">Closed</span> Foreign-branch receipt request now returns <code>403</code>.</td>
+          </tr>
+          <tr>
+            <td class="mono">DEF-04</td>
+            <td>Employee performance endpoint was public.</td>
+            <td>Moved performance route behind <code>auth:sanctum</code>.</td>
+            <td><span class="status good">Closed</span> Anonymous access now returns <code>401</code>.</td>
+          </tr>
+          <tr>
+            <td class="mono">DEF-05</td>
+            <td>Mobile order detail endpoint tried to resolve a table instead of an order.</td>
+            <td>Rewired <code>OrderMobileController::show</code> to return a scoped order payload.</td>
+            <td><span class="status good">Closed</span> Valid order ids now return <code>200</code> with order detail.</td>
+          </tr>
+          <tr>
+            <td class="mono">DEF-06</td>
+            <td>Invalid refund/change action was silently accepted.</td>
+            <td>Added explicit validation to <code>TableMobileController::refundOrChangeItem</code>.</td>
+            <td><span class="status good">Closed</span> Invalid actions now return <code>422</code>.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h2 class="section-title">Automation And Quality Gates</h2>
+    <div class="grid two">
+      <div class="card">
+        <h3>Backend And Dashboard</h3>
+        <ul class="tight-list">
+          <li><code>php artisan test</code>: <strong>8 passed</strong>, <strong>17 assertions</strong>.</li>
+          <li>Added regression coverage for order detail, invalid item action, branch-isolated payment and receipt, foreign item history, and protected routes.</li>
+          <li><code>npm run build</code> in <code>pos-dashboard</code>: passed.</li>
+          <li>Dashboard browser smoke: <strong>7 of 7</strong> authenticated routes rendered successfully.</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>Flutter Apps</h3>
+        <ul class="tight-list">
+          <li><code>flutter analyze</code> in <code>customer_app</code>: no issues found.</li>
+          <li><code>flutter test</code> in <code>customer_app</code>: passed.</li>
+          <li><code>flutter analyze</code> in <code>factory_app</code>: no issues found.</li>
+          <li><code>flutter test</code> in <code>factory_app</code>: passed after refreshing stale scenario goldens.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="grid two">
+      <div class="card">
+        <h3>Bundle And Runtime Notes</h3>
+        <ul class="tight-list">
+          <li>Dashboard production JS chunk is still large at <code>1,525.15 kB</code> uncompressed.</li>
+          <li>This is a performance concern for low-end branch devices, but it did not break functionality in the retest.</li>
+          <li>Consider route-level code splitting before broader rollout.</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>Test Harness Note</h3>
+        <ul class="tight-list">
+          <li>A raw JSON-oriented HTTP probe against the Vite dashboard server returned <code>404</code>, while the actual browser smoke passed. This is treated as a harness artifact, not a product defect.</li>
+          <li>Flutter web UI automation is still supplemented by API-level live scenario execution.</li>
+        </ul>
+      </div>
+    </div>
+
+    <h2 class="section-title">Production Recommendation</h2>
+    <div class="card">
+      <div class="status-row">
+        <span class="status good">Production Candidate</span>
+        <span class="status warn">Recommend Controlled Rollout</span>
+      </div>
+      <ul class="tight-list">
+        <li>Proceed with a staged release or pilot rollout rather than a wide unmonitored launch.</li>
+        <li>Watch payment, receipt, and branch-isolation logs closely during first live adoption.</li>
+        <li>Schedule a follow-up pass focused on dashboard bundle optimization and more native mobile UI regression coverage.</li>
+        <li>Keep the new Laravel regression tests in CI so the fixed access-control paths stay locked.</li>
+      </ul>
+      <p class="meta">Companion pack: <a href="restaurant-suite-test-cases.html">Restaurant Suite POS Test Case Pack</a></p>
+    </div>
+  </div>
+</body>
+</html>

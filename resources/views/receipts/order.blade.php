@@ -11,12 +11,19 @@
     </style>
 </head>
 <body>
+    @php
+        $lines = $receiptItems ?? $order->items;
+        $lineTotal = $receiptTotal ?? $order->total;
+    @endphp
     <div class="header">Order #{{ $order->id }} - Table: {{ $order->table->name ?? '-' }}</div>
+    @isset($receipt)
+        <div>Receipt: {{ $receipt->receipt_number }}</div>
+    @endisset
     <div>Date: {{ $order->order_date }}</div>
     <table>
         <thead><tr><th>Item</th><th>Qty</th><th>Price</th><th>Total</th></tr></thead>
         <tbody>
-            @foreach($order->items as $item)
+            @foreach($lines as $item)
             <tr>
                 <td>{{ $item->product->name ?? '' }}</td>
                 <td>{{ $item->quantity }}</td>
@@ -31,7 +38,7 @@
         <br>
         Coupon: {{ $order->coupon_code ?? '-' }}
         <br>
-        <b>Total: {{ $order->total }}</b>
+        <b>Total: {{ $lineTotal }}</b>
     </div>
 </body>
 </html>

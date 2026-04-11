@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Restaurant Suite POS Test Cases</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="layout">
+    <div class="hero">
+      <h1>Restaurant Suite POS Test Case Pack</h1>
+      <p>Comprehensive, real-life QA matrix for the current Laravel backend, dashboard web app, and Flutter customer and staff apps.</p>
+      <div class="pill-row">
+        <span class="pill">Web dashboard</span>
+        <span class="pill">Customer app</span>
+        <span class="pill">Waiter app</span>
+        <span class="pill">Kitchen app</span>
+        <span class="pill">Cashier app</span>
+        <span class="pill">Owner controls</span>
+      </div>
+    </div>
+
+    <div class="grid three">
+      <div class="card">
+        <div class="eyebrow">Document Goal</div>
+        <div class="kpi">58</div>
+        <p>Structured test cases grouped by real restaurant operations, edge cases, and permission/security risk.</p>
+      </div>
+      <div class="card">
+        <div class="eyebrow">Primary Surfaces</div>
+        <div class="kpi">7</div>
+        <p>Admin, owner, customer, waiter, kitchen, cashier, and API-level protection/consistency coverage.</p>
+      </div>
+      <div class="card">
+        <div class="eyebrow">Recommended Use</div>
+        <div class="kpi">Smoke + Regression</div>
+        <p>Use the high-priority cases daily, the full pack before release, and security cases before production rollout.</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>How To Use This Pack</h2>
+      <ul class="tight-list">
+        <li><strong>P1</strong>: must pass before any release candidate or demo.</li>
+        <li><strong>P2</strong>: should pass before branch rollout or customer pilot.</li>
+        <li><strong>P3</strong>: important, but acceptable for planned backlog if openly tracked.</li>
+        <li><strong>Surface</strong>: where the operator experiences the scenario first. Most mobile flows still depend on the same Laravel API.</li>
+      </ul>
+    </div>
+
+    <h2 class="section-title">Authentication And Access Control</h2>
+    <p class="section-lead">These cases protect the whole platform. If these fail, every other workflow becomes unreliable or unsafe.</p>
+    <div class="card table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Surface</th>
+            <th>Real-Life Scenario</th>
+            <th>Execution</th>
+            <th>Expected Result</th>
+            <th>Priority</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td class="mono">AUTH-01</td><td>Web dashboard</td><td>Platform admin signs in at start of day.</td><td>Login with seeded or live admin credentials.</td><td>Token issued, admin sees cross-restaurant controls, no branch scope applied.</td><td>P1</td></tr>
+          <tr><td class="mono">AUTH-02</td><td>Web dashboard</td><td>Owner signs in to monitor only their restaurant.</td><td>Login with owner credentials.</td><td>Owner session loads restaurant-scoped data only.</td><td>P1</td></tr>
+          <tr><td class="mono">AUTH-03</td><td>Staff app</td><td>Waiter tries to open cashier workspace by mistake.</td><td>Login with waiter email while requesting cashier type.</td><td>Request rejected with explicit authorization error.</td><td>P1</td></tr>
+          <tr><td class="mono">AUTH-04</td><td>All apps</td><td>User logs out on a shared branch device.</td><td>Logout and retry a protected endpoint with same token.</td><td>Token becomes unusable and app returns to login.</td><td>P1</td></tr>
+          <tr><td class="mono">AUTH-05</td><td>Staff app API</td><td>Branch-2 cashier attempts to open branch-1 data.</td><td>Call branch-1 endpoints using branch-2 token.</td><td>403 or 404, with no data leakage.</td><td>P1</td></tr>
+          <tr><td class="mono">AUTH-06</td><td>Customer app</td><td>New guest signs in by phone for first visit.</td><td>Submit name + phone + optional email.</td><td>Profile is created, token issued, customer home loads.</td><td>P1</td></tr>
+          <tr><td class="mono">AUTH-07</td><td>API security</td><td>Anonymous caller hits protected staff endpoints.</td><td>Call mobile, dashboard, and operational endpoints without token.</td><td>401 or 403 returned consistently.</td><td>P1</td></tr>
+          <tr><td class="mono">AUTH-08</td><td>Customer app</td><td>Existing guest logs in again with same phone.</td><td>Repeat customer login using same phone.</td><td>Existing profile is reused and loyalty/order history stays attached.</td><td>P2</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h2 class="section-title">Admin And Owner Operations</h2>
+    <div class="card table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Surface</th>
+            <th>Real-Life Scenario</th>
+            <th>Execution</th>
+            <th>Expected Result</th>
+            <th>Priority</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td class="mono">ADM-01</td><td>Web dashboard</td><td>Owner opens the morning dashboard.</td><td>Load dashboard summary with current demo/live data.</td><td>Orders, active tables, cashier queue, backlog, and branch performance render without errors.</td><td>P1</td></tr>
+          <tr><td class="mono">ADM-02</td><td>Web dashboard</td><td>Platform admin adds a new restaurant brand.</td><td>Create restaurant name and venue type.</td><td>Restaurant becomes selectable for branches, users, menus, and dashboards.</td><td>P1</td></tr>
+          <tr><td class="mono">ADM-03</td><td>Web dashboard</td><td>Owner creates or edits a branch.</td><td>Add branch name and location, then reload lists.</td><td>Branch appears everywhere branch scoping is used.</td><td>P1</td></tr>
+          <tr><td class="mono">ADM-04</td><td>Web dashboard</td><td>Admin provisions staff for a new branch.</td><td>Create owner, supervisor, waiter, cashier, and kitchen accounts.</td><td>Correct roles/types persist and staff can log in to assigned workspace.</td><td>P1</td></tr>
+          <tr><td class="mono">ADM-05</td><td>Web dashboard</td><td>Role or permission is changed for compliance reasons.</td><td>Modify permissions, then re-open relevant page or retry API action.</td><td>Access rules update immediately for non-admin users.</td><td>P1</td></tr>
+          <tr><td class="mono">ADM-06</td><td>Web dashboard</td><td>Owner maintains catalog, tables, staff, and supply setup before launch.</td><td>Create/edit products, menus, tables, ingredients, suppliers, and employees.</td><td>Lists save, reload, and remain internally consistent across branches.</td><td>P2</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h2 class="section-title">Waiter And Table Service</h2>
+    <div class="card table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Surface</th>
+            <th>Real-Life Scenario</th>
+            <th>Execution</th>
+            <th>Expected Result</th>
+            <th>Priority</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td class="mono">WTR-01</td><td>Waiter app</td><td>Waiter opens the floor map during live service.</td><td>Load tables for assigned branch.</td><td>Open, occupied, and cashier-state tables display correctly.</td><td>P1</td></tr>
+          <tr><td class="mono">WTR-02</td><td>Waiter app</td><td>New dine-in guests sit at an empty table.</td><td>Create order on an open table with customer details.</td><td>Order is created and table becomes occupied.</td><td>P1</td></tr>
+          <tr><td class="mono">WTR-03</td><td>Waiter app</td><td>Guests request modifiers and notes.</td><td>Add modifiers, category answers, and item notes.</td><td>Each line stores price impact, note, and selected choices correctly.</td><td>P1</td></tr>
+          <tr><td class="mono">WTR-04</td><td>Waiter app</td><td>Same table adds dessert later.</td><td>Post another item against an already open table.</td><td>System updates existing order instead of creating a duplicate active ticket.</td><td>P1</td></tr>
+          <tr><td class="mono">WTR-05</td><td>Waiter app</td><td>Two staff members try to open the same table close together.</td><td>Simulate near-simultaneous create attempts.</td><td>Single active order remains; no duplicate open checks for one table.</td><td>P1</td></tr>
+          <tr><td class="mono">WTR-06</td><td>Waiter app</td><td>Ticket is ready for kitchen production.</td><td>Send active order to KDS.</td><td>Pending lines move to queued state and KDS receives ticket.</td><td>P1</td></tr>
+          <tr><td class="mono">WTR-07</td><td>Waiter app</td><td>Waiter tries to collect payment before kitchen finishes.</td><td>Send order to cashier while any line is not ready/served.</td><td>System blocks cashier handoff with 422-style business error.</td><td>P1</td></tr>
+          <tr><td class="mono">WTR-08</td><td>Waiter app</td><td>Guests ask to reopen the bill after payment or cashier handoff.</td><td>Reopen a cashier or paid order.</td><td>Order status returns to pending and table becomes occupied again.</td><td>P1</td></tr>
+          <tr><td class="mono">WTR-09</td><td>Waiter app</td><td>Guest changes quantity after line was already entered.</td><td>Use change flow on an existing item.</td><td>Quantity, totals, notes, and stock adjustments update correctly.</td><td>P1</td></tr>
+          <tr><td class="mono">WTR-10</td><td>Waiter app</td><td>Guest rejects or returns one line item.</td><td>Refund or cancel full and partial quantities.</td><td>Active totals recalculate and history/audit rows are written.</td><td>P1</td></tr>
+          <tr><td class="mono">WTR-11</td><td>Waiter app</td><td>Guests change seats mid-service.</td><td>Move active order from source table to target table.</td><td>Source reopens, target becomes occupied, audit continuity is preserved.</td><td>P1</td></tr>
+          <tr><td class="mono">WTR-12</td><td>Waiter app</td><td>Operator accidentally chooses same table as target.</td><td>Move table to itself.</td><td>System rejects request with clear validation/business error.</td><td>P1</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h2 class="section-title">Kitchen And KDS</h2>
+    <div class="card table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Surface</th>
+            <th>Real-Life Scenario</th>
+            <th>Execution</th>
+            <th>Expected Result</th>
+            <th>Priority</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td class="mono">KDS-01</td><td>Kitchen app</td><td>Kitchen opens active ticket board.</td><td>Load KDS orders after waiter sends ticket.</td><td>Only queued/preparing/ready items from same branch appear.</td><td>P1</td></tr>
+          <tr><td class="mono">KDS-02</td><td>Kitchen app</td><td>Kitchen progresses items through production.</td><td>Update lines queued → preparing → ready.</td><td>Each item status saves immediately and stays consistent on refresh.</td><td>P1</td></tr>
+          <tr><td class="mono">KDS-03</td><td>Kitchen app</td><td>Waiter cancels or refunds an item after send-to-kitchen.</td><td>Refund/cancel a line then refresh KDS.</td><td>Removed lines no longer clutter the kitchen board.</td><td>P1</td></tr>
+          <tr><td class="mono">KDS-04</td><td>Kitchen + waiter</td><td>Entire order is ready for settlement.</td><td>Mark all active lines ready and retry cashier handoff.</td><td>Waiter can send order to cashier successfully.</td><td>P1</td></tr>
+          <tr><td class="mono">KDS-05</td><td>Kitchen app API</td><td>Kitchen user from branch B tries to update branch A ticket.</td><td>Patch another branch item/order status.</td><td>403 or 404 with no cross-branch change.</td><td>P1</td></tr>
+          <tr><td class="mono">KDS-06</td><td>Kitchen app</td><td>Late order adjustments happen after KDS already has a ticket.</td><td>Add, change, or refund lines after KDS send.</td><td>KDS lane stays coherent and kitchen can still finish only active lines.</td><td>P2</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h2 class="section-title">Cashier, Settlement, And Receipts</h2>
+    <div class="card table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Surface</th>
+            <th>Real-Life Scenario</th>
+            <th>Execution</th>
+            <th>Expected Result</th>
+            <th>Priority</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td class="mono">CSH-01</td><td>Cashier app</td><td>Cashier opens the ready queue.</td><td>Load orders filtered for cashier or outstanding balance.</td><td>Ready orders appear with customer, item count, and due amount.</td><td>P1</td></tr>
+          <tr><td class="mono">CSH-02</td><td>Cashier app</td><td>Guest pays only part of the bill first.</td><td>Submit single partial payment.</td><td>Order stays in cashier state and payment_status becomes partial.</td><td>P1</td></tr>
+          <tr><td class="mono">CSH-03</td><td>Cashier app</td><td>Guest splits payment across methods.</td><td>Post mixed tender array.</td><td>Payments persist, total due reaches zero, payment_method becomes mixed or equivalent.</td><td>P1</td></tr>
+          <tr><td class="mono">CSH-04</td><td>Cashier app</td><td>Operator over-enters payment or pays twice quickly.</td><td>Repeat submit or exceed due amount.</td><td>System prevents duplicate/over-collection or clearly compensates with audit-safe behavior.</td><td>P1</td></tr>
+          <tr><td class="mono">CSH-05</td><td>Cashier app</td><td>Guest asks for printable receipt.</td><td>Download receipt PDF after payment or while in cashier.</td><td>Valid PDF is returned with correct table, items, discount, and totals.</td><td>P1</td></tr>
+          <tr><td class="mono">CSH-06</td><td>Cashier app API</td><td>Branch-2 cashier tries to settle branch-1 order.</td><td>Pay another branch order using valid cashier token.</td><td>Request is blocked with authorization error.</td><td>P1</td></tr>
+          <tr><td class="mono">CSH-07</td><td>Cashier app API</td><td>Branch-2 cashier tries to download branch-1 receipt.</td><td>Fetch another branch receipt.</td><td>Request is blocked with authorization error.</td><td>P1</td></tr>
+          <tr><td class="mono">CSH-08</td><td>Cashier + waiter</td><td>Partially paid order needs modification.</td><td>Reopen after partial payment and re-check due math.</td><td>Outstanding amount remains accurate and table state stays valid.</td><td>P2</td></tr>
+          <tr><td class="mono">CSH-09</td><td>Cashier app</td><td>Table should reopen only when visit is actually closed.</td><td>Compare partial payment vs final payment.</td><td>Table remains occupied until full payment is confirmed.</td><td>P1</td></tr>
+          <tr><td class="mono">CSH-10</td><td>Customer + cashier</td><td>Loyalty points should be earned once per fully paid order.</td><td>Pay, reopen, and re-pay same visit.</td><td>No duplicate loyalty earn transactions for same order.</td><td>P1</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h2 class="section-title">Customer App And Loyalty</h2>
+    <div class="card table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Surface</th>
+            <th>Real-Life Scenario</th>
+            <th>Execution</th>
+            <th>Expected Result</th>
+            <th>Priority</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td class="mono">CUS-01</td><td>Customer app</td><td>Guest lands on home after login.</td><td>Open home for new and returning customer.</td><td>Restaurants, recent orders, and loyalty preview render fast and correctly.</td><td>P1</td></tr>
+          <tr><td class="mono">CUS-02</td><td>Customer app</td><td>Guest filters by venue type or search term.</td><td>Use restaurant search and kind filter.</td><td>List and pagination reflect the selected filter set.</td><td>P1</td></tr>
+          <tr><td class="mono">CUS-03</td><td>Customer app</td><td>Guest checks previous dine-in bill later.</td><td>Open orders list and single order detail.</td><td>Only the guest’s own orders are visible.</td><td>P1</td></tr>
+          <tr><td class="mono">CUS-04</td><td>Customer app</td><td>Guest expects loyalty points after paying.</td><td>Complete paid order and reload loyalty tab.</td><td>Earn transaction appears once and points total increments.</td><td>P1</td></tr>
+          <tr><td class="mono">CUS-05</td><td>Customer app</td><td>Guest updates name/email during login.</td><td>Log in again with same phone and new profile details.</td><td>Profile updates safely without losing history.</td><td>P2</td></tr>
+          <tr><td class="mono">CUS-06</td><td>Customer security</td><td>Phone-based login is abused without proof-of-possession.</td><td>Attempt login using someone else’s phone number.</td><td>Production design should require OTP or equivalent verification.</td><td>P1</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h2 class="section-title">Inventory, Audit, And Resilience</h2>
+    <div class="card table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Surface</th>
+            <th>Real-Life Scenario</th>
+            <th>Execution</th>
+            <th>Expected Result</th>
+            <th>Priority</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td class="mono">OPS-01</td><td>API + owner</td><td>Stock must reduce when an order is created.</td><td>Create recipe-backed lines and inspect ingredient/product stock.</td><td>Correct branch stock is deducted without going negative.</td><td>P1</td></tr>
+          <tr><td class="mono">OPS-02</td><td>API + owner</td><td>Stock must restore on refund or quantity reduction.</td><td>Refund or change an item after create.</td><td>Inventory is increased back according to returned quantity.</td><td>P1</td></tr>
+          <tr><td class="mono">OPS-03</td><td>Owner dashboard</td><td>Low-stock watch should reflect risky items.</td><td>Push ingredients below threshold and reload dashboard/inventory.</td><td>Owner sees low-stock signals before service fails.</td><td>P2</td></tr>
+          <tr><td class="mono">OPS-04</td><td>API security</td><td>Inventory master data is probed anonymously.</td><td>Call ingredients endpoints with no token.</td><td>Access is denied.</td><td>P1</td></tr>
+          <tr><td class="mono">OPS-05</td><td>API security</td><td>Employee performance data is probed anonymously.</td><td>Call performance endpoint with no token.</td><td>Access is denied.</td><td>P1</td></tr>
+          <tr><td class="mono">OPS-06</td><td>API + waiter</td><td>Every item adjustment must remain auditable.</td><td>Change and refund an order item, then fetch history.</td><td>History shows who changed what, when, and why.</td><td>P1</td></tr>
+          <tr><td class="mono">OPS-07</td><td>API validation</td><td>Client sends unsupported refund/change action.</td><td>Submit invalid action string.</td><td>422 validation error returned; no silent success.</td><td>P1</td></tr>
+          <tr><td class="mono">OPS-08</td><td>API contract</td><td>Mobile client asks for order detail by order id.</td><td>Call order show endpoint with valid order id.</td><td>Endpoint returns order detail, not unrelated table behavior.</td><td>P1</td></tr>
+          <tr><td class="mono">OPS-09</td><td>Web performance</td><td>Dashboard JS payload grows as features increase.</td><td>Run production build and review chunk sizes.</td><td>Critical bundles stay within acceptable branch-device limits.</td><td>P2</td></tr>
+          <tr><td class="mono">OPS-10</td><td>Flutter regression</td><td>UI visual baseline drifts from expected screens.</td><td>Run golden tests for waiter, kitchen, and cashier workspaces.</td><td>Goldens pass or are intentionally updated with approved redesign evidence.</td><td>P2</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="card">
+      <h2>Recommended Release Gate</h2>
+      <div class="status-row">
+        <span class="status bad">Block Release If Any P1 Fails</span>
+        <span class="status warn">Review P2 Failures With Product Owner</span>
+        <span class="status neutral">Track P3 In Backlog</span>
+      </div>
+      <ul class="tight-list">
+        <li>Run authentication, waiter, kitchen, cashier, customer history, and security cases first.</li>
+        <li>Use real seeded restaurant data whenever possible so branch scope, loyalty, and stock behavior are realistic.</li>
+        <li>Always pair the scenario matrix with the live execution report for the exact defects found in the current build.</li>
+      </ul>
+      <p class="meta">Companion report: <a href="restaurant-suite-live-test-report.html">Restaurant Suite Live Test Report</a></p>
+    </div>
+  </div>
+</body>
+</html>

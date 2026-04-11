@@ -190,6 +190,7 @@ class _KitchenWorkspacePageState extends ConsumerState<KitchenWorkspacePage> {
     final action = switch (laneStatus) {
       'queued' => 'Start preparing',
       'preparing' => 'Mark ready',
+      'returned' => 'Restart returned',
       _ => 'Send to service',
     };
 
@@ -203,6 +204,8 @@ class _KitchenWorkspacePageState extends ConsumerState<KitchenWorkspacePage> {
   String _nextStatus(String? status) {
     switch (status) {
       case 'queued':
+        return 'preparing';
+      case 'returned':
         return 'preparing';
       case 'preparing':
         return 'ready';
@@ -219,6 +222,8 @@ class _KitchenWorkspacePageState extends ConsumerState<KitchenWorkspacePage> {
         return 'ready';
       case 'served':
         return 'service';
+      case 'returned':
+        return 'returned';
       default:
         return status;
     }
@@ -234,6 +239,8 @@ class _KitchenWorkspacePageState extends ConsumerState<KitchenWorkspacePage> {
         return const Color(0xFF34D399);
       case 'served':
         return const Color(0xFFF4F7FB);
+      case 'returned':
+        return const Color(0xFFF87171);
       default:
         return const Color(0xFF9CA3AF);
     }
@@ -271,9 +278,12 @@ class _KitchenWorkspacePageState extends ConsumerState<KitchenWorkspacePage> {
         final queuedTickets = _filterTickets(tickets, 'queued');
         final preparingTickets = _filterTickets(tickets, 'preparing');
         final readyTickets = _filterTickets(tickets, 'ready');
+        final returnedTickets = _filterTickets(tickets, 'returned');
         final queuedItems = _countItems(tickets, 'queued');
         final preparingItems = _countItems(tickets, 'preparing');
         final readyItems = _countItems(tickets, 'ready');
+        final servedItems = _countItems(tickets, 'served');
+        final returnedItems = _countItems(tickets, 'returned');
         final wide = MediaQuery.of(context).size.width > 1180;
 
         return Container(
@@ -297,6 +307,8 @@ class _KitchenWorkspacePageState extends ConsumerState<KitchenWorkspacePage> {
                   queuedItems: queuedItems,
                   preparingItems: preparingItems,
                   readyItems: readyItems,
+                  servedItems: servedItems,
+                  returnedItems: returnedItems,
                 ),
                 const SizedBox(height: 16),
                 if (tickets.isEmpty)
@@ -352,6 +364,19 @@ class _KitchenWorkspacePageState extends ConsumerState<KitchenWorkspacePage> {
                           onItemTap: _advanceItem,
                         ),
                       ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: _KitchenLane(
+                          title: 'Returned',
+                          subtitle: 'Tap ticket to restart returned items',
+                          color: const Color(0xFFF87171),
+                          tickets: returnedTickets,
+                          itemCount: returnedItems,
+                          laneStatus: 'returned',
+                          onTicketTap: _advanceTicket,
+                          onItemTap: _advanceItem,
+                        ),
+                      ),
                     ],
                   )
                 else
@@ -390,6 +415,17 @@ class _KitchenWorkspacePageState extends ConsumerState<KitchenWorkspacePage> {
                         onTicketTap: _advanceTicket,
                         onItemTap: _advanceItem,
                       ),
+                      const SizedBox(height: 14),
+                      _KitchenLane(
+                        title: 'Returned',
+                        subtitle: 'Tap ticket to restart returned items',
+                        color: const Color(0xFFF87171),
+                        tickets: returnedTickets,
+                        itemCount: returnedItems,
+                        laneStatus: 'returned',
+                        onTicketTap: _advanceTicket,
+                        onItemTap: _advanceItem,
+                      ),
                     ],
                   ),
               ],
@@ -409,6 +445,8 @@ class _KitchenHero extends StatelessWidget {
     required this.queuedItems,
     required this.preparingItems,
     required this.readyItems,
+    required this.servedItems,
+    required this.returnedItems,
   });
 
   final int queued;
@@ -417,6 +455,8 @@ class _KitchenHero extends StatelessWidget {
   final int queuedItems;
   final int preparingItems;
   final int readyItems;
+  final int servedItems;
+  final int returnedItems;
 
   @override
   Widget build(BuildContext context) {
@@ -484,6 +524,18 @@ class _KitchenHero extends StatelessWidget {
                 value: '$ready',
                 detail: '$readyItems items',
                 color: const Color(0xFF34D399),
+              ),
+              _KitchenMetric(
+                title: 'Served',
+                value: '$servedItems',
+                detail: 'items',
+                color: const Color(0xFFF4F7FB),
+              ),
+              _KitchenMetric(
+                title: 'Returned',
+                value: '$returnedItems',
+                detail: 'items',
+                color: const Color(0xFFF87171),
               ),
             ],
           ),
@@ -764,7 +816,10 @@ class _KitchenItemTile extends StatelessWidget {
                           ),
                         if ((item.itemNote ?? '').isNotEmpty ||
                             (item.changeNote ?? '').isNotEmpty)
-                          const _KitchenSignalToken(label: 'NOTE'),
+                          _KitchenSignalToken(
+                            label: 'NOTE',
+                            onTap: () => _showItemNotes(context),
+                          ),
                       ],
                     ),
                   ],
@@ -782,27 +837,58 @@ class _KitchenItemTile extends StatelessWidget {
       ),
     );
   }
+
+  void _showItemNotes(BuildContext context) {
+    final notes = <String>[
+      if ((item.itemNote ?? '').isNotEmpty) 'Order note: ${item.itemNote}',
+      if ((item.changeNote ?? '').isNotEmpty) 'Change note: ${item.changeNote}',
+      if (item.modifiers.isNotEmpty) 'Modifiers: ${item.modifiers.join(', ')}',
+    ];
+
+    showDialog<void>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text(item.name),
+          content: Text(notes.join('\n')),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Close'),
+            ),
+          ],
+        );
+      },
+    );
+  }
 }
 
 class _KitchenSignalToken extends StatelessWidget {
-  const _KitchenSignalToken({required this.label});
+  const _KitchenSignalToken({
+    required this.label,
+    this.onTap,
+  });
 
   final String label;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Text(
-        label,
-        style: const TextStyle(
-          color: Color(0xFF111827),
-          fontWeight: FontWeight.w800,
-          fontSize: 12,
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(999),
+        ),
+        child: Text(
+          label,
+          style: const TextStyle(
+            color: Color(0xFF111827),
+            fontWeight: FontWeight.w800,
+            fontSize: 12,
+          ),
         ),
       ),
     );

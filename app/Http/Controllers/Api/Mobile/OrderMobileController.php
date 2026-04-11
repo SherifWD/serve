@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\Mobile;
 
 use App\Events\OrderSentToKDS;
 use App\Http\Controllers\Controller;
+use App\Models\Branch;
 use App\Models\CategoryAnswer;
 use App\Models\Customer;
 use App\Models\LoyaltyTransaction;
@@ -11,25 +12,21 @@ use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Payment;
 use App\Models\Product;
+use App\Models\Receipt;
 use App\Models\Table;
-use Barryvdh\DomPDF\PDF;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
-use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Str;
 
 class OrderMobileController extends Controller
 {
-    private function nonNegativeStockExpression(int $delta): string
-    {
-        if (DB::connection()->getDriverName() === 'sqlite') {
-            return "CASE WHEN stock + ($delta) < 0 THEN 0 ELSE stock + ($delta) END";
-        }
+    private const ACTIVE_ORDER_STATUSES = ['pending', 'open', 'running', 'cashier'];
+    private const NON_ACTIVE_ITEM_STATUSES = ['canceled', 'cancelled', 'refunded'];
+    private const CASHIER_READY_ITEM_STATUSES = ['ready', 'served'];
 
-        return "GREATEST(stock + ($delta), 0)";
-    }
-
-    public function index(Request $request)
+    private function orderQueryForUser(Request $request)
     {
         $query = Order::query();
         $user = $request->user();
@@ -39,6 +36,111 @@ class OrderMobileController extends Controller
         } elseif ($user?->restaurant_id) {
             $query->whereHas('branch', fn ($branchQuery) => $branchQuery->where('restaurant_id', $user->restaurant_id));
         }
+
+        return $query;
+    }
+
+    private function ensureBranchAccessible(Request $request, int $branchId): ?JsonResponse
+    {
+        $user = $request->user();
+
+        if (!$user) {
+            return response()->json(['error' => 'Unauthorized'], 401);
+        }
+
+        if ($user->branch_id) {
+            return (int) $user->branch_id === $branchId
+                ? null
+                : response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        if ($user->restaurant_id) {
+            $allowed = Branch::query()
+                ->whereKey($branchId)
+                ->where('restaurant_id', $user->restaurant_id)
+                ->exists();
+
+            return $allowed
+                ? null
+                : response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        return null;
+    }
+
+    private function ensureOrderAccessible(Request $request, Order $order): ?JsonResponse
+    {
+        return $this->ensureBranchAccessible($request, (int) $order->branch_id);
+    }
+
+    private function activeOrderConstraint($query)
+    {
+        return $query->whereIn('status', self::ACTIVE_ORDER_STATUSES)
+            ->where(function ($paymentQuery) {
+                $paymentQuery->whereNull('payment_status')
+                    ->orWhere('payment_status', '!=', 'paid');
+            });
+    }
+
+    private function appendItemRuntimeState(Order $order): void
+    {
+        $order->loadMissing('payments');
+
+        $order->items->each(function ($item) use ($order) {
+            $item->setRelation('order', $order);
+            $item->append(['item_note', 'change_note', 'paid_amount', 'payment_status']);
+        });
+    }
+
+    private function orderItemsReadyForCashier(Order $order): bool
+    {
+        $activeItems = $order->items->filter(function ($item) {
+            $status = $item->kds_status ?? $item->status;
+            return !in_array($status, self::NON_ACTIVE_ITEM_STATUSES, true);
+        });
+
+        return $activeItems->isNotEmpty() && $activeItems->every(function ($item) {
+            $status = $item->kds_status ?? $item->status;
+            return in_array($status, self::CASHIER_READY_ITEM_STATUSES, true);
+        });
+    }
+
+    private function parseItemIds(mixed $value): array
+    {
+        if ($value === null || $value === '') {
+            return [];
+        }
+
+        if (is_string($value)) {
+            $value = explode(',', $value);
+        }
+
+        if (!is_array($value)) {
+            return [];
+        }
+
+        return collect($value)
+            ->map(fn ($id) => (int) $id)
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    private function nonNegativeStockExpression(float|int $delta): string
+    {
+        $delta = (float) $delta;
+
+        if (DB::connection()->getDriverName() === 'sqlite') {
+            return "CASE WHEN stock + ($delta) < 0 THEN 0 ELSE stock + ($delta) END";
+        }
+
+        return "GREATEST(stock + ($delta), 0)";
+    }
+
+    public function index(Request $request)
+    {
+        $query = $this->orderQueryForUser($request);
 
         if ($request->has('table_id')) {
             $query->where('table_id', $request->input('table_id'));
@@ -66,31 +168,19 @@ class OrderMobileController extends Controller
             ->latest('id')
             ->get();
 
-$orders->each(function($order){
-    $order->items->each(function($item){
-        $item->append(['item_note','change_note']);
-    });
-});
+        $orders->each(fn ($order) => $this->appendItemRuntimeState($order));
 
 
         return response()->json(['data' => $orders]);
     }
 public function sendToCashier(Request $request, Order $order)
 {
-    if ((int) $request->user()->branch_id !== (int) $order->branch_id) {
-        return response()->json(['error' => 'Unauthorized'], 403);
+    if ($authResponse = $this->ensureOrderAccessible($request, $order)) {
+        return $authResponse;
     }
 
     $order->load('items');
-    $allDone = $order->items
-    ->filter(function ($i) {
-        $status = $i->kds_status ?? $i->status; // fallback if NULL
-        return !in_array($status, ['canceled', 'refunded', 'cancelled']);
-    })
-    ->every(function ($i) {
-        $status = $i->kds_status ?? $i->status;
-        return in_array($status, ['ready', 'served']);
-    });
+    $allDone = $this->orderItemsReadyForCashier($order);
 
     if (!$allDone) {
         return response()->json(['error' => 'Items are not finished in KDS'], 422);
@@ -98,6 +188,10 @@ public function sendToCashier(Request $request, Order $order)
 
     $order->status = 'cashier'; // <— important
     $order->save();
+
+    if ($order->table && $order->order_type === 'dine-in') {
+        $order->table->update(['status' => 'cashier']);
+    }
 
     // (optional) broadcast to waiter & cashier UIs
     // event(new \App\Events\OrderReadyForCashier($order));
@@ -112,22 +206,27 @@ public function batchSendToCashier(Request $request)
         'order_ids.*' => 'integer|exists:orders,id',
     ]);
 
+    $orders = $this->orderQueryForUser($request)
+        ->with('items')
+        ->whereIn('id', $data['order_ids'])
+        ->get()
+        ->keyBy('id');
+
+    if ($orders->count() !== count(array_unique($data['order_ids']))) {
+        return response()->json(['error' => 'Unauthorized'], 403);
+    }
+
     $ok = []; $failed = [];
     foreach ($data['order_ids'] as $id) {
-        $order = Order::with('items')->find($id);
-        $allDone = $order->items
-    ->filter(function ($i) {
-        $status = $i->kds_status ?? $i->status; // fallback if NULL
-        return !in_array($status, ['canceled', 'refunded', 'cancelled']);
-    })
-    ->every(function ($i) {
-        $status = $i->kds_status ?? $i->status;
-        return in_array($status, ['ready', 'served']);
-    });
+        $order = $orders->get($id);
+        $allDone = $this->orderItemsReadyForCashier($order);
 
         if ($allDone) {
             $order->status = 'cashier'; // <— important
             $order->save();
+            if ($order->table && $order->order_type === 'dine-in') {
+                $order->table->update(['status' => 'cashier']);
+            }
             $ok[] = $id;
             // event(new \App\Events\OrderReadyForCashier($order));
         } else {
@@ -137,28 +236,23 @@ public function batchSendToCashier(Request $request)
 
     return response()->json(['ok' => $ok, 'failed' => $failed]);
 }
-    public function show($id)
+    public function show(Request $request, $id)
 {
-    $table = Table::with(['orders' => function($q) {
-            $q->whereIn('status', ['pending', 'open']);
-        }, 'orders.items.product'])
+    $order = $this->orderQueryForUser($request)
+        ->with([
+            'branch.restaurant',
+            'table',
+            'customer',
+            'items.product',
+            'items.answers.choice.question',
+            'items.modifiers.modifier',
+            'payments',
+        ])
         ->findOrFail($id);
 
-    // You might want to get only the first open/pending order
-    $order = optional($table->orders)->first();
-if ($order) {
-    $order->items->each(function($item){
-        $item->append(['item_note','change_note']);
-    });
-}
+    $this->appendItemRuntimeState($order);
 
-    return response()->json([
-        'data' => [
-            'id' => $table->id,
-            'name' => $table->name,
-            'order' => $order // Will include items and product data
-        ]
-    ]);
+    return response()->json(['data' => $order]);
 }
 
 
@@ -187,18 +281,17 @@ if ($order) {
         'coupon_code' => 'nullable|string|max:50'
     ]);
 
+    $table = Table::findOrFail($data['table_id']);
+    if ($authResponse = $this->ensureBranchAccessible($request, (int) $table->branch_id)) {
+        return $authResponse;
+    }
+
     DB::beginTransaction();
     try {
-        $table = Table::findOrFail($data['table_id']);
         $customer = $this->resolveCustomer($data);
 
-        // Branch guard (optional)
-        if ($request->user() && (int) $table->branch_id !== (int) $request->user()->branch_id) {
-            return response()->json(['error' => 'Unauthorized'], 403);
-        }
-
         $openOrder = Order::where('table_id', $table->id)
-            ->whereIn('status', ['pending', 'open'])
+            ->where(fn ($query) => $this->activeOrderConstraint($query))
             ->lockForUpdate()
             ->first();
 
@@ -257,7 +350,7 @@ if ($order) {
                         // update stock safely
                         \DB::table('ingredient_branches')
                             ->where('id', $ib->id)
-                            ->update(['stock' => \DB::raw("GREATEST(stock + ($delta), 0)")]); // prevent negative
+                            ->update(['stock' => \DB::raw($this->nonNegativeStockExpression($delta))]); // prevent negative
                     } else {
                         // fallback
                         $ingredient->update(['stock' => max(0, (float)$ingredient->stock + $delta)]);
@@ -351,6 +444,9 @@ if ($order) {
         $order->discount_type = $orderDiscountType;
         $order->coupon_code = $data['coupon_code'] ?? null;
         $order->total = max($orderTotal, 0);
+        if ($openOrder && $order->status === 'cashier') {
+            $order->status = 'pending';
+        }
         $order->save();
 
         $table->status = \App\Enums\TableStatus::OCCUPIED;
@@ -371,6 +467,7 @@ if ($order) {
         DB::commit();
 
         $order->load(['branch.restaurant', 'customer', 'items.product', 'items.answers.choice.question', 'items.modifiers.modifier', 'payments']); // eager
+        $this->appendItemRuntimeState($order);
         return response()->json(['order' => $order], $openOrder ? 200 : 201);
 
     } catch (\Throwable $e) {
@@ -384,9 +481,8 @@ if ($order) {
 
 public function sendToKDS(Request $request, Order $order)
 {
-    // Authz: same branch
-    if ((int) $request->user()->branch_id !== (int) $order->branch_id) {
-        return response()->json(['error' => 'Unauthorized'], 403);
+    if ($authResponse = $this->ensureOrderAccessible($request, $order)) {
+        return $authResponse;
     }
 
     // Mark only items that are still pending
@@ -400,6 +496,10 @@ public function sendToKDS(Request $request, Order $order)
     if ($updated > 0 && !$order->kds_sent_at) {
         $order->kds_sent_at = now();
         $order->save();
+    }
+
+    if ($updated > 0 && $order->table && $order->order_type === 'dine-in') {
+        $order->table->update(['status' => 'occupied']);
     }
 
     // Broadcast to branch — KDS should refresh/append ticket
@@ -417,21 +517,44 @@ public function pay(Request $request, $id)
         'payments' => 'nullable|array|min:1',
         'payments.*.method' => 'required_with:payments|in:cash,card,wallet',
         'payments.*.amount' => 'required_with:payments|numeric|min:0.01',
+        'item_ids' => 'nullable|array|min:1',
+        'item_ids.*' => 'integer|exists:order_items,id',
     ]);
 
     if (empty($data['payments']) && (!isset($data['amount']) || empty($data['payment_method']))) {
         return response()->json(['error' => 'Provide either a single payment or a payments split array.'], 422);
     }
 
-    $order = Order::with(['table', 'customer', 'payments'])->findOrFail($id);
+    $order = Order::with(['table', 'customer', 'payments', 'items'])->findOrFail($id);
 
-    DB::transaction(function () use ($data, $order) {
+    if ($authResponse = $this->ensureOrderAccessible($request, $order)) {
+        return $authResponse;
+    }
+
+    $paymentItemIds = collect($data['item_ids'] ?? [])
+        ->map(fn ($id) => (int) $id)
+        ->unique()
+        ->values();
+
+    if ($paymentItemIds->isNotEmpty()) {
+        $selectedItems = $order->items
+            ->whereIn('id', $paymentItemIds->all())
+            ->reject(fn ($item) => in_array($item->status, self::NON_ACTIVE_ITEM_STATUSES, true));
+
+        if ($selectedItems->count() !== $paymentItemIds->count()) {
+            return response()->json(['error' => 'Selected payment items must belong to this active order.'], 422);
+        }
+    }
+
+    DB::transaction(function () use ($data, $order, $paymentItemIds) {
         if (!empty($data['payments'])) {
             foreach ($data['payments'] as $payment) {
                 Payment::create([
                     'order_id' => $order->id,
                     'method' => $payment['method'],
                     'amount' => $payment['amount'],
+                    'item_ids' => $paymentItemIds->isEmpty() ? null : $paymentItemIds->all(),
+                    'scope' => $paymentItemIds->isEmpty() ? 'order' : 'items',
                 ]);
             }
             $order->payment_method = count($data['payments']) > 1 ? 'mixed' : $data['payments'][0]['method'];
@@ -440,6 +563,8 @@ public function pay(Request $request, $id)
                 'order_id' => $order->id,
                 'method' => $data['payment_method'],
                 'amount' => $data['amount'],
+                'item_ids' => $paymentItemIds->isEmpty() ? null : $paymentItemIds->all(),
+                'scope' => $paymentItemIds->isEmpty() ? 'order' : 'items',
             ]);
             $order->payment_method = $data['payment_method'];
         }
@@ -469,12 +594,17 @@ public function pay(Request $request, $id)
         } else {
             $order->payment_status = $paidAmount > 0 ? 'partial' : 'unpaid';
             $order->status = 'cashier';
+
+            if ($order->table && $order->order_type === 'dine-in') {
+                $order->table->update(['status' => 'cashier']);
+            }
         }
 
         $order->save();
     });
 
-    $order->refresh()->load(['branch.restaurant', 'customer', 'items.product', 'payments']);
+    $order->refresh()->load(['branch.restaurant', 'customer', 'items.product', 'items.modifiers.modifier', 'payments']);
+    $this->appendItemRuntimeState($order);
 
     // Optionally send email receipt
     if (!empty($data['email_receipt'])) {
@@ -483,11 +613,100 @@ public function pay(Request $request, $id)
     return response()->json(['order' => $order]);
 }
 
-public function receipt($id)
+public function receipt(Request $request, $id)
 {
-    $order = Order::with('items.product', 'table')->findOrFail($id);
-    $pdf = \PDF::loadView('receipts.order', compact('order'));
-    return $pdf->download("receipt_order_{$order->id}.pdf");
+    $order = Order::with(['items.product', 'table', 'payments'])->findOrFail($id);
+
+    if ($authResponse = $this->ensureOrderAccessible($request, $order)) {
+        return $authResponse;
+    }
+
+    $scope = $request->input('scope', 'full');
+    if (!in_array($scope, ['full', 'paid', 'unprinted'], true)) {
+        return response()->json(['error' => 'Invalid receipt scope.'], 422);
+    }
+
+    $itemIds = $this->parseItemIds($request->input('item_ids'));
+    $payment = null;
+
+    if ($request->filled('payment_id')) {
+        $payment = $order->payments->firstWhere('id', (int) $request->input('payment_id'));
+        if (!$payment) {
+            return response()->json(['error' => 'Payment does not belong to this order.'], 422);
+        }
+
+        $paymentItemIds = $this->parseItemIds($payment->item_ids ?? null);
+        if ($paymentItemIds) {
+            $itemIds = $paymentItemIds;
+            $scope = 'paid';
+        }
+    }
+
+    if ($scope === 'paid' && !$itemIds) {
+        $itemIds = $order->payments
+            ->flatMap(fn ($payment) => $this->parseItemIds($payment->item_ids ?? null))
+            ->unique()
+            ->values()
+            ->all();
+
+        if (!$itemIds && (float) $order->payments->sum('amount') >= (float) $order->total) {
+            $itemIds = $order->items->pluck('id')->all();
+        }
+    }
+
+    if ($scope === 'unprinted') {
+        $printedItemIds = Receipt::query()
+            ->where('order_id', $order->id)
+            ->pluck('content')
+            ->flatMap(function ($content) {
+                $decoded = json_decode((string) $content, true);
+                return is_array($decoded) ? ($decoded['item_ids'] ?? []) : [];
+            })
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values();
+
+        $itemIds = $order->items
+            ->pluck('id')
+            ->diff($printedItemIds)
+            ->values()
+            ->all();
+    }
+
+    $receiptItems = $order->items
+        ->reject(fn ($item) => in_array($item->status, self::NON_ACTIVE_ITEM_STATUSES, true))
+        ->when($itemIds, fn ($items) => $items->whereIn('id', $itemIds))
+        ->values();
+
+    if ($receiptItems->isEmpty()) {
+        return response()->json(['error' => 'No receiptable items found for this scope.'], 422);
+    }
+
+    $receiptTotal = round((float) $receiptItems->sum('total'), 2);
+    $receipt = Receipt::create([
+        'order_id' => $order->id,
+        'receipt_number' => $this->nextReceiptNumber($order),
+        'content' => json_encode([
+            'order_id' => $order->id,
+            'scope' => $scope,
+            'payment_id' => $payment?->id,
+            'item_ids' => $receiptItems->pluck('id')->values()->all(),
+            'total' => $receiptTotal,
+            'created_at' => now()->toISOString(),
+        ]),
+    ]);
+
+    $pdf = \PDF::loadView('receipts.order', compact('order', 'receipt', 'receiptItems', 'receiptTotal', 'scope'));
+    return $pdf->download("receipt_{$receipt->receipt_number}.pdf");
+}
+
+private function nextReceiptNumber(Order $order): string
+{
+    do {
+        $number = 'RCPT-'.$order->id.'-'.Str::upper(Str::random(6));
+    } while (Receipt::where('receipt_number', $number)->exists());
+
+    return $number;
 }
 
 private function resolveCustomer(array $data): ?Customer

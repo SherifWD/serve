@@ -49,14 +49,12 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/me', [AuthController::class, 'me']);
 });
 Route::middleware('auth:sanctum')->get('/dashboard/summary', [OwnerDashboardController::class, 'summary']);
-Route::get('employees/{id}/performance', [EmployeeController::class, 'performance']);
-Route::get('ingredients', [IngredientController::class, 'index']);
-Route::post('ingredients', [IngredientController::class, 'store']);
-Route::get('ingredients/{id}', [IngredientController::class, 'show']);
-Route::put('ingredients/{id}', [IngredientController::class, 'update']);
-Route::delete('ingredients/{id}', [IngredientController::class, 'destroy']);
-Route::post('ingredients/update-stock', [IngredientController::class, 'updateStock']);
-Route::apiResource('recipes', RecipeController::class);
+Route::middleware('auth:sanctum')->group(function () {
+    Route::get('employees/{id}/performance', [EmployeeController::class, 'performance']);
+    Route::apiResource('ingredients', IngredientController::class);
+    Route::post('ingredients/update-stock', [IngredientController::class, 'updateStock']);
+    Route::apiResource('recipes', RecipeController::class);
+});
 
 Route::prefix('customer')->group(function () {
     Route::post('auth/login', [CustomerAuthController::class, 'login']);

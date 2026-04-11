@@ -29,14 +29,14 @@ public function getActiveOrders(Request $request)
 
     $itemScope = function ($q) use ($nonActiveItemStatuses) {
         $q->whereNotIn('status', $nonActiveItemStatuses)
-          ->whereIn('kds_status', ['queued','preparing','ready'])
+          ->whereIn('kds_status', ['queued','preparing','ready','served','returned'])
           ->with(['product', 'modifiers.modifier']); // eager-load for UI badges
     };
 
     $orders = \App\Models\Order::query()
         ->where('branch_id', $branchId)
         ->whereNotNull('kds_sent_at')
-        ->whereIn('status', ['pending','open']) // KDS shows not-yet-closed orders
+        ->whereIn('status', ['pending','open','running','cashier']) // KDS shows active orders
         ->whereHas('items', $itemScope)         // only if it has visible items
         ->with(['table','items' => $itemScope]) // but only those filtered items
         ->orderBy('order_date', 'asc')
@@ -74,7 +74,7 @@ public function getActiveOrders(Request $request)
 public function setOrderItemStatus(Request $request, OrderItem $item)
 {
     $data = $request->validate([
-        'status' => 'required|in:queued,preparing,ready,canceled,refunded,served',
+        'status' => 'required|in:queued,preparing,ready,canceled,refunded,served,returned',
     ]);
 
     // Must be same branch
@@ -83,6 +83,9 @@ public function setOrderItemStatus(Request $request, OrderItem $item)
     }
 
     $item->kds_status = $data['status'];
+    if (!in_array($item->status, ['refunded', 'canceled', 'cancelled'], true)) {
+        $item->status = $data['status'];
+    }
     $item->save();
 
     event(new KDSItemStatusUpdated($item));

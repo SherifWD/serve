@@ -19,6 +19,7 @@ class _CashierWorkspacePageState extends ConsumerState<CashierWorkspacePage> {
   StaffOrderSnapshot? _selectedOrder;
   List<_PaymentDraft> _drafts = [];
   int _selectedDraftIndex = 0;
+  final Set<int> _selectedItemIds = <int>{};
 
   @override
   void initState() {
@@ -33,8 +34,27 @@ class _CashierWorkspacePageState extends ConsumerState<CashierWorkspacePage> {
           (order) => order.status == 'cashier' || order.outstandingAmount > 0,
         )
         .toList();
+
+    if (_selectedOrder != null) {
+      final selectedId = _selectedOrder!.id;
+      StaffOrderSnapshot? refreshed;
+      for (final order in cashierOrders) {
+        if (order.id == selectedId) {
+          refreshed = order;
+          break;
+        }
+      }
+      if (refreshed != null) {
+        _selectedOrder = refreshed;
+      } else {
+        _selectedOrder = null;
+        _selectedItemIds.clear();
+      }
+    }
+
     if (_selectedOrder == null && cashierOrders.isNotEmpty) {
       _selectedOrder = cashierOrders.first;
+      _selectedItemIds.clear();
       _resetDrafts();
     }
     return cashierOrders;
@@ -43,8 +63,18 @@ class _CashierWorkspacePageState extends ConsumerState<CashierWorkspacePage> {
   void _selectOrder(StaffOrderSnapshot order) {
     setState(() {
       _selectedOrder = order;
+      _selectedItemIds.clear();
       _resetDrafts();
     });
+  }
+
+  double _paymentTargetAmount(StaffOrderSnapshot? order) {
+    if (order == null) return 0;
+    if (_selectedItemIds.isEmpty) return order.outstandingAmount;
+
+    return order.items
+        .where((item) => _selectedItemIds.contains(item.id))
+        .fold<double>(0, (sum, item) => sum + item.unpaidAmount);
   }
 
   void _resetDrafts() {
@@ -52,7 +82,7 @@ class _CashierWorkspacePageState extends ConsumerState<CashierWorkspacePage> {
       draft.amountController.dispose();
     }
 
-    final outstanding = _selectedOrder?.outstandingAmount ?? 0;
+    final outstanding = _paymentTargetAmount(_selectedOrder);
     _drafts = [
       _PaymentDraft(
         method: 'card',
@@ -164,6 +194,42 @@ class _CashierWorkspacePageState extends ConsumerState<CashierWorkspacePage> {
     });
   }
 
+  void _toggleItemSelection(OrderItemLine item, bool selected) {
+    setState(() {
+      if (selected) {
+        _selectedItemIds.add(item.id);
+      } else {
+        _selectedItemIds.remove(item.id);
+      }
+      _resetDrafts();
+    });
+  }
+
+  Future<void> _pullReceiptForSelection() async {
+    final order = _selectedOrder;
+    if (order == null) return;
+
+    try {
+      await ref.read(suiteRepositoryProvider).generateReceipt(
+            orderId: order.id,
+            itemIds: _selectedItemIds.toList(growable: false),
+            scope: _selectedItemIds.isEmpty ? 'full' : 'paid',
+          );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(_selectedItemIds.isEmpty
+              ? 'Receipt generated'
+              : 'Selected-item receipt generated'),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(e.toString())));
+    }
+  }
+
   Future<void> _submitPayments() async {
     final order = _selectedOrder;
     if (order == null) return;
@@ -185,15 +251,18 @@ class _CashierWorkspacePageState extends ConsumerState<CashierWorkspacePage> {
     }
 
     try {
-      await ref
-          .read(suiteRepositoryProvider)
-          .payOrder(orderId: order.id, payments: payments);
+      await ref.read(suiteRepositoryProvider).payOrder(
+            orderId: order.id,
+            payments: payments,
+            itemIds: _selectedItemIds.toList(growable: false),
+          );
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Payment recorded')),
       );
       setState(() {
         _selectedOrder = null;
+        _selectedItemIds.clear();
         _resetDrafts();
         _future = _loadOrders();
       });
@@ -279,13 +348,20 @@ class _CashierWorkspacePageState extends ConsumerState<CashierWorkspacePage> {
                     ),
                     const SizedBox(width: 16),
                     Expanded(
-                      child: _TicketPanel(order: selected),
+                      child: _TicketPanel(
+                        order: selected,
+                        selectedItemIds: _selectedItemIds,
+                        onItemSelectionChanged: _toggleItemSelection,
+                        onReceipt: _pullReceiptForSelection,
+                      ),
                     ),
                     const SizedBox(width: 16),
                     SizedBox(
                       width: 360,
                       child: _PaymentPanel(
                         order: selected,
+                        targetAmount: _paymentTargetAmount(selected),
+                        usingItemScope: _selectedItemIds.isNotEmpty,
                         drafts: _drafts,
                         selectedDraftIndex: _selectedDraftIndex,
                         onSelectDraft: _selectDraft,
@@ -316,12 +392,21 @@ class _CashierWorkspacePageState extends ConsumerState<CashierWorkspacePage> {
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Expanded(child: _TicketPanel(order: selected)),
+                        Expanded(
+                          child: _TicketPanel(
+                            order: selected,
+                            selectedItemIds: _selectedItemIds,
+                            onItemSelectionChanged: _toggleItemSelection,
+                            onReceipt: _pullReceiptForSelection,
+                          ),
+                        ),
                         const SizedBox(width: 16),
                         SizedBox(
                           width: 340,
                           child: _PaymentPanel(
                             order: selected,
+                            targetAmount: _paymentTargetAmount(selected),
+                            usingItemScope: _selectedItemIds.isNotEmpty,
                             drafts: _drafts,
                             selectedDraftIndex: _selectedDraftIndex,
                             onSelectDraft: _selectDraft,
@@ -349,10 +434,17 @@ class _CashierWorkspacePageState extends ConsumerState<CashierWorkspacePage> {
                   ),
                 ),
                 const SizedBox(height: 16),
-                _TicketPanel(order: selected),
+                _TicketPanel(
+                  order: selected,
+                  selectedItemIds: _selectedItemIds,
+                  onItemSelectionChanged: _toggleItemSelection,
+                  onReceipt: _pullReceiptForSelection,
+                ),
                 const SizedBox(height: 16),
                 _PaymentPanel(
                   order: selected,
+                  targetAmount: _paymentTargetAmount(selected),
+                  usingItemScope: _selectedItemIds.isNotEmpty,
                   drafts: _drafts,
                   selectedDraftIndex: _selectedDraftIndex,
                   onSelectDraft: _selectDraft,
@@ -554,9 +646,17 @@ class _QueuePanel extends StatelessWidget {
 }
 
 class _TicketPanel extends StatelessWidget {
-  const _TicketPanel({required this.order});
+  const _TicketPanel({
+    required this.order,
+    required this.selectedItemIds,
+    required this.onItemSelectionChanged,
+    required this.onReceipt,
+  });
 
   final StaffOrderSnapshot order;
+  final Set<int> selectedItemIds;
+  final void Function(OrderItemLine item, bool selected) onItemSelectionChanged;
+  final Future<void> Function() onReceipt;
 
   @override
   Widget build(BuildContext context) {
@@ -588,7 +688,21 @@ class _TicketPanel extends StatelessWidget {
                     ],
                   ),
                 ),
-                _TicketStatusBadge(label: order.paymentStatus.toUpperCase()),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    _TicketStatusBadge(
+                        label: order.paymentStatus.toUpperCase()),
+                    const SizedBox(height: 8),
+                    OutlinedButton.icon(
+                      onPressed: onReceipt,
+                      icon: const Icon(Icons.receipt_long_outlined),
+                      label: Text(selectedItemIds.isEmpty
+                          ? 'Receipt'
+                          : 'Receipt selected'),
+                    ),
+                  ],
+                ),
               ],
             ),
             const SizedBox(height: 18),
@@ -619,6 +733,14 @@ class _TicketPanel extends StatelessWidget {
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    Checkbox(
+                      value: selectedItemIds.contains(item.id),
+                      onChanged: item.isVoided
+                          ? null
+                          : (value) =>
+                              onItemSelectionChanged(item, value ?? false),
+                    ),
+                    const SizedBox(width: 6),
                     Container(
                       width: 34,
                       height: 34,
@@ -658,6 +780,23 @@ class _TicketPanel extends StatelessWidget {
                               style: const TextStyle(color: Color(0xFF8B5E34)),
                             ),
                           ],
+                          const SizedBox(height: 6),
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: [
+                              _InfoPill(label: item.kitchenStatusLabel),
+                              _InfoPill(
+                                label:
+                                    'Payment ${(item.paymentStatus ?? 'unpaid').toUpperCase()}',
+                              ),
+                              if (item.paidAmount > 0)
+                                _InfoPill(
+                                  label:
+                                      'Paid ${currency.format(item.paidAmount)}',
+                                ),
+                            ],
+                          ),
                         ],
                       ),
                     ),
@@ -691,6 +830,8 @@ class _TicketPanel extends StatelessWidget {
 class _PaymentPanel extends StatelessWidget {
   const _PaymentPanel({
     required this.order,
+    required this.targetAmount,
+    required this.usingItemScope,
     required this.drafts,
     required this.selectedDraftIndex,
     required this.onSelectDraft,
@@ -705,6 +846,8 @@ class _PaymentPanel extends StatelessWidget {
   });
 
   final StaffOrderSnapshot order;
+  final double targetAmount;
+  final bool usingItemScope;
   final List<_PaymentDraft> drafts;
   final int selectedDraftIndex;
   final ValueChanged<int> onSelectDraft;
@@ -725,10 +868,8 @@ class _PaymentPanel extends StatelessWidget {
       (sum, draft) =>
           sum + (double.tryParse(draft.amountController.text.trim()) ?? 0),
     );
-    final remaining =
-        (order.outstandingAmount - draftedTotal).clamp(0, double.infinity);
-    final changeDue =
-        (draftedTotal - order.outstandingAmount).clamp(0, double.infinity);
+    final remaining = (targetAmount - draftedTotal).clamp(0, double.infinity);
+    final changeDue = (draftedTotal - targetAmount).clamp(0, double.infinity);
 
     return Card(
       child: Padding(
@@ -756,7 +897,7 @@ class _PaymentPanel extends StatelessWidget {
             ),
             const SizedBox(height: 12),
             Text(
-              'Outstanding ${currency.format(order.outstandingAmount)}',
+              '${usingItemScope ? 'Selected items' : 'Outstanding'} ${currency.format(targetAmount)}',
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.w800,
                     color: const Color(0xFF8A4316),
@@ -815,11 +956,11 @@ class _PaymentPanel extends StatelessWidget {
               children: [
                 _QuickPayButton(
                   label: 'Exact',
-                  onTap: () => onQuickAmount(order.outstandingAmount),
+                  onTap: () => onQuickAmount(targetAmount),
                 ),
                 _QuickPayButton(
                   label: '50%',
-                  onTap: () => onQuickAmount(order.outstandingAmount / 2),
+                  onTap: () => onQuickAmount(targetAmount / 2),
                 ),
                 _QuickPayButton(
                   label: '100',

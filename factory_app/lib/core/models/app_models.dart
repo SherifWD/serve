@@ -375,6 +375,8 @@ class OrderItemLine {
     this.price = 0,
     this.status,
     this.kdsStatus,
+    this.paymentStatus,
+    this.paidAmount = 0,
     this.itemNote,
     this.changeNote,
     this.modifiers = const [],
@@ -388,10 +390,42 @@ class OrderItemLine {
   final double price;
   final String? status;
   final String? kdsStatus;
+  final String? paymentStatus;
+  final double paidAmount;
   final String? itemNote;
   final String? changeNote;
   final List<String> modifiers;
   final String? imageUrl;
+
+  double get unpaidAmount => total - paidAmount > 0 ? total - paidAmount : 0;
+  bool get isPaid => paymentStatus == 'paid';
+  bool get isVoided =>
+      status == 'refunded' || status == 'canceled' || status == 'cancelled';
+
+  String get kitchenStatusLabel {
+    switch (kdsStatus ?? status) {
+      case 'queued':
+        return 'Queued';
+      case 'preparing':
+        return 'In kitchen';
+      case 'ready':
+        return 'Ready';
+      case 'served':
+        return 'Served';
+      case 'returned':
+        return 'Returned';
+      case 'refunded':
+        return 'Refunded';
+      case 'canceled':
+      case 'cancelled':
+        return 'Canceled';
+      case 'pending':
+      case null:
+        return 'Not sent';
+      default:
+        return jsonString(kdsStatus ?? status);
+    }
+  }
 
   factory OrderItemLine.fromJson(Map<String, dynamic> json) {
     final product = jsonMap(json['product']);
@@ -403,6 +437,8 @@ class OrderItemLine {
       price: jsonDouble(json['price']),
       status: jsonNullableString(json['status']),
       kdsStatus: jsonNullableString(json['kds_status']),
+      paymentStatus: jsonNullableString(json['payment_status']),
+      paidAmount: jsonDouble(json['paid_amount']),
       itemNote: jsonNullableString(json['item_note'] ?? json['note']),
       changeNote: jsonNullableString(json['change_note']),
       imageUrl: jsonNullableString(product['image'] ?? json['image']),
@@ -723,6 +759,9 @@ class TableOverview {
     required this.seats,
     required this.status,
     this.orderId,
+    this.orderStatus,
+    this.paymentStatus,
+    this.serviceStatus = 'available',
     this.orderTotal = 0,
     this.itemCount = 0,
     this.customerName,
@@ -732,12 +771,35 @@ class TableOverview {
   final String name;
   final int seats;
   final String status;
+  final String serviceStatus;
   final int? orderId;
+  final String? orderStatus;
+  final String? paymentStatus;
   final double orderTotal;
   final int itemCount;
   final String? customerName;
 
-  bool get isOccupied => orderId != null;
+  bool get isOccupied => orderId != null && serviceStatus != 'available';
+  bool get isAvailable => !isOccupied;
+
+  String get statusLabel {
+    switch (serviceStatus) {
+      case 'available':
+        return 'Available';
+      case 'cashier':
+        return 'Cashier';
+      case 'kitchen':
+        return 'In kitchen';
+      case 'ready':
+        return 'Ready';
+      case 'served':
+        return 'Served';
+      case 'returned':
+        return 'Returned';
+      default:
+        return 'Busy';
+    }
+  }
 
   factory TableOverview.fromJson(Map<String, dynamic> json) {
     final orders = jsonMapList(json['orders']);
@@ -745,6 +807,9 @@ class TableOverview {
     final items = jsonMapList(order['items']);
     final count = items.fold<int>(
         0, (sum, item) => sum + jsonInt(item['quantity'], fallback: 1));
+    final fallbackStatus = order.isEmpty
+        ? 'available'
+        : jsonString(order['status'], fallback: 'busy');
 
     return TableOverview(
       id: jsonInt(json['id']),
@@ -752,7 +817,13 @@ class TableOverview {
       seats: jsonInt(json['seats']),
       status: jsonString(json['status'],
           fallback: order.isEmpty ? 'open' : 'occupied'),
+      serviceStatus: jsonString(json['service_status'],
+          fallback: fallbackStatus == 'cashier' ? 'cashier' : fallbackStatus),
       orderId: order.isEmpty ? null : jsonInt(order['id']),
+      orderStatus:
+          jsonNullableString(json['active_order_status'] ?? order['status']),
+      paymentStatus: jsonNullableString(
+          json['active_payment_status'] ?? order['payment_status']),
       orderTotal: jsonDouble(order['total']),
       itemCount: count,
       customerName: jsonNullableString(jsonMap(order['customer'])['name']),
@@ -767,6 +838,9 @@ class TableDetails {
     required this.status,
     required this.items,
     this.orderId,
+    this.orderStatus,
+    this.paymentStatus,
+    this.serviceStatus = 'available',
     this.orderTotal = 0,
     this.customerName,
     this.customerPhone,
@@ -775,7 +849,10 @@ class TableDetails {
   final int id;
   final String name;
   final String status;
+  final String serviceStatus;
   final int? orderId;
+  final String? orderStatus;
+  final String? paymentStatus;
   final double orderTotal;
   final List<OrderItemLine> items;
   final String? customerName;
@@ -784,12 +861,21 @@ class TableDetails {
   factory TableDetails.fromJson(Map<String, dynamic> json) {
     final orders = jsonMapList(json['orders']);
     final order = orders.isNotEmpty ? orders.first : <String, dynamic>{};
+    final fallbackStatus = order.isEmpty
+        ? 'available'
+        : jsonString(order['status'], fallback: 'busy');
     return TableDetails(
       id: jsonInt(json['id']),
       name: jsonString(json['name']),
       status: jsonString(json['status'],
           fallback: order.isEmpty ? 'open' : 'occupied'),
+      serviceStatus: jsonString(json['service_status'],
+          fallback: fallbackStatus == 'cashier' ? 'cashier' : fallbackStatus),
       orderId: order.isEmpty ? null : jsonInt(order['id']),
+      orderStatus:
+          jsonNullableString(json['active_order_status'] ?? order['status']),
+      paymentStatus: jsonNullableString(
+          json['active_payment_status'] ?? order['payment_status']),
       orderTotal: jsonDouble(order['total']),
       items: jsonMapList(order['items'])
           .map(OrderItemLine.fromJson)
