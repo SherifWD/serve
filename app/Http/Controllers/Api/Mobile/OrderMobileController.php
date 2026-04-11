@@ -621,6 +621,8 @@ public function receipt(Request $request, $id)
         return $authResponse;
     }
 
+    $this->appendItemRuntimeState($order);
+
     $scope = $request->input('scope', 'full');
     if (!in_array($scope, ['full', 'paid', 'unprinted', 'last'], true)) {
         return response()->json(['error' => 'Invalid receipt scope.'], 422);
@@ -698,7 +700,8 @@ public function receipt(Request $request, $id)
         return response()->json(['error' => 'No receiptable items found for this scope.'], 422);
     }
 
-    $receiptTotal = round((float) $receiptItems->sum('total'), 2);
+    $receiptLines = $this->buildReceiptLines($order, $receiptItems, $scope, $payment);
+    $receiptTotal = round((float) $receiptLines->sum('display_total'), 2);
     $receipt = $existingReceipt ?? Receipt::create([
             'order_id' => $order->id,
             'receipt_number' => $this->nextReceiptNumber($order),
@@ -707,12 +710,13 @@ public function receipt(Request $request, $id)
                 'scope' => $scope,
                 'payment_id' => $payment?->id,
                 'item_ids' => $receiptItems->pluck('id')->values()->all(),
+                'lines' => $receiptLines->values()->all(),
                 'total' => $receiptTotal,
                 'created_at' => now()->toISOString(),
             ]),
         ]);
 
-    $pdf = \PDF::loadView('receipts.order', compact('order', 'receipt', 'receiptItems', 'receiptTotal', 'scope'));
+    $pdf = \PDF::loadView('receipts.order', compact('order', 'receipt', 'receiptItems', 'receiptLines', 'receiptTotal', 'scope'));
     return $pdf->download("receipt_{$receipt->receipt_number}.pdf");
 }
 
@@ -723,6 +727,70 @@ private function nextReceiptNumber(Order $order): string
     } while (Receipt::where('receipt_number', $number)->exists());
 
     return $number;
+}
+
+private function buildReceiptLines(Order $order, $receiptItems, string $scope, ?Payment $payment = null)
+{
+    $itemsById = $order->items->keyBy('id');
+
+    return $receiptItems->map(function (OrderItem $item) use ($itemsById, $scope, $payment) {
+        $quantity = max((int) ($item->quantity ?? 0), 1);
+        $itemTotal = round((float) ($item->total ?? 0), 2);
+        $paidAmount = round((float) $item->paid_amount, 2);
+        $remainingTotal = round(max($itemTotal - $paidAmount, 0), 2);
+        $displayTotal = $itemTotal;
+
+        if (in_array($scope, ['full', 'unprinted'], true)) {
+            $displayTotal = $remainingTotal;
+        } elseif ($payment) {
+            $paymentAmount = $this->paymentAmountForItem($payment, $item, $itemsById);
+            $displayTotal = $paymentAmount > 0
+                ? $paymentAmount
+                : ($remainingTotal > 0 ? $remainingTotal : $itemTotal);
+        } elseif ($remainingTotal > 0) {
+            $displayTotal = $remainingTotal;
+        }
+
+        $displayTotal = round($displayTotal, 2);
+
+        return [
+            'id' => (int) $item->id,
+            'name' => $item->product->name ?? '',
+            'quantity' => $quantity,
+            'price' => round((float) ($item->price ?? 0), 2),
+            'display_price' => round($displayTotal / $quantity, 2),
+            'total' => $itemTotal,
+            'display_total' => $displayTotal,
+            'paid_amount' => $paidAmount,
+            'remaining_total' => $remainingTotal,
+            'payment_status' => $item->payment_status,
+        ];
+    });
+}
+
+private function paymentAmountForItem(Payment $payment, OrderItem $item, $itemsById): float
+{
+    $itemIds = $this->parseItemIds($payment->item_ids ?? null);
+    if (!$itemIds || !in_array((int) $item->id, $itemIds, true)) {
+        return 0.0;
+    }
+
+    $itemTotal = (float) ($item->total ?? 0);
+    if (count($itemIds) === 1) {
+        return round(min((float) $payment->amount, $itemTotal), 2);
+    }
+
+    $selectedTotal = collect($itemIds)
+        ->map(fn ($id) => $itemsById->get($id))
+        ->filter()
+        ->reject(fn ($selectedItem) => in_array($selectedItem->status, self::NON_ACTIVE_ITEM_STATUSES, true))
+        ->sum(fn ($selectedItem) => (float) ($selectedItem->total ?? 0));
+
+    if ($selectedTotal <= 0) {
+        return 0.0;
+    }
+
+    return round((float) $payment->amount * ($itemTotal / $selectedTotal), 2);
 }
 
 private function resolveCustomer(array $data): ?Customer

@@ -2,8 +2,8 @@
 
 namespace Tests\Feature;
 
-use App\Models\Employee;
 use App\Models\Branch;
+use App\Models\Employee;
 use App\Models\InventoryItem;
 use App\Models\Order;
 use App\Models\OrderItem;
@@ -207,6 +207,7 @@ class MobileApiRegressionTest extends TestCase
         $content = json_decode((string) $receipt->content, true);
 
         $this->assertSame([$item->id], $content['item_ids']);
+        $this->assertEqualsWithDelta((float) $item->total, (float) $content['total'], 0.001);
 
         $receiptCount = Receipt::query()->count();
 
@@ -214,6 +215,56 @@ class MobileApiRegressionTest extends TestCase
             ->assertOk();
 
         $this->assertSame($receiptCount, Receipt::query()->count());
+    }
+
+    public function test_full_receipt_marks_paid_items_as_zero_due(): void
+    {
+        $order = Order::query()
+            ->with(['items', 'table'])
+            ->whereHas('items', fn ($query) => $query->whereNotIn('status', ['refunded', 'canceled', 'cancelled']), '>=', 2)
+            ->firstOrFail();
+        $activeItems = $order->items
+            ->reject(fn ($item) => in_array($item->status, ['refunded', 'canceled', 'cancelled'], true))
+            ->values();
+        $paidItem = $activeItems->first();
+        $unpaidItem = $activeItems->skip(1)->first();
+
+        Payment::create([
+            'order_id' => $order->id,
+            'method' => 'cash',
+            'amount' => (float) $paidItem->total,
+            'item_ids' => [$paidItem->id],
+            'scope' => 'items',
+        ]);
+
+        $order->forceFill([
+            'status' => 'cashier',
+            'payment_status' => 'partial',
+        ])->save();
+
+        Sanctum::actingAs($this->staffUserForBranch((int) $order->branch_id, 'cashier'));
+
+        $this->get("/api/mobile/orders/{$order->id}/receipt")
+            ->assertOk();
+
+        $receipt = Receipt::query()->latest('id')->firstOrFail();
+        $content = json_decode((string) $receipt->content, true);
+        $lines = collect($content['lines']);
+        $paidLine = $lines->firstWhere('id', $paidItem->id);
+        $unpaidLine = $lines->firstWhere('id', $unpaidItem->id);
+
+        $this->assertSame('paid', $paidLine['payment_status']);
+        $this->assertEqualsWithDelta(0.0, (float) $paidLine['display_total'], 0.001);
+        $this->assertEqualsWithDelta((float) $unpaidItem->total, (float) $unpaidLine['display_total'], 0.001);
+
+        $expectedReceiptTotal = round(
+            (float) $activeItems
+                ->reject(fn ($item) => (int) $item->id === (int) $paidItem->id)
+                ->sum('total'),
+            2
+        );
+
+        $this->assertEqualsWithDelta($expectedReceiptTotal, (float) $content['total'], 0.001);
     }
 
     public function test_waiter_can_return_item_to_kitchen(): void
@@ -258,6 +309,27 @@ class MobileApiRegressionTest extends TestCase
             ->firstWhere('name', 'Water');
 
         $this->assertSame($branch->name, $matchingAlert['branch_name'] ?? null);
+    }
+
+    public function test_owner_summary_can_be_filtered_to_an_accessible_branch(): void
+    {
+        $branch = Branch::query()->firstOrFail();
+
+        Sanctum::actingAs(User::query()->where('email', 'admin@restaurant-suite.com')->firstOrFail());
+
+        $response = $this->getJson("/api/dashboard/summary?preset=month&branch_id={$branch->id}")
+            ->assertOk()
+            ->assertJsonPath('selected_branch_id', $branch->id);
+
+        $this->assertContains(
+            $branch->id,
+            collect($response->json('branch_options'))->pluck('id')->all(),
+        );
+
+        $this->assertTrue(
+            collect($response->json('branch_performance'))
+                ->every(fn ($row) => (int) $row['id'] === (int) $branch->id),
+        );
     }
 
     public function test_owner_can_download_date_range_receipt(): void

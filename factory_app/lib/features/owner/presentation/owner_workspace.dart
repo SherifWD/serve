@@ -17,6 +17,7 @@ class OwnerWorkspacePage extends ConsumerStatefulWidget {
 class _OwnerWorkspacePageState extends ConsumerState<OwnerWorkspacePage> {
   late Future<OwnerSummary> _future;
   _OwnerDatePreset _datePreset = _OwnerDatePreset.today;
+  int? _selectedBranchId;
   late DateTime _startDate;
   late DateTime _endDate;
 
@@ -31,6 +32,7 @@ class _OwnerWorkspacePageState extends ConsumerState<OwnerWorkspacePage> {
 
   Future<OwnerSummary> _loadSummary() {
     return ref.read(suiteRepositoryProvider).fetchOwnerSummary(
+          branchId: _selectedBranchId,
           preset: _datePreset.apiValue,
           startDate: _datePreset == _OwnerDatePreset.custom
               ? _apiDate(_startDate)
@@ -64,6 +66,13 @@ class _OwnerWorkspacePageState extends ConsumerState<OwnerWorkspacePage> {
     });
   }
 
+  void _setBranch(int? branchId) {
+    setState(() {
+      _selectedBranchId = branchId;
+      _future = _loadSummary();
+    });
+  }
+
   Future<void> _pickDate({required bool start}) async {
     final picked = await showDatePicker(
       context: context,
@@ -92,6 +101,7 @@ class _OwnerWorkspacePageState extends ConsumerState<OwnerWorkspacePage> {
       final document =
           await ref.read(suiteRepositoryProvider).generateOwnerReceipt(
                 preset: _datePreset.apiValue,
+                branchId: _selectedBranchId,
                 startDate: _datePreset == _OwnerDatePreset.custom
                     ? _apiDate(_startDate)
                     : null,
@@ -132,6 +142,12 @@ class _OwnerWorkspacePageState extends ConsumerState<OwnerWorkspacePage> {
         final summary = snapshot.data!;
         final width = MediaQuery.of(context).size.width;
         final wide = width > 1220;
+        final branchIds =
+            summary.branchOptions.map((branch) => branch.id).toSet();
+        final selectedBranchId =
+            _selectedBranchId != null && branchIds.contains(_selectedBranchId)
+                ? _selectedBranchId
+                : summary.selectedBranchId;
 
         return Container(
           decoration: const BoxDecoration(
@@ -157,7 +173,10 @@ class _OwnerWorkspacePageState extends ConsumerState<OwnerWorkspacePage> {
                   preset: _datePreset,
                   startDate: _startDate,
                   endDate: _endDate,
+                  branchOptions: summary.branchOptions,
+                  selectedBranchId: selectedBranchId,
                   onPresetChanged: _setPreset,
+                  onBranchChanged: _setBranch,
                   onPickStart: () => _pickDate(start: true),
                   onPickEnd: () => _pickDate(start: false),
                   onPrintReceipt: _printOwnerReceipt,
@@ -305,7 +324,10 @@ class _OwnerDateFilterBar extends StatelessWidget {
     required this.preset,
     required this.startDate,
     required this.endDate,
+    required this.branchOptions,
+    required this.selectedBranchId,
     required this.onPresetChanged,
+    required this.onBranchChanged,
     required this.onPickStart,
     required this.onPickEnd,
     required this.onPrintReceipt,
@@ -314,7 +336,10 @@ class _OwnerDateFilterBar extends StatelessWidget {
   final _OwnerDatePreset preset;
   final DateTime startDate;
   final DateTime endDate;
+  final List<BranchInfo> branchOptions;
+  final int? selectedBranchId;
   final ValueChanged<_OwnerDatePreset> onPresetChanged;
+  final ValueChanged<int?> onBranchChanged;
   final VoidCallback onPickStart;
   final VoidCallback onPickEnd;
   final Future<void> Function() onPrintReceipt;
@@ -322,6 +347,11 @@ class _OwnerDateFilterBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final formatter = DateFormat('MMM d, yyyy');
+    final branchIds = branchOptions.map((branch) => branch.id).toSet();
+    final branchValue = selectedBranchId != null &&
+            branchIds.contains(selectedBranchId)
+        ? selectedBranchId
+        : (branchOptions.length == 1 ? branchOptions.first.id : null);
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -335,6 +365,50 @@ class _OwnerDateFilterBar extends StatelessWidget {
         runSpacing: 12,
         crossAxisAlignment: WrapCrossAlignment.center,
         children: [
+          if (branchOptions.isNotEmpty)
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 260),
+              child: DropdownButtonFormField<int?>(
+                value: branchValue,
+                dropdownColor: const Color(0xFF111827),
+                decoration: InputDecoration(
+                  labelText: 'Branch',
+                  labelStyle: const TextStyle(color: Colors.white70),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(
+                      color: Colors.white.withValues(alpha: 0.24),
+                    ),
+                  ),
+                  disabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(
+                      color: Colors.white.withValues(alpha: 0.14),
+                    ),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(color: Color(0xFFE86C2F)),
+                  ),
+                ),
+                style: const TextStyle(color: Colors.white),
+                iconEnabledColor: Colors.white70,
+                iconDisabledColor: Colors.white38,
+                items: [
+                  if (branchOptions.length > 1)
+                    const DropdownMenuItem<int?>(
+                      value: null,
+                      child: Text('All branches'),
+                    ),
+                  for (final branch in branchOptions)
+                    DropdownMenuItem<int?>(
+                      value: branch.id,
+                      child: Text(branch.name),
+                    ),
+                ],
+                onChanged: branchOptions.length > 1 ? onBranchChanged : null,
+              ),
+            ),
           for (final option in _OwnerDatePreset.values)
             ChoiceChip(
               label: Text(option.label),
@@ -343,6 +417,9 @@ class _OwnerDateFilterBar extends StatelessWidget {
             ),
           OutlinedButton.icon(
             onPressed: onPickStart,
+            style: OutlinedButton.styleFrom(
+              foregroundColor: Colors.white,
+            ),
             icon: const Icon(Icons.calendar_today_outlined),
             label: Text(preset == _OwnerDatePreset.custom
                 ? 'From ${formatter.format(startDate)}'
@@ -350,6 +427,9 @@ class _OwnerDateFilterBar extends StatelessWidget {
           ),
           OutlinedButton.icon(
             onPressed: onPickEnd,
+            style: OutlinedButton.styleFrom(
+              foregroundColor: Colors.white,
+            ),
             icon: const Icon(Icons.event_outlined),
             label: Text(preset == _OwnerDatePreset.custom
                 ? 'To ${formatter.format(endDate)}'
@@ -393,19 +473,6 @@ class _OwnerHero extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  'Multi-branch command center',
-                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w900,
-                      ),
-                ),
-                const SizedBox(height: 8),
-                const Text(
-                  'Foodics-style structure with broader operational visibility: branches, payments, stock risk, cashier pressure, and loyalty impact in one view.',
-                  style: TextStyle(color: Colors.white70, height: 1.35),
-                ),
-                const SizedBox(height: 18),
                 Wrap(
                   spacing: 10,
                   runSpacing: 10,

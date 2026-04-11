@@ -12,7 +12,7 @@
 </head>
 <body>
     @php
-        $lines = $receiptItems ?? $order->items;
+        $lines = $receiptLines ?? $receiptItems ?? $order->items;
         $lineTotal = $receiptTotal ?? $order->total;
     @endphp
     <div class="header">Order #{{ $order->id }} - Table: {{ $order->table->name ?? '-' }}</div>
@@ -21,14 +21,22 @@
     @endisset
     <div>Date: {{ $order->order_date }}</div>
     <table>
-        <thead><tr><th>Item</th><th>Qty</th><th>Price</th><th>Total</th></tr></thead>
+        <thead><tr><th>Item</th><th>Qty</th><th>Price</th><th>Total</th><th>Status</th></tr></thead>
         <tbody>
-            @foreach($lines as $item)
+            @foreach($lines as $line)
+            @php
+                $name = data_get($line, 'name', data_get($line, 'product.name', ''));
+                $quantity = data_get($line, 'quantity', 0);
+                $price = (float) data_get($line, 'display_price', data_get($line, 'price', 0));
+                $total = (float) data_get($line, 'display_total', data_get($line, 'total', 0));
+                $status = data_get($line, 'payment_status');
+            @endphp
             <tr>
-                <td>{{ $item->product->name ?? '' }}</td>
-                <td>{{ $item->quantity }}</td>
-                <td>{{ $item->price }}</td>
-                <td>{{ $item->total }}</td>
+                <td>{{ $name }}</td>
+                <td>{{ $quantity }}</td>
+                <td>{{ number_format($price, 2) }}</td>
+                <td>{{ number_format($total, 2) }}</td>
+                <td>{{ $status ? ucfirst($status) : '-' }}</td>
             </tr>
             @endforeach
         </tbody>
@@ -38,7 +46,7 @@
         <br>
         Coupon: {{ $order->coupon_code ?? '-' }}
         <br>
-        <b>Total: {{ $lineTotal }}</b>
+        <b>Total: {{ number_format((float) $lineTotal, 2) }}</b>
     </div>
 </body>
 </html>

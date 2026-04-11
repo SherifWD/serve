@@ -967,9 +967,11 @@ class OwnerSummary {
     required this.loyaltyMembers,
     required this.paymentMix,
     required this.branchPerformance,
+    required this.branchOptions,
     required this.topProducts,
     required this.lowStockItems,
     required this.recentOrders,
+    this.selectedBranchId,
   });
 
   final double totalSales;
@@ -983,9 +985,11 @@ class OwnerSummary {
   final int loyaltyMembers;
   final List<PaymentMixEntry> paymentMix;
   final List<BranchPerformance> branchPerformance;
+  final List<BranchInfo> branchOptions;
   final List<Map<String, dynamic>> topProducts;
   final List<Map<String, dynamic>> lowStockItems;
   final List<Map<String, dynamic>> recentOrders;
+  final int? selectedBranchId;
 
   factory OwnerSummary.fromJson(Map<String, dynamic> json) {
     return OwnerSummary(
@@ -1004,9 +1008,13 @@ class OwnerSummary {
       branchPerformance: jsonMapList(json['branch_performance'])
           .map(BranchPerformance.fromJson)
           .toList(growable: false),
+      branchOptions: jsonMapList(json['branch_options'])
+          .map(BranchInfo.fromJson)
+          .toList(growable: false),
       topProducts: jsonMapList(json['top_products']),
       lowStockItems: jsonMapList(json['low_stock_items']),
       recentOrders: jsonMapList(json['recent_orders']),
+      selectedBranchId: jsonNullableInt(json['selected_branch_id']),
     );
   }
 }

@@ -21,11 +21,13 @@ class OwnerDashboardController extends Controller
 {
     public function summary(Request $request)
     {
-        $viewer = $request->user();
-        $branchId = $request->input('branch_id');
-        $restaurantId = $viewer->isPlatformAdmin()
-            ? $request->input('restaurant_id')
-            : $viewer?->restaurant_id;
+        $scope = $this->resolveDashboardScope($request);
+        if ($scope['error']) {
+            return $scope['error'];
+        }
+        $branchId = $scope['branch_id'];
+        $restaurantId = $scope['restaurant_id'];
+        $branchOptions = $scope['branch_options'];
         $dateRange = $this->resolveDateRange($request);
         $dateStart = $dateRange['start'];
         $dateEnd = $dateRange['end'];
@@ -213,6 +215,8 @@ class OwnerDashboardController extends Controller
             'loyalty_members' => $loyaltyMembers,
             'payment_mix' => $paymentMix,
             'branch_performance' => $branchPerformance,
+            'branch_options' => $branchOptions,
+            'selected_branch_id' => $branchId,
             'top_products'  => $topProducts,
             'low_stock_items' => $lowInventory,
             'recent_orders' => $recentOrders,
@@ -226,11 +230,12 @@ class OwnerDashboardController extends Controller
 
     public function receipt(Request $request)
     {
-        $viewer = $request->user();
-        $branchId = $request->input('branch_id');
-        $restaurantId = $viewer->isPlatformAdmin()
-            ? $request->input('restaurant_id')
-            : $viewer?->restaurant_id;
+        $scope = $this->resolveDashboardScope($request);
+        if ($scope['error']) {
+            return $scope['error'];
+        }
+        $branchId = $scope['branch_id'];
+        $restaurantId = $scope['restaurant_id'];
         $dateRange = $this->resolveDateRange($request);
         $dateStart = $dateRange['start'];
         $dateEnd = $dateRange['end'];
@@ -282,6 +287,60 @@ class OwnerDashboardController extends Controller
         $pdf = \PDF::loadView('receipts.owner-period', compact('orders', 'report'));
 
         return $pdf->download("owner_receipt_{$report['start_date']}_{$report['end_date']}.pdf");
+    }
+
+    private function resolveDashboardScope(Request $request): array
+    {
+        $viewer = $request->user();
+        $restaurantId = $viewer?->isPlatformAdmin()
+            ? $request->input('restaurant_id')
+            : $viewer?->restaurant_id;
+
+        $accessibleBranchesQuery = Branch::query()
+            ->when($restaurantId, fn ($query) => $query->where('restaurant_id', $restaurantId))
+            ->when($viewer?->branch_id, fn ($query) => $query->whereKey($viewer->branch_id));
+
+        $branchOptions = (clone $accessibleBranchesQuery)
+            ->orderBy('name')
+            ->get(['id', 'name', 'location', 'restaurant_id'])
+            ->map(fn ($branch) => [
+                'id' => $branch->id,
+                'name' => $branch->name,
+                'location' => $branch->location,
+                'restaurant_id' => $branch->restaurant_id,
+            ])
+            ->values();
+
+        $requestedBranchId = $request->filled('branch_id')
+            ? (int) $request->input('branch_id')
+            : null;
+        $branchId = null;
+
+        if ($viewer?->branch_id) {
+            $branchId = (int) $viewer->branch_id;
+        } elseif ($requestedBranchId) {
+            $isAccessible = (clone $accessibleBranchesQuery)
+                ->whereKey($requestedBranchId)
+                ->exists();
+
+            if (!$isAccessible) {
+                return [
+                    'error' => response()->json(['error' => 'Branch is not accessible.'], 403),
+                    'restaurant_id' => $restaurantId,
+                    'branch_id' => null,
+                    'branch_options' => $branchOptions,
+                ];
+            }
+
+            $branchId = $requestedBranchId;
+        }
+
+        return [
+            'error' => null,
+            'restaurant_id' => $restaurantId,
+            'branch_id' => $branchId,
+            'branch_options' => $branchOptions,
+        ];
     }
 
     private function resolveDateRange(Request $request): array

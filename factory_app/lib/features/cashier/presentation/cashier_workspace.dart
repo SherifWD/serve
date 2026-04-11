@@ -549,26 +549,6 @@ class _CashierHeader extends StatelessWidget {
         runSpacing: 14,
         crossAxisAlignment: WrapCrossAlignment.center,
         children: [
-          ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 520),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Front counter settlement',
-                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w900,
-                      ),
-                ),
-                const SizedBox(height: 8),
-                const Text(
-                  'Queue left, ticket center, payment panel right. Faster handoff, clearer tender balance, and less cashier hesitation under pressure.',
-                  style: TextStyle(color: Colors.white70, height: 1.35),
-                ),
-              ],
-            ),
-          ),
           _HeaderMetric(
             label: 'Queue',
             value: '$pendingCount',
