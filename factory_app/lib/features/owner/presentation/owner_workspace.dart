@@ -352,6 +352,17 @@ class _OwnerDateFilterBar extends StatelessWidget {
             branchIds.contains(selectedBranchId)
         ? selectedBranchId
         : (branchOptions.length == 1 ? branchOptions.first.id : null);
+    final controlBorderColor = Colors.white.withValues(alpha: 0.28);
+    final activeBorderColor = const Color(0xFFE86C2F);
+    final controlFillColor = Colors.white.withValues(alpha: 0.03);
+    final controlRadius = BorderRadius.circular(8);
+    final outlinedControlStyle = OutlinedButton.styleFrom(
+      foregroundColor: Colors.white,
+      side: BorderSide(color: controlBorderColor),
+      shape: RoundedRectangleBorder(borderRadius: controlRadius),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+      textStyle: const TextStyle(fontWeight: FontWeight.w700),
+    );
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -372,26 +383,35 @@ class _OwnerDateFilterBar extends StatelessWidget {
                 value: branchValue,
                 dropdownColor: const Color(0xFF111827),
                 decoration: InputDecoration(
-                  labelText: 'Branch',
-                  labelStyle: const TextStyle(color: Colors.white70),
+                  isDense: true,
+                  filled: true,
+                  fillColor: controlFillColor,
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 14,
+                  ),
+                  prefixIcon: const Icon(
+                    Icons.store_mall_directory_outlined,
+                    size: 18,
+                  ),
+                  prefixIconColor: Colors.white70,
                   enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(
-                      color: Colors.white.withValues(alpha: 0.24),
-                    ),
+                    borderRadius: controlRadius,
+                    borderSide: BorderSide(color: controlBorderColor),
                   ),
                   disabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(
-                      color: Colors.white.withValues(alpha: 0.14),
-                    ),
+                    borderRadius: controlRadius,
+                    borderSide: BorderSide(color: controlBorderColor),
                   ),
                   focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: Color(0xFFE86C2F)),
+                    borderRadius: controlRadius,
+                    borderSide: BorderSide(color: activeBorderColor),
                   ),
                 ),
-                style: const TextStyle(color: Colors.white),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w700,
+                ),
                 iconEnabledColor: Colors.white70,
                 iconDisabledColor: Colors.white38,
                 items: [
@@ -406,7 +426,7 @@ class _OwnerDateFilterBar extends StatelessWidget {
                       child: Text(branch.name),
                     ),
                 ],
-                onChanged: branchOptions.length > 1 ? onBranchChanged : null,
+                onChanged: onBranchChanged,
               ),
             ),
           for (final option in _OwnerDatePreset.values)
@@ -417,9 +437,7 @@ class _OwnerDateFilterBar extends StatelessWidget {
             ),
           OutlinedButton.icon(
             onPressed: onPickStart,
-            style: OutlinedButton.styleFrom(
-              foregroundColor: Colors.white,
-            ),
+            style: outlinedControlStyle,
             icon: const Icon(Icons.calendar_today_outlined),
             label: Text(preset == _OwnerDatePreset.custom
                 ? 'From ${formatter.format(startDate)}'
@@ -427,9 +445,7 @@ class _OwnerDateFilterBar extends StatelessWidget {
           ),
           OutlinedButton.icon(
             onPressed: onPickEnd,
-            style: OutlinedButton.styleFrom(
-              foregroundColor: Colors.white,
-            ),
+            style: outlinedControlStyle,
             icon: const Icon(Icons.event_outlined),
             label: Text(preset == _OwnerDatePreset.custom
                 ? 'To ${formatter.format(endDate)}'
