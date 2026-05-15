@@ -1,6 +1,17 @@
 <IfModule mod_rewrite.c>
-    Options -MultiViews -Indexes
+    <IfModule mod_negotiation.c>
+        Options -MultiViews -Indexes
+    </IfModule>
+
+    DirectoryIndex index.php
     RewriteEngine On
+
+    # Preserve API auth headers on shared hosting.
+    RewriteCond %{HTTP:Authorization} .
+    RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+
+    RewriteCond %{HTTP:x-xsrf-token} .
+    RewriteRule .* - [E=HTTP_X_XSRF_TOKEN:%{HTTP:X-XSRF-Token}]
 
     # Allow public Laravel assets when this app is hosted from a subdirectory.
     RewriteRule ^(build|storage)/(.*)$ public/$1/$2 [L]
@@ -12,8 +23,8 @@
     RewriteRule ^(artisan|composer\.(json|lock|phar)|package(-lock)?\.json|phpunit\.xml|README\.md|vite\.config\.js)$ - [F,L]
 
     # Send backend URLs such as /api/health through Laravel's front controller.
-    RewriteRule ^$ public/index.php [L]
+    RewriteRule ^index\.php$ - [L]
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteCond %{REQUEST_FILENAME} !-d
-    RewriteRule ^ public/index.php [L]
+    RewriteRule ^ index.php [L]
 </IfModule>
