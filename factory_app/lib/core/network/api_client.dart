@@ -6,7 +6,7 @@ import '../../features/auth/providers/auth_providers.dart';
 final apiBaseUrlProvider = Provider<String>((ref) {
   return const String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue: 'http://127.0.0.1:8000/api',
+    defaultValue: 'https://janovatech.com/pos/serve/api',
   );
 });
 

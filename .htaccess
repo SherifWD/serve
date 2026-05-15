@@ -1,0 +1,19 @@
+<IfModule mod_rewrite.c>
+    Options -MultiViews -Indexes
+    RewriteEngine On
+
+    # Allow public Laravel assets when this app is hosted from a subdirectory.
+    RewriteRule ^(build|storage)/(.*)$ public/$1/$2 [L]
+    RewriteRule ^favicon\.ico$ public/favicon.ico [L]
+    RewriteRule ^robots\.txt$ public/robots.txt [L]
+
+    # Never expose application source, dependencies, logs, or config files.
+    RewriteRule ^(\.env|\.git|app|bootstrap|config|customer_app|database|docs|factory_app|node_modules|pos-dashboard|resources|routes|storage|tests|vendor)(/|$) - [F,L]
+    RewriteRule ^(artisan|composer\.(json|lock|phar)|package(-lock)?\.json|phpunit\.xml|README\.md|vite\.config\.js)$ - [F,L]
+
+    # Send backend URLs such as /api/health through Laravel's front controller.
+    RewriteRule ^$ public/index.php [L]
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteRule ^ public/index.php [L]
+</IfModule>
