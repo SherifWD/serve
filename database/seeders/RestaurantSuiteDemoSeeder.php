@@ -4,6 +4,7 @@ namespace Database\Seeders;
 
 use App\Models\ActivityLog;
 use App\Models\Alert;
+use App\Models\BillingInvoice;
 use App\Models\Branch;
 use App\Models\BranchPerformance;
 use App\Models\CashRegister;
@@ -17,6 +18,7 @@ use App\Models\Employee;
 use App\Models\EmployeePerformance;
 use App\Models\Expense;
 use App\Models\Feedback;
+use App\Models\FiscalProfile;
 use App\Models\FinancialSummary;
 use App\Models\Income;
 use App\Models\Ingredient;
@@ -33,6 +35,7 @@ use App\Models\OrderItemHistory;
 use App\Models\OrderItemModifier;
 use App\Models\OrderStatusLog;
 use App\Models\Payment;
+use App\Models\PaymentProviderConfig;
 use App\Models\Permission;
 use App\Models\Product;
 use App\Models\ProductPerformance;
@@ -41,10 +44,12 @@ use App\Models\Receipt;
 use App\Models\Recipe;
 use App\Models\Refund;
 use App\Models\Restaurant;
+use App\Models\RestaurantSubscription;
 use App\Models\Role;
 use App\Models\SalesReport;
 use App\Models\Setting;
 use App\Models\Supplier;
+use App\Models\SubscriptionPlan;
 use App\Models\Table;
 use App\Models\Transaction;
 use App\Models\Type;
@@ -100,6 +105,8 @@ class RestaurantSuiteDemoSeeder extends Seeder
             $this->command?->info('RestaurantSuiteDemoSeeder synced reference data and platform admin. Existing demo scenarios were retained.');
         }
 
+        $this->seedSaasSubscriptionsForRestaurants();
+
         Setting::updateOrCreate(
             ['key' => self::SEED_MARKER_KEY],
             ['value' => self::SEED_MARKER_VALUE],
@@ -121,6 +128,7 @@ class RestaurantSuiteDemoSeeder extends Seeder
         Setting::updateOrCreate(['key' => 'currency'], ['value' => 'EGP']);
         Setting::updateOrCreate(['key' => 'vat_rate'], ['value' => '0.14']);
         Setting::updateOrCreate(['key' => 'loyalty_rule'], ['value' => '1 point per EGP 10']);
+        $this->seedSubscriptionPlans();
 
         $permissionNames = [
             'platform.restaurants.manage',
@@ -298,6 +306,120 @@ class RestaurantSuiteDemoSeeder extends Seeder
         }
     }
 
+    private function seedSubscriptionPlans(): void
+    {
+        foreach ([
+            [
+                'name' => 'Starter POS',
+                'slug' => 'starter-pos',
+                'price' => 1499,
+                'max_branches' => 1,
+                'max_users' => 8,
+                'max_devices' => 4,
+                'features' => ['waiter_app', 'cashier_app', 'kds', 'basic_inventory', 'fiscal_exports'],
+            ],
+            [
+                'name' => 'Growth Restaurant',
+                'slug' => 'growth-restaurant',
+                'price' => 2999,
+                'max_branches' => 3,
+                'max_users' => 25,
+                'max_devices' => 12,
+                'features' => ['multi_branch', 'advanced_inventory', 'customer_loyalty', 'audit_logs', 'support_context'],
+            ],
+            [
+                'name' => 'Enterprise Chain',
+                'slug' => 'enterprise-chain',
+                'price' => 7999,
+                'max_branches' => null,
+                'max_users' => null,
+                'max_devices' => null,
+                'features' => ['custom_onboarding', 'eta_submission_queue', 'priority_support', 'external_integrations'],
+            ],
+        ] as $planData) {
+            SubscriptionPlan::updateOrCreate(
+                ['slug' => $planData['slug']],
+                [
+                    'name' => $planData['name'],
+                    'billing_period' => 'monthly',
+                    'currency' => 'EGP',
+                    'price' => $planData['price'],
+                    'max_branches' => $planData['max_branches'],
+                    'max_users' => $planData['max_users'],
+                    'max_devices' => $planData['max_devices'],
+                    'features' => $planData['features'],
+                    'is_active' => true,
+                ],
+            );
+        }
+    }
+
+    private function seedSaasSubscriptionsForRestaurants(): void
+    {
+        $plan = SubscriptionPlan::query()->where('slug', 'growth-restaurant')->first();
+        if (!$plan) {
+            return;
+        }
+
+        Restaurant::query()->each(function (Restaurant $restaurant) use ($plan): void {
+            PaymentProviderConfig::updateOrCreate(
+                [
+                    'restaurant_id' => $restaurant->id,
+                    'branch_id' => null,
+                    'provider' => 'manual',
+                ],
+                [
+                    'display_name' => 'Manual cash and card reconciliation',
+                    'mode' => 'manual',
+                    'is_active' => true,
+                    'supported_methods' => ['cash', 'card', 'wallet'],
+                    'terminal_config' => [
+                        'capture_strategy' => 'cashier_confirms_terminal_result',
+                    ],
+                    'metadata' => ['seeded' => true],
+                ],
+            );
+
+            $subscription = RestaurantSubscription::updateOrCreate(
+                [
+                    'restaurant_id' => $restaurant->id,
+                    'subscription_plan_id' => $plan->id,
+                ],
+                [
+                    'status' => 'active',
+                    'trial_ends_at' => null,
+                    'current_period_starts_at' => now()->startOfMonth(),
+                    'current_period_ends_at' => now()->startOfMonth()->addMonth(),
+                    'next_invoice_at' => now()->startOfMonth()->addMonth(),
+                    'billing_email' => 'billing+'.Str::slug($restaurant->name).'@example.com',
+                    'metadata' => ['seeded' => true],
+                ],
+            );
+
+            BillingInvoice::updateOrCreate(
+                ['invoice_number' => 'DEMO-SUB-'.$restaurant->id],
+                [
+                    'restaurant_id' => $restaurant->id,
+                    'restaurant_subscription_id' => $subscription->id,
+                    'status' => 'paid',
+                    'currency' => $plan->currency,
+                    'subtotal' => $plan->price,
+                    'tax' => 0,
+                    'total' => $plan->price,
+                    'due_date' => now()->startOfMonth()->addDays(7)->toDateString(),
+                    'paid_at' => now()->startOfMonth()->addDays(2),
+                    'line_items' => [[
+                        'description' => $plan->name.' subscription',
+                        'quantity' => 1,
+                        'unit_amount' => (float) $plan->price,
+                        'amount' => (float) $plan->price,
+                    ]],
+                    'metadata' => ['seeded' => true],
+                ],
+            );
+        });
+    }
+
     private function seedPlatformAdmin(): void
     {
         $user = User::updateOrCreate(
@@ -379,12 +501,14 @@ class RestaurantSuiteDemoSeeder extends Seeder
 
         $restaurantModifiers = $this->seedRestaurantModifiers($restaurant, $venueBlueprint['kind']);
         $suppliers = $this->seedSuppliersForRestaurant($restaurant, $restaurantSlug);
+        $this->seedRestaurantFiscalProfile($restaurant);
 
         foreach ($this->branchBlueprintsFor($restaurant->name) as $branchIndex => $branchBlueprint) {
             $branch = Branch::firstOrCreate(
                 ['restaurant_id' => $restaurant->id, 'name' => $branchBlueprint['name']],
                 ['location' => $branchBlueprint['location']],
             );
+            $this->seedBranchFiscalProfile($restaurant, $branch, $branchIndex);
 
             $branchContext = $this->seedBranchStaff(
                 branch: $branch,
@@ -425,6 +549,72 @@ class RestaurantSuiteDemoSeeder extends Seeder
         Alert::firstOrCreate(
             ['message' => "{$restaurant->name} has demo low-stock alerts enabled."],
             ['type' => 'stock', 'resolved' => false],
+        );
+    }
+
+    private function seedRestaurantFiscalProfile(Restaurant $restaurant): void
+    {
+        FiscalProfile::query()->updateOrCreate(
+            [
+                'restaurant_id' => $restaurant->id,
+                'branch_id' => null,
+            ],
+            [
+                'display_name' => $restaurant->name.' default VAT profile',
+                'is_default' => true,
+                'currency_code' => 'EGP',
+                'vat_rate' => 0.14,
+                'price_includes_vat' => true,
+                'vat_tax_type' => 'T1',
+                'vat_subtype' => 'V009',
+                'buyer_id_threshold' => 150000,
+                'default_payment_method_code' => 'C',
+                'eta_receipt_type' => 'SC',
+                'eta_type_version' => '1.2',
+                'eta_seller_rin' => '200173707',
+                'eta_seller_name' => $restaurant->name,
+                'eta_branch_code' => 'MAIN',
+                'eta_device_serial_number' => 'DEMO-POS-MAIN',
+                'eta_activity_code' => '5610',
+                'address_country' => 'EG',
+                'address_governate' => 'Cairo',
+                'address_region_city' => 'Cairo',
+                'address_street' => 'Demo Street',
+                'address_building_number' => '1',
+            ],
+        );
+    }
+
+    private function seedBranchFiscalProfile(Restaurant $restaurant, Branch $branch, int $branchIndex): void
+    {
+        FiscalProfile::query()->updateOrCreate(
+            [
+                'restaurant_id' => $restaurant->id,
+                'branch_id' => $branch->id,
+            ],
+            [
+                'display_name' => $branch->name.' VAT profile',
+                'is_default' => $branchIndex === 0,
+                'currency_code' => 'EGP',
+                'vat_rate' => 0.14,
+                'price_includes_vat' => true,
+                'vat_tax_type' => 'T1',
+                'vat_subtype' => 'V009',
+                'buyer_id_threshold' => 150000,
+                'default_payment_method_code' => 'C',
+                'eta_receipt_type' => 'SC',
+                'eta_type_version' => '1.2',
+                'eta_seller_rin' => '200173707',
+                'eta_seller_name' => $restaurant->name,
+                'eta_branch_code' => 'B'.str_pad((string) ($branchIndex + 1), 3, '0', STR_PAD_LEFT),
+                'eta_device_serial_number' => 'DEMO-POS-'.$branch->id,
+                'eta_activity_code' => '5610',
+                'address_country' => 'EG',
+                'address_governate' => str_contains(strtolower((string) $branch->location), 'alex') ? 'Alexandria' : 'Cairo',
+                'address_region_city' => $branch->location ?: 'Cairo',
+                'address_street' => 'Demo Street',
+                'address_building_number' => (string) ($branchIndex + 10),
+            ],
         );
     }
 
@@ -473,10 +663,11 @@ class RestaurantSuiteDemoSeeder extends Seeder
         return collect([
             ['name' => $restaurant->name.' Fresh Supply', 'contact_person' => 'Procurement Lead'],
             ['name' => $restaurant->name.' Beverage Hub', 'contact_person' => 'Beverage Vendor'],
-        ])->map(function (array $supplierData, int $index) use ($slug) {
-            return Supplier::firstOrCreate(
+        ])->map(function (array $supplierData, int $index) use ($restaurant, $slug) {
+            return Supplier::updateOrCreate(
                 ['email' => "supplier{$index}.{$slug}@example.com"],
                 [
+                    'restaurant_id' => $restaurant->id,
                     'name' => $supplierData['name'],
                     'phone' => '011'.str_pad((string) (9000000 + $index + abs(crc32($slug)) % 100000), 7, '0', STR_PAD_LEFT),
                     'contact_person' => $supplierData['contact_person'],
@@ -745,7 +936,14 @@ class RestaurantSuiteDemoSeeder extends Seeder
                 $product->is_available = true;
                 $product->save();
 
-                $recipe = Recipe::firstOrCreate(['product_id' => $product->id]);
+                $recipe = Recipe::firstOrCreate(
+                    ['product_id' => $product->id],
+                    ['branch_id' => $branch->id],
+                );
+                if (!$recipe->branch_id) {
+                    $recipe->branch_id = $branch->id;
+                    $recipe->save();
+                }
                 foreach ($productDefinition['ingredients'] as $ingredientName => $quantity) {
                     $ingredient = $this->ingredients[$ingredientName];
                     $recipe->ingredients()->syncWithoutDetaching([

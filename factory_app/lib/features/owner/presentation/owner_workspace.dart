@@ -120,6 +120,32 @@ class _OwnerWorkspacePageState extends ConsumerState<OwnerWorkspacePage> {
     }
   }
 
+  void _showBranchDetail(
+    OwnerBranchDetail detail,
+    NumberFormat currency,
+  ) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: const Color(0xFF0F172A),
+      builder: (context) {
+        return DraggableScrollableSheet(
+          expand: false,
+          initialChildSize: 0.82,
+          minChildSize: 0.45,
+          maxChildSize: 0.95,
+          builder: (context, scrollController) {
+            return _BranchDetailSheet(
+              detail: detail,
+              currency: currency,
+              scrollController: scrollController,
+            );
+          },
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final currency = NumberFormat.currency(symbol: 'EGP ');
@@ -148,6 +174,9 @@ class _OwnerWorkspacePageState extends ConsumerState<OwnerWorkspacePage> {
             _selectedBranchId != null && branchIds.contains(_selectedBranchId)
                 ? _selectedBranchId
                 : summary.selectedBranchId;
+        final branchDetailsById = {
+          for (final detail in summary.branchDetails) detail.id: detail,
+        };
 
         return Container(
           decoration: const BoxDecoration(
@@ -241,7 +270,13 @@ class _OwnerWorkspacePageState extends ConsumerState<OwnerWorkspacePage> {
                 _BranchPerformancePanel(
                   branches: summary.branchPerformance,
                   currency: currency,
+                  onBranchTap: (branch) {
+                    final detail = branchDetailsById[branch.id];
+                    if (detail != null) _showBranchDetail(detail, currency);
+                  },
                 ),
+                const SizedBox(height: 16),
+                _ActiveEmployeesPanel(employees: summary.activeEmployees),
                 const SizedBox(height: 16),
                 if (wide)
                   Row(
@@ -348,12 +383,12 @@ class _OwnerDateFilterBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final formatter = DateFormat('MMM d, yyyy');
     final branchIds = branchOptions.map((branch) => branch.id).toSet();
-    final branchValue = selectedBranchId != null &&
-            branchIds.contains(selectedBranchId)
-        ? selectedBranchId
-        : (branchOptions.length == 1 ? branchOptions.first.id : null);
+    final branchValue =
+        selectedBranchId != null && branchIds.contains(selectedBranchId)
+            ? selectedBranchId
+            : (branchOptions.length == 1 ? branchOptions.first.id : null);
     final controlBorderColor = Colors.white.withValues(alpha: 0.28);
-    final activeBorderColor = const Color(0xFFE86C2F);
+    const activeBorderColor = Color(0xFFE86C2F);
     final controlFillColor = Colors.white.withValues(alpha: 0.03);
     final controlRadius = BorderRadius.circular(8);
     final outlinedControlStyle = OutlinedButton.styleFrom(
@@ -405,7 +440,7 @@ class _OwnerDateFilterBar extends StatelessWidget {
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: controlRadius,
-                    borderSide: BorderSide(color: activeBorderColor),
+                    borderSide: const BorderSide(color: activeBorderColor),
                   ),
                 ),
                 style: const TextStyle(
@@ -605,10 +640,12 @@ class _BranchPerformancePanel extends StatelessWidget {
   const _BranchPerformancePanel({
     required this.branches,
     required this.currency,
+    required this.onBranchTap,
   });
 
   final List<BranchPerformance> branches;
   final NumberFormat currency;
+  final ValueChanged<BranchPerformance> onBranchTap;
 
   @override
   Widget build(BuildContext context) {
@@ -625,77 +662,476 @@ class _BranchPerformancePanel extends StatelessWidget {
                 for (var i = 0; i < branches.length; i++)
                   Padding(
                     padding: const EdgeInsets.only(bottom: 12),
-                    child: Container(
-                      padding: const EdgeInsets.all(14),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.04),
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Row(
-                        children: [
-                          Container(
-                            width: 38,
-                            height: 38,
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFE86C2F)
-                                  .withValues(alpha: 0.2),
-                              borderRadius: BorderRadius.circular(14),
-                            ),
-                            alignment: Alignment.center,
-                            child: Text(
-                              '${i + 1}',
-                              style: const TextStyle(
-                                color: Color(0xFFFFC29C),
-                                fontWeight: FontWeight.w900,
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(20),
+                      onTap: () => onBranchTap(branches[i]),
+                      child: Container(
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.04),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 38,
+                              height: 38,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFE86C2F)
+                                    .withValues(alpha: 0.2),
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                              alignment: Alignment.center,
+                              child: Text(
+                                '${i + 1}',
+                                style: const TextStyle(
+                                  color: Color(0xFFFFC29C),
+                                  fontWeight: FontWeight.w900,
+                                ),
                               ),
                             ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    branches[i].name,
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .titleMedium
+                                        ?.copyWith(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.w800,
+                                        ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    branches[i].location ?? 'No location set',
+                                    style:
+                                        const TextStyle(color: Colors.white54),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.end,
                               children: [
                                 Text(
-                                  branches[i].name,
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .titleMedium
-                                      ?.copyWith(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.w800,
-                                      ),
+                                  currency.format(branches[i].sales),
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w900,
+                                  ),
                                 ),
                                 const SizedBox(height: 4),
                                 Text(
-                                  branches[i].location ?? 'No location set',
+                                  '${branches[i].ordersCount} orders',
                                   style: const TextStyle(color: Colors.white54),
                                 ),
                               ],
                             ),
-                          ),
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.end,
-                            children: [
-                              Text(
-                                currency.format(branches[i].sales),
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w900,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                '${branches[i].ordersCount} orders',
-                                style: const TextStyle(color: Colors.white54),
-                              ),
-                            ],
-                          ),
-                        ],
+                            const SizedBox(width: 8),
+                            const Icon(
+                              Icons.chevron_right,
+                              color: Colors.white54,
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),
               ],
             ),
+    );
+  }
+}
+
+class _ActiveEmployeesPanel extends StatelessWidget {
+  const _ActiveEmployeesPanel({required this.employees});
+
+  final List<OwnerEmployeeActivity> employees;
+
+  @override
+  Widget build(BuildContext context) {
+    return _OwnerPanel(
+      title: 'Active employees now',
+      subtitle: 'Checked in or on an open shift for the current branch filter',
+      child: employees.isEmpty
+          ? const Text(
+              'No active employees right now.',
+              style: TextStyle(color: Colors.white70),
+            )
+          : Column(
+              children: [
+                for (final employee in employees)
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: const Icon(
+                      Icons.badge_outlined,
+                      color: Color(0xFF34D399),
+                    ),
+                    title: Text(
+                      employee.name,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    subtitle: Text(
+                      [
+                        employee.roleLabel,
+                        if (employee.branchName != null) employee.branchName!,
+                        if (employee.activityLabel != null)
+                          employee.activityLabel!,
+                      ].join(' - '),
+                      style: const TextStyle(color: Colors.white54),
+                    ),
+                    trailing: _EmployeeStatusPill(employee: employee),
+                  ),
+              ],
+            ),
+    );
+  }
+}
+
+class _BranchDetailSheet extends StatelessWidget {
+  const _BranchDetailSheet({
+    required this.detail,
+    required this.currency,
+    required this.scrollController,
+  });
+
+  final OwnerBranchDetail detail;
+  final NumberFormat currency;
+  final ScrollController scrollController;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      controller: scrollController,
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    detail.name,
+                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w900,
+                        ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    detail.location ?? 'No location set',
+                    style: const TextStyle(color: Colors.white54),
+                  ),
+                ],
+              ),
+            ),
+            IconButton(
+              onPressed: () => Navigator.of(context).pop(),
+              icon: const Icon(Icons.close, color: Colors.white70),
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        Wrap(
+          spacing: 10,
+          runSpacing: 10,
+          children: [
+            _BranchMetricChip(
+              label: 'Sales',
+              value: currency.format(detail.sales),
+            ),
+            _BranchMetricChip(
+              label: 'Orders',
+              value: '${detail.ordersCount}',
+            ),
+            _BranchMetricChip(
+              label: 'Returned',
+              value: '${detail.returnedOrdersCount}',
+            ),
+            _BranchMetricChip(
+              label: 'Active',
+              value: '${detail.activeEmployees.length}',
+            ),
+          ],
+        ),
+        const SizedBox(height: 22),
+        _BranchDetailSection(
+          title: 'Employees',
+          child: detail.employees.isEmpty
+              ? const Text(
+                  'No employees assigned.',
+                  style: TextStyle(color: Colors.white70),
+                )
+              : Column(
+                  children: [
+                    for (final employee in detail.employees)
+                      ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        title: Text(
+                          employee.name,
+                          style: const TextStyle(color: Colors.white),
+                        ),
+                        subtitle: Text(
+                          [
+                            employee.roleLabel,
+                            if (employee.activityLabel != null)
+                              employee.activityLabel!,
+                          ].join(' - '),
+                          style: const TextStyle(color: Colors.white54),
+                        ),
+                        trailing: _EmployeeStatusPill(employee: employee),
+                      ),
+                  ],
+                ),
+        ),
+        _BranchDetailSection(
+          title: 'Tables',
+          child: detail.tables.isEmpty
+              ? const Text(
+                  'No tables assigned.',
+                  style: TextStyle(color: Colors.white70),
+                )
+              : Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    for (final table in detail.tables)
+                      _BranchMetricChip(
+                        label: table.name,
+                        value: '${table.status} - ${table.seats} seats',
+                      ),
+                  ],
+                ),
+        ),
+        _BranchDetailSection(
+          title: 'Kitchen shift',
+          child: detail.kitchenShift.isEmpty
+              ? const Text(
+                  'No kitchen employees assigned.',
+                  style: TextStyle(color: Colors.white70),
+                )
+              : Column(
+                  children: [
+                    for (final employee in detail.kitchenShift)
+                      ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        title: Text(
+                          employee.name,
+                          style: const TextStyle(color: Colors.white),
+                        ),
+                        subtitle: Text(
+                          employee.activityLabel ?? employee.roleLabel,
+                          style: const TextStyle(color: Colors.white54),
+                        ),
+                        trailing: _EmployeeStatusPill(employee: employee),
+                      ),
+                  ],
+                ),
+        ),
+        _BranchDetailSection(
+          title: 'Orders',
+          child: detail.orders.isEmpty
+              ? const Text(
+                  'No orders in this period.',
+                  style: TextStyle(color: Colors.white70),
+                )
+              : Column(
+                  children: [
+                    for (final order in detail.orders)
+                      _OrderDetailTile(order: order, currency: currency),
+                  ],
+                ),
+        ),
+      ],
+    );
+  }
+}
+
+class _OrderDetailTile extends StatelessWidget {
+  const _OrderDetailTile({
+    required this.order,
+    required this.currency,
+  });
+
+  final OwnerOrderDetail order;
+  final NumberFormat currency;
+
+  @override
+  Widget build(BuildContext context) {
+    final returnedBy = order.returnedBy.isEmpty
+        ? null
+        : "Returned by ${order.returnedBy.join(', ')}";
+
+    return Theme(
+      data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+      child: ExpansionTile(
+        tilePadding: EdgeInsets.zero,
+        iconColor: Colors.white70,
+        collapsedIconColor: Colors.white54,
+        title: Text(
+          '#${order.id} - ${currency.format(order.total)}',
+          style: const TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+        subtitle: Text(
+          [
+            order.tableName ?? 'No table',
+            "Waiter ${order.waiterName ?? 'not set'}",
+            "Cashier ${order.cashierName ?? 'not set'}",
+          ].join(' - '),
+          style: const TextStyle(color: Colors.white54),
+        ),
+        children: [
+          Align(
+            alignment: Alignment.centerLeft,
+            child: Text(
+              [
+                '${order.status}/${order.paymentStatus}',
+                if (order.returnedItemsCount > 0)
+                  '${order.returnedItemsCount} returned',
+                if (returnedBy != null) returnedBy,
+              ].join(' - '),
+              style: const TextStyle(color: Colors.white70),
+            ),
+          ),
+          const SizedBox(height: 8),
+          for (final item in order.items)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      '${item.quantity}x ${item.name}',
+                      style: const TextStyle(color: Colors.white70),
+                    ),
+                  ),
+                  Text(
+                    '${currency.format(item.total)} - ${item.status}',
+                    style: const TextStyle(color: Colors.white54),
+                  ),
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _BranchDetailSection extends StatelessWidget {
+  const _BranchDetailSection({
+    required this.title,
+    required this.child,
+  });
+
+  final String title;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 18),
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.04),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              title,
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w900,
+                  ),
+            ),
+            const SizedBox(height: 10),
+            child,
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _BranchMetricChip extends StatelessWidget {
+  const _BranchMetricChip({
+    required this.label,
+    required this.value,
+  });
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label, style: const TextStyle(color: Colors.white54)),
+          const SizedBox(height: 4),
+          Text(
+            value,
+            style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _EmployeeStatusPill extends StatelessWidget {
+  const _EmployeeStatusPill({required this.employee});
+
+  final OwnerEmployeeActivity employee;
+
+  @override
+  Widget build(BuildContext context) {
+    final label = employee.active
+        ? (employee.activeSource == 'shift' ? 'On shift' : 'Checked in')
+        : 'Inactive';
+    final color = employee.active
+        ? const Color(0xFF34D399)
+        : Colors.white.withValues(alpha: 0.38);
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.14),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: color,
+          fontSize: 12,
+          fontWeight: FontWeight.w800,
+        ),
+      ),
     );
   }
 }

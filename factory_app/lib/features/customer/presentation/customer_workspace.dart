@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
+import '../../../core/localization/app_language.dart';
 import '../../../core/models/app_models.dart';
 import '../../../core/widgets/branded_image.dart';
+import '../../../core/widgets/language_toggle.dart';
 import '../../../core/widgets/state_views.dart';
 import '../../auth/providers/auth_providers.dart';
 import '../../suite/data/suite_repository.dart';
@@ -77,8 +79,9 @@ class _CustomerWorkspacePageState extends ConsumerState<CustomerWorkspacePage> {
   }
 
   void _showNotifications() {
+    final strings = ref.read(appStringsProvider);
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('No new customer notifications right now.')),
+      SnackBar(content: Text(strings.t('customer.noNotifications'))),
     );
   }
 
@@ -113,7 +116,8 @@ class _CustomerWorkspacePageState extends ConsumerState<CustomerWorkspacePage> {
         isScrollControlled: true,
         showDragHandle: true,
         backgroundColor: Colors.transparent,
-        builder: (context) => _CustomerOrderDetailSheet(orderId: entry.orderId!),
+        builder: (context) =>
+            _CustomerOrderDetailSheet(orderId: entry.orderId!),
       );
       return;
     }
@@ -129,6 +133,7 @@ class _CustomerWorkspacePageState extends ConsumerState<CustomerWorkspacePage> {
   @override
   Widget build(BuildContext context) {
     final session = ref.watch(currentSessionProvider);
+    final strings = ref.watch(appStringsProvider);
     final isWide = MediaQuery.of(context).size.width > 1080;
     final pages = [
       _CustomerHomeTab(
@@ -205,26 +210,26 @@ class _CustomerWorkspacePageState extends ConsumerState<CustomerWorkspacePage> {
                 child: NavigationBar(
                   selectedIndex: _selectedIndex,
                   onDestinationSelected: _selectTab,
-                  destinations: const [
+                  destinations: [
                     NavigationDestination(
-                      icon: Icon(Icons.home_outlined),
-                      selectedIcon: Icon(Icons.home_rounded),
-                      label: 'Home',
+                      icon: const Icon(Icons.home_outlined),
+                      selectedIcon: const Icon(Icons.home_rounded),
+                      label: strings.t('nav.home'),
                     ),
                     NavigationDestination(
-                      icon: Icon(Icons.search_outlined),
-                      selectedIcon: Icon(Icons.search_rounded),
-                      label: 'Browse',
+                      icon: const Icon(Icons.search_outlined),
+                      selectedIcon: const Icon(Icons.search_rounded),
+                      label: strings.t('nav.browse'),
                     ),
                     NavigationDestination(
-                      icon: Icon(Icons.receipt_long_outlined),
-                      selectedIcon: Icon(Icons.receipt_long_rounded),
-                      label: 'Orders',
+                      icon: const Icon(Icons.receipt_long_outlined),
+                      selectedIcon: const Icon(Icons.receipt_long_rounded),
+                      label: strings.t('nav.orders'),
                     ),
                     NavigationDestination(
-                      icon: Icon(Icons.workspace_premium_outlined),
-                      selectedIcon: Icon(Icons.workspace_premium_rounded),
-                      label: 'Rewards',
+                      icon: const Icon(Icons.workspace_premium_outlined),
+                      selectedIcon: const Icon(Icons.workspace_premium_rounded),
+                      label: strings.t('nav.rewards'),
                     ),
                   ],
                 ),
@@ -262,6 +267,7 @@ class _CustomerTopChrome extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+    final strings = ref.watch(appStringsProvider);
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 18),
@@ -274,7 +280,7 @@ class _CustomerTopChrome extends ConsumerWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Delivering the restaurant suite memory to',
+                      strings.t('customer.deliveringTo'),
                       style: theme.textTheme.labelLarge?.copyWith(
                         color: const Color(0xFF8B6B4C),
                         fontWeight: FontWeight.w700,
@@ -282,7 +288,7 @@ class _CustomerTopChrome extends ConsumerWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      session?.name ?? 'Guest',
+                      session?.name ?? strings.t('customer.guest'),
                       style: theme.textTheme.titleLarge?.copyWith(
                         fontWeight: FontWeight.w900,
                         color: const Color(0xFF23150E),
@@ -296,6 +302,8 @@ class _CustomerTopChrome extends ConsumerWidget {
                 onPressed: onNotificationsTap,
               ),
               const SizedBox(width: 10),
+              const LanguageToggle(compact: true),
+              const SizedBox(width: 10),
               PopupMenuButton<String>(
                 onSelected: (value) {
                   if (value == 'account') {
@@ -304,14 +312,14 @@ class _CustomerTopChrome extends ConsumerWidget {
                     ref.read(authProvider.notifier).logout();
                   }
                 },
-                itemBuilder: (context) => const [
+                itemBuilder: (context) => [
                   PopupMenuItem<String>(
                     value: 'account',
-                    child: Text('Account'),
+                    child: Text(strings.t('customer.account')),
                   ),
                   PopupMenuItem<String>(
                     value: 'logout',
-                    child: Text('Logout'),
+                    child: Text(strings.t('action.logout')),
                   ),
                 ],
                 child: Container(
@@ -374,8 +382,8 @@ class _CustomerTopChrome extends ConsumerWidget {
                       : Icons.tune_rounded,
                 ),
                 hintText: selectedIndex == 0
-                    ? 'Search for restaurant, dish or branch'
-                    : 'Search restaurants, cafes or dishes',
+                    ? strings.t('customer.searchHome')
+                    : strings.t('customer.searchBrowse'),
                 border: InputBorder.none,
               ),
             ),
@@ -387,7 +395,7 @@ class _CustomerTopChrome extends ConsumerWidget {
               children: [
                 _QuickServiceChip(
                   icon: Icons.ramen_dining_rounded,
-                  label: 'Food',
+                  label: strings.t('quick.food'),
                   onTap: () => onBrowseRequested(
                     filter: _CustomerBrowseFilter.restaurants,
                     focusSearch: true,
@@ -396,7 +404,7 @@ class _CustomerTopChrome extends ConsumerWidget {
                 const SizedBox(width: 10),
                 _QuickServiceChip(
                   icon: Icons.local_cafe_rounded,
-                  label: 'Cafe',
+                  label: strings.t('quick.cafe'),
                   onTap: () => onBrowseRequested(
                     filter: _CustomerBrowseFilter.cafes,
                     focusSearch: true,
@@ -405,7 +413,7 @@ class _CustomerTopChrome extends ConsumerWidget {
                 const SizedBox(width: 10),
                 _QuickServiceChip(
                   icon: Icons.icecream_rounded,
-                  label: 'Desserts',
+                  label: strings.t('quick.desserts'),
                   onTap: () => onBrowseRequested(
                     filter: _CustomerBrowseFilter.cafes,
                     focusSearch: true,
@@ -414,13 +422,13 @@ class _CustomerTopChrome extends ConsumerWidget {
                 const SizedBox(width: 10),
                 _QuickServiceChip(
                   icon: Icons.breakfast_dining_rounded,
-                  label: 'Breakfast',
+                  label: strings.t('quick.breakfast'),
                   onTap: () => onBrowseRequested(focusSearch: true),
                 ),
                 const SizedBox(width: 10),
                 _QuickServiceChip(
                   icon: Icons.workspace_premium_rounded,
-                  label: 'Rewards',
+                  label: strings.t('nav.rewards'),
                   onTap: onRewardsRequested,
                 ),
               ],
@@ -432,7 +440,7 @@ class _CustomerTopChrome extends ConsumerWidget {
   }
 }
 
-class _CustomerRail extends StatelessWidget {
+class _CustomerRail extends ConsumerWidget {
   const _CustomerRail({
     required this.selectedIndex,
     required this.onSelected,
@@ -442,7 +450,8 @@ class _CustomerRail extends StatelessWidget {
   final ValueChanged<int> onSelected;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final strings = ref.watch(appStringsProvider);
     return Card(
       elevation: 0,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
@@ -452,26 +461,26 @@ class _CustomerRail extends StatelessWidget {
           selectedIndex: selectedIndex,
           onDestinationSelected: onSelected,
           labelType: NavigationRailLabelType.all,
-          destinations: const [
+          destinations: [
             NavigationRailDestination(
-              icon: Icon(Icons.home_outlined),
-              selectedIcon: Icon(Icons.home_rounded),
-              label: Text('Home'),
+              icon: const Icon(Icons.home_outlined),
+              selectedIcon: const Icon(Icons.home_rounded),
+              label: Text(strings.t('nav.home')),
             ),
             NavigationRailDestination(
-              icon: Icon(Icons.storefront_outlined),
-              selectedIcon: Icon(Icons.storefront_rounded),
-              label: Text('Browse'),
+              icon: const Icon(Icons.storefront_outlined),
+              selectedIcon: const Icon(Icons.storefront_rounded),
+              label: Text(strings.t('nav.browse')),
             ),
             NavigationRailDestination(
-              icon: Icon(Icons.receipt_long_outlined),
-              selectedIcon: Icon(Icons.receipt_long_rounded),
-              label: Text('Orders'),
+              icon: const Icon(Icons.receipt_long_outlined),
+              selectedIcon: const Icon(Icons.receipt_long_rounded),
+              label: Text(strings.t('nav.orders')),
             ),
             NavigationRailDestination(
-              icon: Icon(Icons.workspace_premium_outlined),
-              selectedIcon: Icon(Icons.workspace_premium_rounded),
-              label: Text('Rewards'),
+              icon: const Icon(Icons.workspace_premium_outlined),
+              selectedIcon: const Icon(Icons.workspace_premium_rounded),
+              label: Text(strings.t('nav.rewards')),
             ),
           ],
         ),
@@ -575,7 +584,8 @@ class _CustomerHomeTabState extends ConsumerState<_CustomerHomeTab> {
                     action: 'See popular brands',
                   ),
                   _HeroSlideData(
-                    title: 'Coffee runs, desserts, and brunch spots in one flow.',
+                    title:
+                        'Coffee runs, desserts, and brunch spots in one flow.',
                     subtitle:
                         'Browse restaurants and cafes the same way a modern marketplace app should feel.',
                     eyebrow: 'Cafe picks',
@@ -617,7 +627,8 @@ class _CustomerHomeTabState extends ConsumerState<_CustomerHomeTab> {
               const SizedBox(height: 22),
               const _SectionTitle(
                 title: 'Order again',
-                subtitle: 'The last meals you had, with branch memory and one-tap style cards.',
+                subtitle:
+                    'The last meals you had, with branch memory and one-tap style cards.',
               ),
               const SizedBox(height: 12),
               if (data.recentOrders.isEmpty)
@@ -636,7 +647,8 @@ class _CustomerHomeTabState extends ConsumerState<_CustomerHomeTab> {
                     itemBuilder: (context, index) => _OrderAgainCard(
                       order: data.recentOrders[index],
                       currency: currency,
-                      onTap: () => widget.onOrderSelected(data.recentOrders[index]),
+                      onTap: () =>
+                          widget.onOrderSelected(data.recentOrders[index]),
                       onPrimaryAction: () async {
                         final order = data.recentOrders[index];
                         if (order.restaurantId != null) {
@@ -660,7 +672,8 @@ class _CustomerHomeTabState extends ConsumerState<_CustomerHomeTab> {
               const SizedBox(height: 22),
               const _SectionTitle(
                 title: 'Popular restaurants',
-                subtitle: 'Image-first brand cards with multi-branch visibility.',
+                subtitle:
+                    'Image-first brand cards with multi-branch visibility.',
               ),
               const SizedBox(height: 12),
               if (restaurants.isEmpty)
@@ -678,14 +691,16 @@ class _CustomerHomeTabState extends ConsumerState<_CustomerHomeTab> {
                     separatorBuilder: (_, __) => const SizedBox(width: 12),
                     itemBuilder: (context, index) => _RestaurantShowcaseCard(
                       restaurant: restaurants[index],
-                      onTap: () => widget.onRestaurantSelected(restaurants[index]),
+                      onTap: () =>
+                          widget.onRestaurantSelected(restaurants[index]),
                     ),
                   ),
                 ),
               const SizedBox(height: 22),
               const _SectionTitle(
                 title: 'Cafe and dessert picks',
-                subtitle: 'Separate cafe visibility, like a marketplace should provide.',
+                subtitle:
+                    'Separate cafe visibility, like a marketplace should provide.',
               ),
               const SizedBox(height: 12),
               if (cafes.isEmpty)
@@ -710,7 +725,8 @@ class _CustomerHomeTabState extends ConsumerState<_CustomerHomeTab> {
               const SizedBox(height: 22),
               const _SectionTitle(
                 title: 'Featured dishes on the platform',
-                subtitle: 'Menu items with image surfaces, ready for visual browsing.',
+                subtitle:
+                    'Menu items with image surfaces, ready for visual browsing.',
               ),
               const SizedBox(height: 12),
               if (featuredDishes.isEmpty)
@@ -739,7 +755,8 @@ class _CustomerHomeTabState extends ConsumerState<_CustomerHomeTab> {
               const SizedBox(height: 22),
               const _SectionTitle(
                 title: 'Latest rewards activity',
-                subtitle: 'Points earned or redeemed across restaurants and branches.',
+                subtitle:
+                    'Points earned or redeemed across restaurants and branches.',
               ),
               const SizedBox(height: 12),
               Card(
@@ -813,9 +830,8 @@ class _CustomerRestaurantsTabState
   void didUpdateWidget(covariant _CustomerRestaurantsTab oldWidget) {
     super.didUpdateWidget(oldWidget);
 
-    final shouldReload =
-        oldWidget.searchSeed != widget.searchSeed ||
-            oldWidget.filterSeed != widget.filterSeed;
+    final shouldReload = oldWidget.searchSeed != widget.searchSeed ||
+        oldWidget.filterSeed != widget.filterSeed;
 
     if (oldWidget.searchSeed != widget.searchSeed) {
       _searchController.text = widget.searchSeed;
@@ -908,7 +924,8 @@ class _CustomerRestaurantsTabState
       children: [
         const _SectionTitle(
           title: 'Restaurants and cafes',
-          subtitle: 'Talabat-style browse sections with image-forward venue cards.',
+          subtitle:
+              'Talabat-style browse sections with image-forward venue cards.',
         ),
         const SizedBox(height: 12),
         Row(
@@ -1053,10 +1070,11 @@ class _CustomerOrdersTabState extends ConsumerState<_CustomerOrdersTab> {
       _error = null;
     });
     try {
-      final response = await ref.read(suiteRepositoryProvider).fetchCustomerOrders(
-            page: reset ? 1 : (_meta?.currentPage ?? 0) + 1,
-            perPage: 10,
-          );
+      final response =
+          await ref.read(suiteRepositoryProvider).fetchCustomerOrders(
+                page: reset ? 1 : (_meta?.currentPage ?? 0) + 1,
+                perPage: 10,
+              );
       setState(() {
         if (reset) {
           _items
@@ -1152,7 +1170,8 @@ class _CustomerRewardsTabState extends ConsumerState<_CustomerRewardsTab> {
     try {
       final response = await ref
           .read(suiteRepositoryProvider)
-          .fetchCustomerLoyalty(page: reset ? 1 : (_meta?.currentPage ?? 0) + 1);
+          .fetchCustomerLoyalty(
+              page: reset ? 1 : (_meta?.currentPage ?? 0) + 1);
       setState(() {
         if (reset) {
           _items
@@ -1188,24 +1207,25 @@ class _CustomerRewardsTabState extends ConsumerState<_CustomerRewardsTab> {
       child: ListView(
         physics: const AlwaysScrollableScrollPhysics(),
         children: [
-              _WalletSnapshotCard(
-                customerName: session?.name ?? 'Guest',
-                loyaltyPoints: session?.loyaltyPoints ?? 0,
-                ordersCount: _items.length,
-                onTap: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text(
-                        'Your current points are already reflected in this rewards wallet.',
-                      ),
-                    ),
-                  );
-                },
-              ),
+          _WalletSnapshotCard(
+            customerName: session?.name ?? 'Guest',
+            loyaltyPoints: session?.loyaltyPoints ?? 0,
+            ordersCount: _items.length,
+            onTap: () {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text(
+                    'Your current points are already reflected in this rewards wallet.',
+                  ),
+                ),
+              );
+            },
+          ),
           const SizedBox(height: 18),
           const _SectionTitle(
             title: 'Reward perks',
-            subtitle: 'A simple, visible wallet section just like a strong marketplace loyalty flow should feel.',
+            subtitle:
+                'A simple, visible wallet section just like a strong marketplace loyalty flow should feel.',
           ),
           const SizedBox(height: 12),
           Row(
@@ -1231,7 +1251,8 @@ class _CustomerRewardsTabState extends ConsumerState<_CustomerRewardsTab> {
                 child: _RewardPerkCard(
                   icon: Icons.history_toggle_off_rounded,
                   title: 'Order memory',
-                  description: 'Every paid visit helps your next browse feel faster.',
+                  description:
+                      'Every paid visit helps your next browse feel faster.',
                   onTap: widget.onOrdersRequested,
                 ),
               ),
@@ -1245,8 +1266,8 @@ class _CustomerRewardsTabState extends ConsumerState<_CustomerRewardsTab> {
             ),
             child: Padding(
               padding: const EdgeInsets.all(18),
-                child: Column(
-                  children: [
+              child: Column(
+                children: [
                   for (final entry in _items)
                     _RewardEntryRow(
                       entry: entry,
@@ -1487,7 +1508,10 @@ class _WalletSnapshotCard extends StatelessWidget {
                       const Spacer(),
                       Text(
                         '$loyaltyPoints points',
-                        style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                        style: Theme.of(context)
+                            .textTheme
+                            .headlineMedium
+                            ?.copyWith(
                               color: Colors.white,
                               fontWeight: FontWeight.w900,
                             ),
@@ -1495,7 +1519,8 @@ class _WalletSnapshotCard extends StatelessWidget {
                       const SizedBox(height: 8),
                       Text(
                         '$customerName has $ordersCount recent orders remembered in the suite.',
-                        style: const TextStyle(color: Colors.white70, height: 1.4),
+                        style:
+                            const TextStyle(color: Colors.white70, height: 1.4),
                       ),
                       const SizedBox(height: 14),
                       const Wrap(
@@ -1652,10 +1677,8 @@ class _RestaurantShowcaseCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final featuredText = restaurant.featuredItems
-        .map((item) => item.name)
-        .take(2)
-        .join(' • ');
+    final featuredText =
+        restaurant.featuredItems.map((item) => item.name).take(2).join(' • ');
 
     return SizedBox(
       width: 286,
@@ -1664,87 +1687,89 @@ class _RestaurantShowcaseCard extends StatelessWidget {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
-          onTap: onTap,
-          child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            SizedBox(
-              height: 152,
-              child: ClipRRect(
-                borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(30),
-                ),
-                child: Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    BrandedImage(
-                      label: restaurant.name,
-                      imageUrl: restaurant.coverImageUrl,
-                      kind: BrandedImageKind.venue,
+            onTap: onTap,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SizedBox(
+                  height: 152,
+                  child: ClipRRect(
+                    borderRadius: const BorderRadius.vertical(
+                      top: Radius.circular(30),
                     ),
-                    Padding(
-                      padding: const EdgeInsets.all(14),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          _MiniBadge(
-                            label: restaurant.kind == 'cafe' ? 'Cafe' : 'Dining',
-                            color: Colors.white.withValues(alpha: 0.90),
-                            textColor: const Color(0xFF20110A),
-                          ),
-                          const Spacer(),
-                          _MiniBadge(
-                            label: '${restaurant.branchCount} br.',
-                            color: const Color(0xDD20110A),
-                            textColor: Colors.white,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    restaurant.name,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w900,
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        BrandedImage(
+                          label: restaurant.name,
+                          imageUrl: restaurant.coverImageUrl,
+                          kind: BrandedImageKind.venue,
                         ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    restaurant.branches.isEmpty
-                        ? 'Multi-branch venue'
-                        : restaurant.branches
-                            .take(2)
-                            .map((branch) =>
-                                branch.location ?? branch.name)
-                            .join(' • '),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(color: Color(0xFF8B6B4C)),
-                  ),
-                  if (featuredText.isNotEmpty) ...[
-                    const SizedBox(height: 12),
-                    Text(
-                      featuredText,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontWeight: FontWeight.w700),
+                        Padding(
+                          padding: const EdgeInsets.all(14),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _MiniBadge(
+                                label: restaurant.kind == 'cafe'
+                                    ? 'Cafe'
+                                    : 'Dining',
+                                color: Colors.white.withValues(alpha: 0.90),
+                                textColor: const Color(0xFF20110A),
+                              ),
+                              const Spacer(),
+                              _MiniBadge(
+                                label: '${restaurant.branchCount} br.',
+                                color: const Color(0xDD20110A),
+                                textColor: Colors.white,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
-                  ],
-                ],
-              ),
-            ),
-          ],
-        )),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        restaurant.name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style:
+                            Theme.of(context).textTheme.titleMedium?.copyWith(
+                                  fontWeight: FontWeight.w900,
+                                ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        restaurant.branches.isEmpty
+                            ? 'Multi-branch venue'
+                            : restaurant.branches
+                                .take(2)
+                                .map((branch) => branch.location ?? branch.name)
+                                .join(' • '),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(color: Color(0xFF8B6B4C)),
+                      ),
+                      if (featuredText.isNotEmpty) ...[
+                        const SizedBox(height: 12),
+                        Text(
+                          featuredText,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontWeight: FontWeight.w700),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ],
+            )),
       ),
     );
   }
@@ -1768,52 +1793,53 @@ class _CompactVenueCard extends StatelessWidget {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(26)),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
-          onTap: onTap,
-          child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            SizedBox(
-              height: 110,
-              child: ClipRRect(
-                borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(26),
-                ),
-                child: BrandedImage(
-                  label: restaurant.name,
-                  imageUrl: restaurant.coverImageUrl,
-                  kind: BrandedImageKind.venue,
-                ),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    restaurant.name,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w900,
-                        ),
+            onTap: onTap,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SizedBox(
+                  height: 110,
+                  child: ClipRRect(
+                    borderRadius: const BorderRadius.vertical(
+                      top: Radius.circular(26),
+                    ),
+                    child: BrandedImage(
+                      label: restaurant.name,
+                      imageUrl: restaurant.coverImageUrl,
+                      kind: BrandedImageKind.venue,
+                    ),
                   ),
-                  const SizedBox(height: 6),
-                  Text(
-                    (restaurant.branches.isNotEmpty
-                            ? restaurant.branches.first.location
-                            : null) ??
+                ),
+                Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        restaurant.name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style:
+                            Theme.of(context).textTheme.titleMedium?.copyWith(
+                                  fontWeight: FontWeight.w900,
+                                ),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
                         (restaurant.branches.isNotEmpty
-                            ? restaurant.branches.first.name
-                            : null) ??
-                        'Cafe venue',
-                    style: const TextStyle(color: Color(0xFF8B6B4C)),
+                                ? restaurant.branches.first.location
+                                : null) ??
+                            (restaurant.branches.isNotEmpty
+                                ? restaurant.branches.first.name
+                                : null) ??
+                            'Cafe venue',
+                        style: const TextStyle(color: Color(0xFF8B6B4C)),
+                      ),
+                    ],
                   ),
-                ],
-              ),
-            ),
-          ],
-        )),
+                ),
+              ],
+            )),
       ),
     );
   }
@@ -1849,54 +1875,54 @@ class _FeaturedDishCard extends StatelessWidget {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(26)),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
-          onTap: onTap,
-          child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            SizedBox(
-              height: 124,
-              child: ClipRRect(
-                borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(26),
+            onTap: onTap,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SizedBox(
+                  height: 124,
+                  child: ClipRRect(
+                    borderRadius: const BorderRadius.vertical(
+                      top: Radius.circular(26),
+                    ),
+                    child: BrandedImage(
+                      label: entry.item.name,
+                      imageUrl: entry.item.imageUrl,
+                      kind: BrandedImageKind.dish,
+                    ),
+                  ),
                 ),
-                child: BrandedImage(
-                  label: entry.item.name,
-                  imageUrl: entry.item.imageUrl,
-                  kind: BrandedImageKind.dish,
+                Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        entry.item.name,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(fontWeight: FontWeight.w800),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        entry.restaurant.name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(color: Color(0xFF8B6B4C)),
+                      ),
+                      const SizedBox(height: 10),
+                      Text(
+                        currency.format(entry.item.price),
+                        style: Theme.of(context)
+                            .textTheme
+                            .titleMedium
+                            ?.copyWith(fontWeight: FontWeight.w900),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    entry.item.name,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontWeight: FontWeight.w800),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    entry.restaurant.name,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(color: Color(0xFF8B6B4C)),
-                  ),
-                  const SizedBox(height: 10),
-                  Text(
-                    currency.format(entry.item.price),
-                    style: Theme.of(context)
-                        .textTheme
-                        .titleMedium
-                        ?.copyWith(fontWeight: FontWeight.w900),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        )),
+              ],
+            )),
       ),
     );
   }
@@ -1922,86 +1948,87 @@ class _RestaurantSearchCard extends StatelessWidget {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
-        onTap: onTap,
-        child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            height: 184,
-            child: ClipRRect(
-              borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(28),
-              ),
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  BrandedImage(
-                    label: restaurant.name,
-                    imageUrl: restaurant.coverImageUrl,
-                    kind: BrandedImageKind.venue,
+          onTap: onTap,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SizedBox(
+                height: 184,
+                child: ClipRRect(
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(28),
                   ),
-                  Positioned(
-                    top: 14,
-                    left: 14,
-                    child: _MiniBadge(
-                      label: restaurant.kind.toUpperCase(),
-                      color: Colors.white.withValues(alpha: 0.92),
-                      textColor: const Color(0xFF211208),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(18),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        restaurant.name,
-                        style: Theme.of(context)
-                            .textTheme
-                            .titleLarge
-                            ?.copyWith(fontWeight: FontWeight.w900),
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      BrandedImage(
+                        label: restaurant.name,
+                        imageUrl: restaurant.coverImageUrl,
+                        kind: BrandedImageKind.venue,
                       ),
+                      Positioned(
+                        top: 14,
+                        left: 14,
+                        child: _MiniBadge(
+                          label: restaurant.kind.toUpperCase(),
+                          color: Colors.white.withValues(alpha: 0.92),
+                          textColor: const Color(0xFF211208),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(18),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            restaurant.name,
+                            style: Theme.of(context)
+                                .textTheme
+                                .titleLarge
+                                ?.copyWith(fontWeight: FontWeight.w900),
+                          ),
+                        ),
+                        const Icon(Icons.star_rounded,
+                            color: Color(0xFFFFA000), size: 20),
+                        const SizedBox(width: 4),
+                        const Text(
+                          '4.8',
+                          style: TextStyle(fontWeight: FontWeight.w800),
+                        ),
+                      ],
                     ),
-                    const Icon(Icons.star_rounded,
-                        color: Color(0xFFFFA000), size: 20),
-                    const SizedBox(width: 4),
-                    const Text(
-                      '4.8',
-                      style: TextStyle(fontWeight: FontWeight.w800),
+                    const SizedBox(height: 6),
+                    Text(
+                      featuredText,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                          color: Color(0xFF8B6B4C), height: 1.35),
+                    ),
+                    const SizedBox(height: 14),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        for (final branch in restaurant.branches.take(3))
+                          _InfoPill(
+                            icon: Icons.location_on_outlined,
+                            label: branch.location ?? branch.name,
+                          ),
+                      ],
                     ),
                   ],
                 ),
-                const SizedBox(height: 6),
-                Text(
-                  featuredText,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(color: Color(0xFF8B6B4C), height: 1.35),
-                ),
-                const SizedBox(height: 14),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    for (final branch in restaurant.branches.take(3))
-                      _InfoPill(
-                        icon: Icons.location_on_outlined,
-                        label: branch.location ?? branch.name,
-                      ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ],
-      )),
+              ),
+            ],
+          )),
     );
   }
 }
@@ -2026,100 +2053,101 @@ class _CustomerOrderCard extends StatelessWidget {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
-        onTap: onTap,
-        child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(22),
-                  child: SizedBox(
-                    width: 92,
-                    height: 92,
-                    child: BrandedImage(
-                      label: heroItem?.name ?? order.restaurantName ?? 'Order',
-                      imageUrl: heroItem?.imageUrl,
-                      kind: BrandedImageKind.dish,
+                Row(
+                  children: [
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(22),
+                      child: SizedBox(
+                        width: 92,
+                        height: 92,
+                        child: BrandedImage(
+                          label:
+                              heroItem?.name ?? order.restaurantName ?? 'Order',
+                          imageUrl: heroItem?.imageUrl,
+                          kind: BrandedImageKind.dish,
+                        ),
+                      ),
                     ),
-                  ),
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        order.restaurantName ?? 'Restaurant',
-                        style: Theme.of(context)
-                            .textTheme
-                            .titleMedium
-                            ?.copyWith(fontWeight: FontWeight.w900),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        '${order.branchName ?? 'Branch'}${order.branchLocation == null ? '' : ' • ${order.branchLocation}'}',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(color: Color(0xFF8B6B4C)),
-                      ),
-                      const SizedBox(height: 8),
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          _MiniBadge(
-                            label: order.status.toUpperCase(),
-                            color: const Color(0xFFFFE4CE),
-                            textColor: const Color(0xFF8A4316),
+                          Text(
+                            order.restaurantName ?? 'Restaurant',
+                            style: Theme.of(context)
+                                .textTheme
+                                .titleMedium
+                                ?.copyWith(fontWeight: FontWeight.w900),
                           ),
-                          _MiniBadge(
-                            label: order.orderType.toUpperCase(),
-                            color: const Color(0xFFFEF3C7),
-                            textColor: const Color(0xFF8A5A00),
+                          const SizedBox(height: 4),
+                          Text(
+                            '${order.branchName ?? 'Branch'}${order.branchLocation == null ? '' : ' • ${order.branchLocation}'}',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(color: Color(0xFF8B6B4C)),
+                          ),
+                          const SizedBox(height: 8),
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: [
+                              _MiniBadge(
+                                label: order.status.toUpperCase(),
+                                color: const Color(0xFFFFE4CE),
+                                textColor: const Color(0xFF8A4316),
+                              ),
+                              _MiniBadge(
+                                label: order.orderType.toUpperCase(),
+                                color: const Color(0xFFFEF3C7),
+                                textColor: const Color(0xFF8A5A00),
+                              ),
+                            ],
                           ),
                         ],
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    for (final item in order.items.take(3))
+                      _InfoPill(
+                        icon: Icons.restaurant_menu_rounded,
+                        label: '${item.quantity}x ${item.name}',
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        currency.format(order.total),
+                        style: Theme.of(context)
+                            .textTheme
+                            .titleLarge
+                            ?.copyWith(fontWeight: FontWeight.w900),
+                      ),
+                    ),
+                    Text(
+                      _formatDate(order.createdAt),
+                      style: const TextStyle(color: Color(0xFF8B6B4C)),
+                    ),
+                  ],
                 ),
               ],
             ),
-            const SizedBox(height: 16),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                for (final item in order.items.take(3))
-                  _InfoPill(
-                    icon: Icons.restaurant_menu_rounded,
-                    label: '${item.quantity}x ${item.name}',
-                  ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    currency.format(order.total),
-                    style: Theme.of(context)
-                        .textTheme
-                        .titleLarge
-                        ?.copyWith(fontWeight: FontWeight.w900),
-                  ),
-                ),
-                Text(
-                  _formatDate(order.createdAt),
-                  style: const TextStyle(color: Color(0xFF8B6B4C)),
-                ),
-              ],
-            ),
-          ],
-        ),
-      )),
+          )),
     );
   }
 }
@@ -2144,32 +2172,32 @@ class _RewardPerkCard extends StatelessWidget {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(26)),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
-        onTap: onTap,
-        child: Padding(
-        padding: const EdgeInsets.all(18),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            CircleAvatar(
-              radius: 22,
-              backgroundColor: const Color(0xFFFFE4C6),
-              child: Icon(icon, color: const Color(0xFFFF7B2C)),
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.all(18),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                CircleAvatar(
+                  radius: 22,
+                  backgroundColor: const Color(0xFFFFE4C6),
+                  child: Icon(icon, color: const Color(0xFFFF7B2C)),
+                ),
+                const SizedBox(height: 14),
+                Text(
+                  title,
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w900,
+                      ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  description,
+                  style: const TextStyle(color: Color(0xFF8B6B4C), height: 1.4),
+                ),
+              ],
             ),
-            const SizedBox(height: 14),
-            Text(
-              title,
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w900,
-                  ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              description,
-              style: const TextStyle(color: Color(0xFF8B6B4C), height: 1.4),
-            ),
-          ],
-        ),
-      )),
+          )),
     );
   }
 }
@@ -2191,51 +2219,52 @@ class _RewardEntryRow extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 10),
       child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(20),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 2),
-          child: Row(
-        children: [
-          CircleAvatar(
-            radius: 22,
-            backgroundColor: color.withValues(alpha: 0.12),
-            child: Icon(
-              positive
-                  ? Icons.north_east_rounded
-                  : Icons.south_west_rounded,
-              color: color,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  '${entry.restaurantName ?? 'Restaurant'}${entry.branchName == null ? '' : ' • ${entry.branchName}'}',
-                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.w800,
-                      ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  '${positive ? 'Earned' : 'Redeemed'} ${entry.points} pts • ${_formatDate(entry.createdAt)}',
-                  style: const TextStyle(color: Color(0xFF8B6B4C)),
-                ),
-              ],
-            ),
-          ),
-          Text(
-            '${positive ? '+' : '-'}${entry.points}',
-            style: TextStyle(
-              color: color,
-              fontWeight: FontWeight.w900,
-              fontSize: 18,
-            ),
-          ),
-        ],
-      ))),
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(20),
+          child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 2),
+              child: Row(
+                children: [
+                  CircleAvatar(
+                    radius: 22,
+                    backgroundColor: color.withValues(alpha: 0.12),
+                    child: Icon(
+                      positive
+                          ? Icons.north_east_rounded
+                          : Icons.south_west_rounded,
+                      color: color,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '${entry.restaurantName ?? 'Restaurant'}${entry.branchName == null ? '' : ' • ${entry.branchName}'}',
+                          style:
+                              Theme.of(context).textTheme.titleSmall?.copyWith(
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          '${positive ? 'Earned' : 'Redeemed'} ${entry.points} pts • ${_formatDate(entry.createdAt)}',
+                          style: const TextStyle(color: Color(0xFF8B6B4C)),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Text(
+                    '${positive ? '+' : '-'}${entry.points}',
+                    style: TextStyle(
+                      color: color,
+                      fontWeight: FontWeight.w900,
+                      fontSize: 18,
+                    ),
+                  ),
+                ],
+              ))),
     );
   }
 }
@@ -2269,7 +2298,8 @@ class _CustomerAccountSheet extends ConsumerWidget {
                 child: _RewardPerkCard(
                   icon: Icons.receipt_long_rounded,
                   title: 'Recent orders',
-                  description: '${session?.loyaltyPoints ?? 0} points currently visible.',
+                  description:
+                      '${session?.loyaltyPoints ?? 0} points currently visible.',
                   onTap: () => Navigator.of(context).pop(),
                 ),
               ),
@@ -2470,7 +2500,8 @@ class _RestaurantDetailPageState extends ConsumerState<_RestaurantDetailPage> {
                                 const SizedBox(height: 14),
                             itemBuilder: (context, index) {
                               if (index == 0) {
-                                return _RestaurantHeroCard(restaurant: restaurant);
+                                return _RestaurantHeroCard(
+                                    restaurant: restaurant);
                               }
 
                               if (index == _items.length + 1) {
@@ -2483,7 +2514,9 @@ class _RestaurantDetailPageState extends ConsumerState<_RestaurantDetailPage> {
                                     onPressed: _loading ? null : () => _load(),
                                     icon: const Icon(Icons.expand_more_rounded),
                                     label: Text(
-                                      _loading ? 'Loading...' : 'Load more items',
+                                      _loading
+                                          ? 'Loading...'
+                                          : 'Load more items',
                                     ),
                                   ),
                                 );
@@ -2540,17 +2573,19 @@ class _RestaurantHeroCard extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       _MiniBadge(
-                        label: restaurant.kind == 'cafe' ? 'Cafe' : 'Restaurant',
+                        label:
+                            restaurant.kind == 'cafe' ? 'Cafe' : 'Restaurant',
                         color: Colors.white.withValues(alpha: 0.9),
                         textColor: const Color(0xFF1E120B),
                       ),
                       const Spacer(),
                       Text(
                         restaurant.name,
-                        style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w900,
-                            ),
+                        style:
+                            Theme.of(context).textTheme.headlineSmall?.copyWith(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w900,
+                                ),
                       ),
                       const SizedBox(height: 8),
                       Text(
@@ -2774,8 +2809,9 @@ class _CustomerOrderDetailSheetState
   @override
   void initState() {
     super.initState();
-    _future =
-        ref.read(suiteRepositoryProvider).fetchCustomerOrderDetail(widget.orderId);
+    _future = ref
+        .read(suiteRepositoryProvider)
+        .fetchCustomerOrderDetail(widget.orderId);
   }
 
   @override
@@ -2823,7 +2859,8 @@ class _CustomerOrderDetailSheetState
                       width: 108,
                       height: 108,
                       child: BrandedImage(
-                        label: heroItem?.name ?? order.restaurantName ?? 'Order',
+                        label:
+                            heroItem?.name ?? order.restaurantName ?? 'Order',
                         imageUrl: heroItem?.imageUrl,
                         kind: BrandedImageKind.dish,
                       ),
@@ -3120,7 +3157,8 @@ class _MetricBadge extends StatelessWidget {
           const SizedBox(width: 8),
           Text(
             label,
-            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800),
+            style: const TextStyle(
+                color: Colors.white, fontWeight: FontWeight.w800),
           ),
         ],
       ),

@@ -954,6 +954,243 @@ class BranchPerformance {
   }
 }
 
+class OwnerEmployeeActivity {
+  const OwnerEmployeeActivity({
+    required this.id,
+    required this.name,
+    required this.active,
+    this.userId,
+    this.position,
+    this.role,
+    this.type,
+    this.branchId,
+    this.branchName,
+    this.activeSource,
+    this.checkIn,
+    this.shiftStart,
+  });
+
+  final int id;
+  final int? userId;
+  final String name;
+  final String? position;
+  final String? role;
+  final String? type;
+  final int? branchId;
+  final String? branchName;
+  final bool active;
+  final String? activeSource;
+  final String? checkIn;
+  final String? shiftStart;
+
+  String get roleLabel {
+    return type ?? position ?? role ?? 'Staff';
+  }
+
+  String? get activityLabel {
+    if (!active) return null;
+    if (activeSource == 'shift') {
+      return shiftStart == null ? 'Open shift' : 'Shift $shiftStart';
+    }
+    return checkIn == null ? 'Checked in' : 'Checked in $checkIn';
+  }
+
+  factory OwnerEmployeeActivity.fromJson(Map<String, dynamic> json) {
+    return OwnerEmployeeActivity(
+      id: jsonInt(json['id']),
+      userId: jsonNullableInt(json['user_id']),
+      name: jsonString(json['name'], fallback: 'Employee'),
+      position: jsonNullableString(json['position']),
+      role: jsonNullableString(json['role']),
+      type: jsonNullableString(json['type']),
+      branchId: jsonNullableInt(json['branch_id']),
+      branchName: jsonNullableString(json['branch_name']),
+      active: jsonBool(json['active']),
+      activeSource: jsonNullableString(json['active_source']),
+      checkIn: jsonNullableString(json['check_in']),
+      shiftStart: jsonNullableString(json['shift_start']),
+    );
+  }
+}
+
+class OwnerTableSnapshot {
+  const OwnerTableSnapshot({
+    required this.id,
+    required this.name,
+    required this.seats,
+    required this.status,
+  });
+
+  final int id;
+  final String name;
+  final int seats;
+  final String status;
+
+  factory OwnerTableSnapshot.fromJson(Map<String, dynamic> json) {
+    return OwnerTableSnapshot(
+      id: jsonInt(json['id']),
+      name: jsonString(json['name'], fallback: 'Table'),
+      seats: jsonInt(json['seats']),
+      status: jsonString(json['status'], fallback: 'open'),
+    );
+  }
+}
+
+class OwnerOrderItemDetail {
+  const OwnerOrderItemDetail({
+    required this.id,
+    required this.name,
+    required this.quantity,
+    required this.total,
+    required this.status,
+    this.kdsStatus,
+    this.refundedQuantity = 0,
+  });
+
+  final int id;
+  final String name;
+  final int quantity;
+  final double total;
+  final String status;
+  final String? kdsStatus;
+  final int refundedQuantity;
+
+  factory OwnerOrderItemDetail.fromJson(Map<String, dynamic> json) {
+    return OwnerOrderItemDetail(
+      id: jsonInt(json['id']),
+      name: jsonString(json['name'], fallback: 'Item'),
+      quantity: jsonInt(json['quantity']),
+      total: jsonDouble(json['total']),
+      status: jsonString(json['status'], fallback: 'pending'),
+      kdsStatus: jsonNullableString(json['kds_status']),
+      refundedQuantity: jsonInt(json['refunded_quantity']),
+    );
+  }
+}
+
+class OwnerOrderDetail {
+  const OwnerOrderDetail({
+    required this.id,
+    required this.total,
+    required this.status,
+    required this.paymentStatus,
+    required this.returnedItemsCount,
+    required this.returnedAmount,
+    required this.items,
+    required this.returnedBy,
+    this.branchId,
+    this.branchName,
+    this.tableId,
+    this.tableName,
+    this.orderType,
+    this.orderDate,
+    this.createdAt,
+    this.waiterName,
+    this.cashierName,
+  });
+
+  final int id;
+  final int? branchId;
+  final String? branchName;
+  final int? tableId;
+  final String? tableName;
+  final String? orderType;
+  final String status;
+  final String paymentStatus;
+  final double total;
+  final String? orderDate;
+  final String? createdAt;
+  final String? waiterName;
+  final String? cashierName;
+  final List<String> returnedBy;
+  final int returnedItemsCount;
+  final double returnedAmount;
+  final List<OwnerOrderItemDetail> items;
+
+  factory OwnerOrderDetail.fromJson(Map<String, dynamic> json) {
+    return OwnerOrderDetail(
+      id: jsonInt(json['id']),
+      branchId: jsonNullableInt(json['branch_id']),
+      branchName: jsonNullableString(json['branch_name']),
+      tableId: jsonNullableInt(json['table_id']),
+      tableName: jsonNullableString(json['table_name']),
+      orderType: jsonNullableString(json['order_type']),
+      status: jsonString(json['status'], fallback: 'pending'),
+      paymentStatus: jsonString(json['payment_status'], fallback: 'unpaid'),
+      total: jsonDouble(json['total']),
+      orderDate: jsonNullableString(json['order_date']),
+      createdAt: jsonNullableString(json['created_at']),
+      waiterName: jsonNullableString(json['waiter_name']),
+      cashierName: jsonNullableString(json['cashier_name']),
+      returnedBy: jsonStringList(json['returned_by']),
+      returnedItemsCount: jsonInt(json['returned_items_count']),
+      returnedAmount: jsonDouble(json['returned_amount']),
+      items: jsonMapList(json['items'])
+          .map(OwnerOrderItemDetail.fromJson)
+          .toList(growable: false),
+    );
+  }
+}
+
+class OwnerBranchDetail {
+  const OwnerBranchDetail({
+    required this.id,
+    required this.name,
+    required this.sales,
+    required this.ordersCount,
+    required this.returnedOrdersCount,
+    required this.employees,
+    required this.activeEmployees,
+    required this.kitchenShift,
+    required this.tables,
+    required this.orders,
+    required this.returnedOrders,
+    this.location,
+  });
+
+  final int id;
+  final String name;
+  final String? location;
+  final double sales;
+  final int ordersCount;
+  final int returnedOrdersCount;
+  final List<OwnerEmployeeActivity> employees;
+  final List<OwnerEmployeeActivity> activeEmployees;
+  final List<OwnerEmployeeActivity> kitchenShift;
+  final List<OwnerTableSnapshot> tables;
+  final List<OwnerOrderDetail> orders;
+  final List<OwnerOrderDetail> returnedOrders;
+
+  factory OwnerBranchDetail.fromJson(Map<String, dynamic> json) {
+    return OwnerBranchDetail(
+      id: jsonInt(json['id']),
+      name: jsonString(json['name'], fallback: 'Branch'),
+      location: jsonNullableString(json['location']),
+      sales: jsonDouble(json['sales']),
+      ordersCount: jsonInt(json['orders_count']),
+      returnedOrdersCount: jsonInt(json['returned_orders_count']),
+      employees: jsonMapList(json['employees'])
+          .map(OwnerEmployeeActivity.fromJson)
+          .toList(growable: false),
+      activeEmployees: jsonMapList(json['active_employees'])
+          .map(OwnerEmployeeActivity.fromJson)
+          .toList(growable: false),
+      kitchenShift: jsonMapList(json['kitchen_shift'])
+          .map(OwnerEmployeeActivity.fromJson)
+          .toList(growable: false),
+      tables: jsonMapList(json['tables'])
+          .map(OwnerTableSnapshot.fromJson)
+          .toList(growable: false),
+      orders: jsonMapList(json['orders'])
+          .map(OwnerOrderDetail.fromJson)
+          .toList(growable: false),
+      returnedOrders: jsonMapList(json['returned_orders'])
+          .map(OwnerOrderDetail.fromJson)
+          .toList(growable: false),
+    );
+  }
+}
+
 class OwnerSummary {
   const OwnerSummary({
     required this.totalSales,
@@ -967,7 +1204,9 @@ class OwnerSummary {
     required this.loyaltyMembers,
     required this.paymentMix,
     required this.branchPerformance,
-    required this.branchOptions,
+    this.branchOptions = const [],
+    this.activeEmployees = const [],
+    this.branchDetails = const [],
     required this.topProducts,
     required this.lowStockItems,
     required this.recentOrders,
@@ -986,6 +1225,8 @@ class OwnerSummary {
   final List<PaymentMixEntry> paymentMix;
   final List<BranchPerformance> branchPerformance;
   final List<BranchInfo> branchOptions;
+  final List<OwnerEmployeeActivity> activeEmployees;
+  final List<OwnerBranchDetail> branchDetails;
   final List<Map<String, dynamic>> topProducts;
   final List<Map<String, dynamic>> lowStockItems;
   final List<Map<String, dynamic>> recentOrders;
@@ -1011,6 +1252,12 @@ class OwnerSummary {
       branchOptions: jsonMapList(json['branch_options'])
           .map(BranchInfo.fromJson)
           .toList(growable: false),
+      activeEmployees: jsonMapList(json['active_employees'])
+          .map(OwnerEmployeeActivity.fromJson)
+          .toList(growable: false),
+      branchDetails: jsonMapList(json['branch_details'])
+          .map(OwnerBranchDetail.fromJson)
+          .toList(growable: false),
       topProducts: jsonMapList(json['top_products']),
       lowStockItems: jsonMapList(json['low_stock_items']),
       recentOrders: jsonMapList(json['recent_orders']),
@@ -1035,6 +1282,21 @@ double jsonDouble(dynamic value, {double fallback = 0}) {
   if (value is double) return value;
   if (value is num) return value.toDouble();
   if (value is String) return double.tryParse(value) ?? fallback;
+  return fallback;
+}
+
+bool jsonBool(dynamic value, {bool fallback = false}) {
+  if (value is bool) return value;
+  if (value is num) return value != 0;
+  if (value is String) {
+    final normalized = value.toLowerCase();
+    if (normalized == 'true' || normalized == '1' || normalized == 'yes') {
+      return true;
+    }
+    if (normalized == 'false' || normalized == '0' || normalized == 'no') {
+      return false;
+    }
+  }
   return fallback;
 }
 
@@ -1065,4 +1327,12 @@ Map<String, dynamic> jsonMap(dynamic value) {
 List<Map<String, dynamic>> jsonMapList(dynamic value) {
   if (value is! List) return const <Map<String, dynamic>>[];
   return value.map((item) => jsonMap(item)).toList(growable: false);
+}
+
+List<String> jsonStringList(dynamic value) {
+  if (value is! List) return const <String>[];
+  return value
+      .map((item) => item?.toString() ?? '')
+      .where((item) => item.isNotEmpty)
+      .toList(growable: false);
 }

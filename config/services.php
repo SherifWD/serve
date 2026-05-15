@@ -35,4 +35,10 @@ return [
         ],
     ],
 
+    'eta' => [
+        'enabled' => env('ETA_SUBMISSION_ENABLED', false),
+        'base_url' => env('ETA_BASE_URL', 'https://api.invoicing.eta.gov.eg'),
+        'access_token' => env('ETA_ACCESS_TOKEN'),
+    ],
+
 ];

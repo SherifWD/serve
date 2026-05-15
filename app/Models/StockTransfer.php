@@ -8,6 +8,12 @@ use Illuminate\Database\Eloquent\Model;
 class StockTransfer extends Model
 {
     use HasFactory; protected $guarded =[];
+
+    protected $casts = [
+        'items' => 'array',
+        'completed_at' => 'datetime',
+    ];
+
     public function fromBranch() {
     return $this->belongsTo(Branch::class, 'from_branch_id');
 }

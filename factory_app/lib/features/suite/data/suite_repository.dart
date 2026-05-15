@@ -14,6 +14,7 @@ class SuiteRepository {
   SuiteRepository(this._dio);
 
   final Dio _dio;
+  int _mutationCounter = 0;
 
   Future<CustomerHomeData> fetchCustomerHome() async {
     final response = await _dio.get('/customer/home');
@@ -147,18 +148,24 @@ class SuiteRepository {
           'customer_email': customerEmail,
         'items': items,
       },
+      options: _mutationOptions('create-order'),
     );
     _throwIfNeeded(response);
   }
 
   Future<void> sendToKds(int orderId) async {
-    final response = await _dio.post('/mobile/orders/$orderId/send-to-kds');
+    final response = await _dio.post(
+      '/mobile/orders/$orderId/send-to-kds',
+      options: _mutationOptions('send-to-kds'),
+    );
     _throwIfNeeded(response);
   }
 
   Future<void> sendToCashier(int orderId) async {
-    final response =
-        await _dio.patch('/mobile/orders/$orderId/send-to-cashier');
+    final response = await _dio.patch(
+      '/mobile/orders/$orderId/send-to-cashier',
+      options: _mutationOptions('send-to-cashier'),
+    );
     _throwIfNeeded(response);
   }
 
@@ -174,6 +181,7 @@ class SuiteRepository {
         'quantity': quantity,
         if (note != null && note.isNotEmpty) 'note': note,
       },
+      options: _mutationOptions('change-order-item'),
     );
     _throwIfNeeded(response);
   }
@@ -188,6 +196,7 @@ class SuiteRepository {
         'action': 'refund',
         if (note != null && note.isNotEmpty) 'note': note,
       },
+      options: _mutationOptions('refund-order-item'),
     );
     _throwIfNeeded(response);
   }
@@ -202,6 +211,7 @@ class SuiteRepository {
         'action': 'return',
         if (note != null && note.isNotEmpty) 'note': note,
       },
+      options: _mutationOptions('return-order-item'),
     );
     _throwIfNeeded(response);
   }
@@ -213,6 +223,7 @@ class SuiteRepository {
     final response = await _dio.patch(
       '/mobile/tables/$fromTableId/move',
       data: {'to_table_id': toTableId},
+      options: _mutationOptions('move-table'),
     );
     _throwIfNeeded(response);
   }
@@ -232,6 +243,7 @@ class SuiteRepository {
     final response = await _dio.patch(
       '/mobile/kds/order-items/$itemId',
       data: {'status': status},
+      options: _mutationOptions('kds-item-status'),
     );
     _throwIfNeeded(response);
   }
@@ -258,6 +270,7 @@ class SuiteRepository {
         'payments': payments,
         if (itemIds.isNotEmpty) 'item_ids': itemIds,
       },
+      options: _mutationOptions('pay-order'),
     );
     _throwIfNeeded(response);
   }
@@ -355,6 +368,19 @@ class SuiteRepository {
     if (disposition == null || disposition.isEmpty) return fallback;
     final match = RegExp('filename="?([^";]+)"?').firstMatch(disposition);
     return match?.group(1) ?? fallback;
+  }
+
+  Options _mutationOptions(String action) {
+    return Options(
+      headers: {
+        'X-Client-Mutation-Id': _nextMutationId(action),
+      },
+    );
+  }
+
+  String _nextMutationId(String action) {
+    _mutationCounter += 1;
+    return '$action-${DateTime.now().microsecondsSinceEpoch}-$_mutationCounter';
   }
 
   void _throwIfNeeded(Response<dynamic> response) {

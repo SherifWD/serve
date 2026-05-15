@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/config/app_flavor.dart';
+import '../../../core/localization/app_language.dart';
 import '../../../core/models/app_models.dart';
+import '../../../core/widgets/language_toggle.dart';
 import '../../auth/providers/auth_providers.dart';
 import '../../cashier/presentation/cashier_workspace.dart';
 import '../../customer/presentation/customer_workspace.dart';
@@ -18,6 +20,7 @@ class DashboardPage extends ConsumerWidget {
     final session = ref.watch(currentSessionProvider);
     final roles = ref.watch(availableRolesProvider);
     final fixedRole = ref.watch(fixedRoleProvider);
+    final strings = ref.watch(appStringsProvider);
 
     if (session == null) {
       return const Scaffold(body: SizedBox.shrink());
@@ -32,20 +35,20 @@ class DashboardPage extends ConsumerWidget {
     };
 
     final title = switch (session.activeRole) {
-      AppRole.customer => 'Customer App',
-      AppRole.waiter => 'Waiter App',
-      AppRole.cashier => 'Cashier App',
-      AppRole.kitchen => 'Kitchen App',
-      AppRole.owner => 'Owner Control Center',
+      AppRole.customer => strings.t('app.customer'),
+      AppRole.waiter => strings.t('app.waiter'),
+      AppRole.cashier => strings.t('app.cashier'),
+      AppRole.kitchen => strings.t('app.kitchen'),
+      AppRole.owner => strings.t('app.owner'),
     };
 
     final subtitle = switch (session.activeRole) {
       AppRole.customer =>
-        'Talabat-inspired discovery, loyalty, and order memory',
-      AppRole.waiter => 'Table-first dine-in operations',
-      AppRole.cashier => 'Queue settlement and multi-tender payments',
-      AppRole.kitchen => 'Live KDS execution board',
-      AppRole.owner => 'SaaS-level visibility across branches and operations',
+        strings.t('role.customer'),
+      AppRole.waiter => strings.t('role.waiter'),
+      AppRole.cashier => strings.t('role.cashier'),
+      AppRole.kitchen => strings.t('role.kitchen'),
+      AppRole.owner => strings.t('role.owner'),
     };
 
     final isCustomer = session.activeRole == AppRole.customer;
@@ -86,7 +89,7 @@ class DashboardPage extends ConsumerWidget {
               actions: [
                 if (fixedRole == null && roles.length > 1)
                   PopupMenuButton<AppRole>(
-                    tooltip: 'Switch role',
+                    tooltip: strings.t('action.switchRole'),
                     icon: const Icon(Icons.swap_horiz),
                     onSelected: (role) =>
                         ref.read(authProvider.notifier).switchRole(role),
@@ -99,7 +102,7 @@ class DashboardPage extends ConsumerWidget {
                               children: [
                                 Icon(role.icon, size: 18),
                                 const SizedBox(width: 10),
-                                Text(role.label),
+                                Text(strings.roleLabel(role.apiType)),
                               ],
                             ),
                           ),
@@ -122,9 +125,16 @@ class DashboardPage extends ConsumerWidget {
                   ),
                 ),
                 IconButton(
-                  tooltip: 'Logout',
+                  tooltip: strings.t('action.logout'),
                   onPressed: () => ref.read(authProvider.notifier).logout(),
                   icon: const Icon(Icons.logout),
+                ),
+                LanguageToggle(
+                  compact: true,
+                  foregroundColor: session.activeRole == AppRole.owner ||
+                          session.activeRole == AppRole.kitchen
+                      ? Colors.white
+                      : null,
                 ),
               ],
             ),

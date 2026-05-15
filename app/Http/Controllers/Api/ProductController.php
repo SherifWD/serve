@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Api\Concerns\EnforcesTenantAccess;
+use App\Models\Category;
 use App\Models\Product;
 use App\Models\Recipe;
 use App\Models\Ingredient;
@@ -13,12 +15,13 @@ use Illuminate\Support\Str;
 
 class ProductController extends Controller
 {
+    use EnforcesTenantAccess;
+
     // Display a listing of products
     public function index(Request $request)
     {
         // Optionally: filter by branch, pagination
-        $query = Product::query();
-        if ($request->branch_id) $query->where('branch_id', $request->branch_id);
+        $query = $this->branchScoped($request, Product::query());
 
         return response()->json($query->with('category','recipe.ingredients.recipeIngredients','branch')->latest()->paginate(20));
     }
@@ -35,6 +38,10 @@ class ProductController extends Controller
         'min_stock'   => 'required|integer|min:0',
         'image'       => 'nullable|image|max:2048',
     ]);
+    $data['branch_id'] = $this->branchIdForWrite($request, (int) $data['branch_id']);
+    $category = Category::query()->findOrFail($data['category_id']);
+    $this->ensureBranchAccess($request, (int) $category->branch_id);
+    abort_unless((int) $category->branch_id === (int) $data['branch_id'], 422, 'Product category must belong to the selected branch.');
 
     // Generate unique SKU
     do {
@@ -54,6 +61,7 @@ class ProductController extends Controller
         // Create the recipe associated with the product
         $recipe = Recipe::create([
             'product_id' => $product->id,
+            'branch_id' => $product->branch_id,
             'description' => $request->recipe['description'],
         ]);
 
@@ -77,9 +85,9 @@ class ProductController extends Controller
 
 
     // Display the specified product along with its recipe and ingredients
-    public function show($id)
+    public function show(Request $request, $id)
 {
-    $product = Product::with(['category', 'recipe.ingredients'])->findOrFail($id);
+    $product = $this->branchScoped($request, Product::with(['category', 'recipe.ingredients']))->findOrFail($id);
     return response()->json($product);
 }
 
@@ -89,7 +97,7 @@ class ProductController extends Controller
     public function update(Request $request, $id)
 {
     // Validate product data
-    $product = Product::findOrFail($id);
+    $product = $this->branchScoped($request, Product::query())->findOrFail($id);
     $data = $request->validate([
         'name'        => 'string',
         'category_id' => 'integer|exists:categories,id',
@@ -98,8 +106,19 @@ class ProductController extends Controller
         'is_available'=> 'boolean',
         'min_stock'   => 'integer|min:0',
         'image'       => 'nullable|image|max:2048',
-    ]);
-$data['is_available'] = (int) $request->boolean('is_available');
+]);
+    if (array_key_exists('branch_id', $data)) {
+        $data['branch_id'] = $this->branchIdForWrite($request, (int) $data['branch_id']);
+    }
+    if (array_key_exists('category_id', $data)) {
+        $category = Category::query()->findOrFail($data['category_id']);
+        $this->ensureBranchAccess($request, (int) $category->branch_id);
+        $targetBranchId = (int) ($data['branch_id'] ?? $product->branch_id);
+        abort_unless((int) $category->branch_id === $targetBranchId, 422, 'Product category must belong to the selected branch.');
+    }
+    if (array_key_exists('is_available', $data)) {
+        $data['is_available'] = (int) $request->boolean('is_available');
+    }
     // Handle image upload
     if ($request->hasFile('image')) {
         // Delete old if exists
@@ -114,7 +133,10 @@ $data['is_available'] = (int) $request->boolean('is_available');
         // Update or create the recipe
         $recipe = Recipe::updateOrCreate(
             ['product_id' => $product->id],
-            ['description' => $request->recipe['description']]
+            [
+                'branch_id' => $product->branch_id,
+                'description' => $request->recipe['description'],
+            ]
         );
         
         // Delete old ingredients and add new ones
@@ -140,9 +162,9 @@ $data['is_available'] = (int) $request->boolean('is_available');
 
 
     // Remove a product from the database
-    public function destroy($id)
+    public function destroy(Request $request, $id)
     {
-        $product = Product::findOrFail($id);
+        $product = $this->branchScoped($request, Product::query())->findOrFail($id);
 
         // If the product has a recipe, delete the associated recipe and ingredients
         if ($product->recipe) {

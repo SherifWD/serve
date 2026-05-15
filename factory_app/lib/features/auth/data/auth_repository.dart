@@ -5,6 +5,22 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import '../../../core/models/app_models.dart';
 
+class CustomerOtpChallenge {
+  const CustomerOtpChallenge({
+    required this.phone,
+    this.email,
+    required this.channel,
+    required this.destination,
+    this.debugCode,
+  });
+
+  final String phone;
+  final String? email;
+  final String channel;
+  final String destination;
+  final String? debugCode;
+}
+
 class AuthRepository {
   AuthRepository(this._dio, this._storage, {required this.sessionKey});
 
@@ -60,13 +76,13 @@ class AuthRepository {
     return session;
   }
 
-  Future<AppSession> loginCustomer({
+  Future<CustomerOtpChallenge> requestCustomerOtp({
     required String name,
     required String phone,
     String? email,
   }) async {
     final response = await _dio.post(
-      '/customer/auth/login',
+      '/customer/auth/request-otp',
       data: {
         'name': name,
         'phone': phone,
@@ -79,8 +95,43 @@ class AuthRepository {
     }
 
     final payload = _map(response.data);
+    final verification = _map(payload['verification']);
+    return CustomerOtpChallenge(
+      phone: phone,
+      email: email,
+      channel: jsonString(verification['channel'], fallback: 'sms'),
+      destination: jsonString(verification['destination'], fallback: phone),
+      debugCode: jsonNullableString(payload['debug_otp_code']),
+    );
+  }
+
+  Future<AppSession> verifyCustomerOtp({
+    required String phone,
+    String? email,
+    required String code,
+  }) async {
+    final response = await _dio.post(
+      '/customer/auth/verify-otp',
+      data: {
+        'phone': phone,
+        if (email != null && email.isNotEmpty) 'email': email,
+        'code': code,
+      },
+    );
+
+    if ((response.statusCode ?? 500) >= 400) {
+      throw Exception(_errorMessage(response.data));
+    }
+
+    final payload = _map(response.data);
+    final session = _customerSessionFromPayload(payload);
+    await _persist(session);
+    return session;
+  }
+
+  AppSession _customerSessionFromPayload(Map<String, dynamic> payload) {
     final customer = _map(payload['customer']);
-    final session = AppSession(
+    return AppSession(
       id: jsonInt(customer['id']),
       name: jsonString(customer['name'], fallback: 'Customer'),
       email: jsonNullableString(customer['email']),
@@ -90,9 +141,6 @@ class AuthRepository {
       activeRole: AppRole.customer,
       loyaltyPoints: jsonInt(customer['loyalty_points']),
     );
-
-    await _persist(session);
-    return session;
   }
 
   Future<AppSession> switchRole(AppSession session, AppRole role) async {

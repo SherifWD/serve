@@ -8,6 +8,13 @@ use Illuminate\Database\Eloquent\Model;
 class InventoryTransaction extends Model
 {
     use HasFactory; protected $guarded =[];
+
+    protected $casts = [
+        'balance_before' => 'float',
+        'balance_after' => 'float',
+        'quantity' => 'float',
+    ];
+
     public function inventoryItem() {
     return $this->belongsTo(InventoryItem::class);
 }

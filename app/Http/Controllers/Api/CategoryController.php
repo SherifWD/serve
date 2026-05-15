@@ -3,15 +3,17 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Api\Concerns\EnforcesTenantAccess;
 use App\Models\Category;
 use Illuminate\Http\Request;
 
 class CategoryController extends Controller
 {
+    use EnforcesTenantAccess;
+
     public function index(Request $request)
     {
-        $query = Category::query();
-        if ($request->branch_id) $query->where('branch_id', $request->branch_id);
+        $query = $this->branchScoped($request, Category::query());
         return response()->json($query->with('branch')->latest()->paginate(20));
     }
 
@@ -21,29 +23,34 @@ class CategoryController extends Controller
             'name' => 'required|string|max:255',
             'branch_id' => 'required|integer|exists:branches,id',
         ]);
+        $data['branch_id'] = $this->branchIdForWrite($request, (int) $data['branch_id']);
         $category = Category::create($data);
         return response()->json($category, 201);
     }
 
-    public function show($id)
+    public function show(Request $request, $id)
     {
-        return Category::with('branch')->findOrFail($id);
+        return $this->branchScoped($request, Category::with('branch'))->findOrFail($id);
     }
 
     public function update(Request $request, $id)
     {
-        $category = Category::findOrFail($id);
+        $category = $this->branchScoped($request, Category::query())->findOrFail($id);
         $data = $request->validate([
             'name' => 'string|max:255',
             'branch_id' => 'integer|exists:branches,id',
         ]);
+        if (array_key_exists('branch_id', $data)) {
+            $data['branch_id'] = $this->branchIdForWrite($request, (int) $data['branch_id']);
+        }
         $category->update($data);
         return response()->json($category);
     }
 
-    public function destroy($id)
+    public function destroy(Request $request, $id)
     {
-        Category::destroy($id);
+        $category = $this->branchScoped($request, Category::query())->findOrFail($id);
+        $category->delete();
         return response()->json(['message' => 'Deleted']);
     }
 }

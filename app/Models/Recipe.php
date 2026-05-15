@@ -8,8 +8,12 @@ use Illuminate\Database\Eloquent\Model;
 class Recipe extends Model
 {
     use HasFactory; protected $guarded =[];
-    public function product() {
+public function product() {
     return $this->belongsTo(Product::class);
+}
+
+public function branch() {
+    return $this->belongsTo(Branch::class);
 }
 
 public function recipeIngredients() {

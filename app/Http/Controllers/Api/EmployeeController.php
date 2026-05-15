@@ -3,15 +3,17 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Api\Concerns\EnforcesTenantAccess;
 use App\Models\Employee;
 use Illuminate\Http\Request;
 
 class EmployeeController extends Controller
 {
+    use EnforcesTenantAccess;
+
     public function index(Request $request)
     {
-        $query = Employee::query();
-        if ($request->branch_id) $query->where('branch_id', $request->branch_id);
+        $query = $this->branchScoped($request, Employee::query());
         return response()->json($query->with('branch')->latest()->paginate(20));
     }
 
@@ -24,18 +26,19 @@ class EmployeeController extends Controller
             'base_salary' => 'required|numeric',
             'hired_at' => 'required|date',
         ]);
+        $data['branch_id'] = $this->branchIdForWrite($request, (int) $data['branch_id']);
         $employee = Employee::create($data);
         return response()->json($employee, 201);
     }
 
-    public function show($id)
+    public function show(Request $request, $id)
     {
-        return Employee::with('branch')->findOrFail($id);
+        return $this->branchScoped($request, Employee::with('branch'))->findOrFail($id);
     }
 
     public function update(Request $request, $id)
     {
-        $employee = Employee::findOrFail($id);
+        $employee = $this->branchScoped($request, Employee::query())->findOrFail($id);
         $data = $request->validate([
             'name' => 'string',
             'branch_id' => 'integer|exists:branches,id',
@@ -43,18 +46,22 @@ class EmployeeController extends Controller
             'base_salary' => 'numeric',
             'hired_at' => 'date',
         ]);
+        if (array_key_exists('branch_id', $data)) {
+            $data['branch_id'] = $this->branchIdForWrite($request, (int) $data['branch_id']);
+        }
         $employee->update($data);
         return response()->json($employee);
     }
 
-    public function destroy($id)
+    public function destroy(Request $request, $id)
     {
-        Employee::destroy($id);
+        $employee = $this->branchScoped($request, Employee::query())->findOrFail($id);
+        $employee->delete();
         return response()->json(['message' => 'Deleted']);
     }
-    public function performance($id)
+    public function performance(Request $request, $id)
 {
-    $employee = Employee::findOrFail($id);
+    $employee = $this->branchScoped($request, Employee::query())->findOrFail($id);
 
     // You can filter, order, or limit as needed
     $performances = $employee->performances()

@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/config/app_flavor.dart';
+import '../../../core/localization/app_language.dart';
 import '../../../core/models/app_models.dart';
 import '../../../core/network/api_client.dart';
+import '../../../core/widgets/language_toggle.dart';
 import '../../../core/widgets/state_views.dart';
 import '../providers/auth_providers.dart';
 
@@ -20,6 +22,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   final _customerNameController = TextEditingController();
   final _customerPhoneController = TextEditingController();
   final _customerEmailController = TextEditingController();
+  final _customerOtpController = TextEditingController();
 
   AppRole _selectedStaffRole = AppRole.owner;
 
@@ -30,21 +33,23 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     _customerNameController.dispose();
     _customerPhoneController.dispose();
     _customerEmailController.dispose();
+    _customerOtpController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     final authState = ref.watch(authProvider);
-    final flavor = ref.watch(appFlavorProvider);
     final lockedRole = ref.watch(fixedRoleProvider);
     final theme = Theme.of(context);
     final customerMode = lockedRole == AppRole.customer;
     final selectedRole = lockedRole ?? _selectedStaffRole;
+    final strings = ref.watch(appStringsProvider);
+    final otpChallenge = authState.customerOtpChallenge;
 
     if (!authState.hasBootstrapped) {
-      return const Scaffold(
-        body: LoadingView(label: 'Preparing restaurant suite...'),
+      return Scaffold(
+        body: LoadingView(label: strings.t('login.preparing')),
       );
     }
 
@@ -73,7 +78,8 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                           if (wide)
                             Expanded(
                               child: _HeroPanel(
-                                  apiBaseUrl: ref.watch(apiBaseUrlProvider)),
+                                apiBaseUrl: ref.watch(apiBaseUrlProvider),
+                              ),
                             ),
                           Expanded(
                             child: SingleChildScrollView(
@@ -81,12 +87,17 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
+                                  const Align(
+                                    alignment: AlignmentDirectional.topEnd,
+                                    child: LanguageToggle(),
+                                  ),
+                                  const SizedBox(height: 18),
                                   Text(
                                     customerMode
-                                        ? 'Customer app access'
+                                        ? strings.t('login.customerTitle')
                                         : lockedRole == null
-                                            ? 'Staff suite sign in'
-                                            : '${selectedRole.label} sign in',
+                                            ? strings.t('login.staffTitle')
+                                            : '${strings.roleLabel(selectedRole.apiType)} ${strings.t('login.staffTitle')}',
                                     style: theme.textTheme.headlineMedium
                                         ?.copyWith(
                                       fontWeight: FontWeight.w800,
@@ -95,10 +106,10 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                                   const SizedBox(height: 8),
                                   Text(
                                     customerMode
-                                        ? 'View previous orders, loyalty points, and registered restaurants.'
+                                        ? strings.t('login.customerSubtitle')
                                         : lockedRole == null
-                                            ? 'Choose the exact staff workspace you want to run: waiter, cashier, kitchen, or owner.'
-                                            : 'This app is pinned to the ${selectedRole.label.toLowerCase()} workspace for a cleaner branch rollout.',
+                                            ? strings.t('login.staffSubtitle')
+                                            : strings.t('login.pinnedSubtitle'),
                                     style: theme.textTheme.bodyLarge?.copyWith(
                                       color: theme.colorScheme.onSurfaceVariant,
                                     ),
@@ -109,8 +120,8 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                                     TextField(
                                       controller: _staffEmailController,
                                       keyboardType: TextInputType.emailAddress,
-                                      decoration: const InputDecoration(
-                                        labelText: 'Email',
+                                      decoration: InputDecoration(
+                                        labelText: strings.t('login.email'),
                                         hintText: 'owner@restaurant.com',
                                       ),
                                     ),
@@ -118,15 +129,15 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                                     TextField(
                                       controller: _staffPasswordController,
                                       obscureText: true,
-                                      decoration: const InputDecoration(
-                                        labelText: 'Password',
+                                      decoration: InputDecoration(
+                                        labelText: strings.t('login.password'),
                                       ),
                                     ),
                                     const SizedBox(height: 18),
                                     Text(
                                       lockedRole == null
-                                          ? 'Workspace'
-                                          : 'Pinned workspace',
+                                          ? strings.t('login.workspace')
+                                          : strings.t('login.pinnedWorkspace'),
                                       style: theme.textTheme.titleMedium
                                           ?.copyWith(
                                               fontWeight: FontWeight.w700),
@@ -144,7 +155,9 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                                             AppRole.kitchen,
                                           ])
                                             ChoiceChip(
-                                              label: Text(role.label),
+                                              label: Text(
+                                                strings.roleLabel(role.apiType),
+                                              ),
                                               avatar: Icon(role.icon, size: 18),
                                               selected:
                                                   _selectedStaffRole == role,
@@ -159,22 +172,23 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                                       FilledButton.tonalIcon(
                                         onPressed: null,
                                         icon: Icon(selectedRole.icon),
-                                        label: Text(selectedRole.label),
+                                        label: Text(strings
+                                            .roleLabel(selectedRole.apiType)),
                                       ),
-                                  ] else ...[
+                                  ] else if (otpChallenge == null) ...[
                                     TextField(
                                       controller: _customerNameController,
-                                      decoration: const InputDecoration(
-                                        labelText: 'Name',
-                                        hintText: 'Guest name',
+                                      decoration: InputDecoration(
+                                        labelText: strings.t('login.name'),
+                                        hintText: strings.t('login.guestName'),
                                       ),
                                     ),
                                     const SizedBox(height: 16),
                                     TextField(
                                       controller: _customerPhoneController,
                                       keyboardType: TextInputType.phone,
-                                      decoration: const InputDecoration(
-                                        labelText: 'Phone',
+                                      decoration: InputDecoration(
+                                        labelText: strings.t('login.phone'),
                                         hintText: '01xxxxxxxxx',
                                       ),
                                     ),
@@ -182,9 +196,65 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                                     TextField(
                                       controller: _customerEmailController,
                                       keyboardType: TextInputType.emailAddress,
-                                      decoration: const InputDecoration(
-                                        labelText: 'Email (optional)',
+                                      decoration: InputDecoration(
+                                        labelText:
+                                            strings.t('login.optionalEmail'),
                                       ),
+                                    ),
+                                  ] else ...[
+                                    Text(
+                                      strings.t(
+                                        'login.otpSent',
+                                        params: {
+                                          'destination':
+                                              otpChallenge.destination,
+                                        },
+                                      ),
+                                      style:
+                                          theme.textTheme.bodyMedium?.copyWith(
+                                        color:
+                                            theme.colorScheme.onSurfaceVariant,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 16),
+                                    TextField(
+                                      controller: _customerOtpController,
+                                      keyboardType: TextInputType.number,
+                                      maxLength: 6,
+                                      decoration: InputDecoration(
+                                        labelText: strings.t('login.otpCode'),
+                                        counterText: '',
+                                      ),
+                                    ),
+                                    if (otpChallenge.debugCode != null) ...[
+                                      const SizedBox(height: 8),
+                                      Text(
+                                        strings.t(
+                                          'login.devOtp',
+                                          params: {
+                                            'code': otpChallenge.debugCode!,
+                                          },
+                                        ),
+                                        style:
+                                            theme.textTheme.bodySmall?.copyWith(
+                                          color: theme
+                                              .colorScheme.onSurfaceVariant,
+                                        ),
+                                      ),
+                                    ],
+                                    const SizedBox(height: 8),
+                                    TextButton.icon(
+                                      onPressed: authState.isLoading
+                                          ? null
+                                          : () {
+                                              _customerOtpController.clear();
+                                              ref
+                                                  .read(authProvider.notifier)
+                                                  .resetCustomerOtpChallenge();
+                                            },
+                                      icon: const Icon(Icons.edit_outlined),
+                                      label:
+                                          Text(strings.t('login.changePhone')),
                                     ),
                                   ],
                                   if (authState.error != null) ...[
@@ -204,20 +274,28 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                                       onPressed:
                                           authState.isLoading ? null : _submit,
                                       icon: Icon(customerMode
-                                          ? Icons.login
+                                          ? (otpChallenge == null
+                                              ? Icons.sms_outlined
+                                              : Icons.verified_user_outlined)
                                           : selectedRole.icon),
                                       label: Text(authState.isLoading
-                                          ? 'Signing in...'
-                                          : 'Continue'),
+                                          ? strings.t('login.signingIn')
+                                          : customerMode
+                                              ? (otpChallenge == null
+                                                  ? strings
+                                                      .t('login.requestCode')
+                                                  : strings
+                                                      .t('login.verifyCode'))
+                                              : strings.t('login.continue')),
                                     ),
                                   ),
                                   const SizedBox(height: 14),
                                   Text(
                                     customerMode
-                                        ? 'Customer login currently uses quick phone-based access for MVP rollout. Replace with OTP before production launch.'
+                                        ? strings.t('login.customerNote')
                                         : lockedRole == null
-                                            ? 'The selected role is enforced against the backend `type` list, so the staff suite only opens against the correct permission set.'
-                                            : '${flavor.shellLabel} app stays locked to one operational role, which is safer for branch devices and easier for staff training.',
+                                            ? strings.t('login.staffNote')
+                                            : strings.t('login.lockedNote'),
                                     style: theme.textTheme.bodySmall?.copyWith(
                                       color: theme.colorScheme.onSurfaceVariant,
                                     ),
@@ -244,11 +322,17 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     final customerMode = ref.read(fixedRoleProvider) == AppRole.customer;
 
     if (customerMode) {
-      await notifier.loginCustomer(
-        name: _customerNameController.text.trim(),
-        phone: _customerPhoneController.text.trim(),
-        email: _customerEmailController.text.trim(),
-      );
+      if (ref.read(authProvider).customerOtpChallenge == null) {
+        await notifier.requestCustomerOtp(
+          name: _customerNameController.text.trim(),
+          phone: _customerPhoneController.text.trim(),
+          email: _customerEmailController.text.trim(),
+        );
+      } else {
+        await notifier.verifyCustomerOtp(
+          code: _customerOtpController.text.trim(),
+        );
+      }
       return;
     }
 
@@ -260,14 +344,15 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   }
 }
 
-class _HeroPanel extends StatelessWidget {
+class _HeroPanel extends ConsumerWidget {
   const _HeroPanel({required this.apiBaseUrl});
 
   final String apiBaseUrl;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+    final strings = ref.watch(appStringsProvider);
     return Container(
       padding: const EdgeInsets.all(28),
       decoration: const BoxDecoration(
@@ -286,9 +371,9 @@ class _HeroPanel extends StatelessWidget {
               color: Colors.white.withValues(alpha: 0.16),
               borderRadius: BorderRadius.circular(20),
             ),
-            child: const Text(
-              'Restaurant Suite',
-              style: TextStyle(
+            child: Text(
+              strings.t('hero.brand'),
+              style: const TextStyle(
                 color: Colors.white,
                 fontWeight: FontWeight.w700,
               ),
@@ -296,7 +381,7 @@ class _HeroPanel extends StatelessWidget {
           ),
           const Spacer(),
           Text(
-            'One platform for guest loyalty, table service, kitchen flow, payments, and ownership control.',
+            strings.t('hero.title'),
             style: theme.textTheme.displaySmall?.copyWith(
               color: Colors.white,
               fontWeight: FontWeight.w800,
@@ -305,22 +390,22 @@ class _HeroPanel extends StatelessWidget {
           ),
           const SizedBox(height: 18),
           Text(
-            'Designed for Egyptian restaurants and cafes that need a cleaner operator UX than the current stack and more control than off-the-shelf POS bundles.',
+            strings.t('hero.subtitle'),
             style: theme.textTheme.bodyLarge?.copyWith(
               color: Colors.white.withValues(alpha: 0.88),
               height: 1.5,
             ),
           ),
           const SizedBox(height: 24),
-          const Wrap(
+          Wrap(
             spacing: 10,
             runSpacing: 10,
             children: [
-              _HeroPill(label: 'Customer loyalty'),
-              _HeroPill(label: 'Waiter order flow'),
-              _HeroPill(label: 'Kitchen board'),
-              _HeroPill(label: 'Split payments'),
-              _HeroPill(label: 'Owner analytics'),
+              _HeroPill(label: strings.t('hero.customerLoyalty')),
+              _HeroPill(label: strings.t('hero.waiterFlow')),
+              _HeroPill(label: strings.t('hero.kitchenBoard')),
+              _HeroPill(label: strings.t('hero.splitPayments')),
+              _HeroPill(label: strings.t('hero.ownerAnalytics')),
             ],
           ),
           const SizedBox(height: 24),

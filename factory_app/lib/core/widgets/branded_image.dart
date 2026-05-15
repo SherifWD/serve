@@ -80,12 +80,14 @@ class _FallbackArtwork extends StatelessWidget {
           Positioned(
             top: -24,
             right: -10,
-            child: _GlowOrb(color: Colors.white.withValues(alpha: 0.14), size: 110),
+            child: _GlowOrb(
+                color: Colors.white.withValues(alpha: 0.14), size: 110),
           ),
           Positioned(
             bottom: -28,
             left: -16,
-            child: _GlowOrb(color: Colors.white.withValues(alpha: 0.10), size: 130),
+            child: _GlowOrb(
+                color: Colors.white.withValues(alpha: 0.10), size: 130),
           ),
           Positioned(
             top: 22,
@@ -138,7 +140,8 @@ class _FallbackArtwork extends StatelessWidget {
         ],
     };
 
-    final index = seed.codeUnits.fold<int>(0, (sum, unit) => sum + unit) % sets.length;
+    final index =
+        seed.codeUnits.fold<int>(0, (sum, unit) => sum + unit) % sets.length;
     return sets[index];
   }
 
@@ -154,13 +157,19 @@ class _FallbackArtwork extends StatelessWidget {
     }
 
     final lower = seed.toLowerCase();
-    if (lower.contains('coffee') || lower.contains('latte') || lower.contains('white')) {
+    if (lower.contains('coffee') ||
+        lower.contains('latte') ||
+        lower.contains('white')) {
       return Icons.coffee_rounded;
     }
-    if (lower.contains('cake') || lower.contains('brownie') || lower.contains('dessert')) {
+    if (lower.contains('cake') ||
+        lower.contains('brownie') ||
+        lower.contains('dessert')) {
       return Icons.cake_rounded;
     }
-    if (lower.contains('wrap') || lower.contains('burger') || lower.contains('kebab')) {
+    if (lower.contains('wrap') ||
+        lower.contains('burger') ||
+        lower.contains('kebab')) {
       return Icons.lunch_dining_rounded;
     }
 

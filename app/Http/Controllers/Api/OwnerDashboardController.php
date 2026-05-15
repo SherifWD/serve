@@ -15,6 +15,7 @@ use App\Models\Employee;
 use App\Models\InventoryItem;
 use App\Models\Table;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Carbon;
 
 class OwnerDashboardController extends Controller
@@ -181,6 +182,14 @@ class OwnerDashboardController extends Controller
                 'orders_count' => $branch->paid_orders_count,
             ]);
 
+        $operations = $this->buildOwnerOperations(
+            $restaurantId,
+            $branchId,
+            $branchPerformance,
+            $dateStart,
+            $dateEnd
+        );
+
         $restaurantsCount = Restaurant::query()->count();
         $branchesCountQuery = Branch::query();
         if ($restaurantId) {
@@ -217,6 +226,8 @@ class OwnerDashboardController extends Controller
             'branch_performance' => $branchPerformance,
             'branch_options' => $branchOptions,
             'selected_branch_id' => $branchId,
+            'active_employees' => $operations['active_employees'],
+            'branch_details' => $operations['branch_details'],
             'top_products'  => $topProducts,
             'low_stock_items' => $lowInventory,
             'recent_orders' => $recentOrders,
@@ -376,5 +387,271 @@ class OwnerDashboardController extends Controller
     private function applyOrderDateRange($query, Carbon $start, Carbon $end): void
     {
         $query->whereBetween('order_date', [$start->toDateString(), $end->toDateString()]);
+    }
+
+    private function buildOwnerOperations(?int $restaurantId, ?int $branchId, $branchPerformance, Carbon $dateStart, Carbon $dateEnd): array
+    {
+        $branchIds = collect($branchPerformance)
+            ->pluck('id')
+            ->filter()
+            ->values();
+
+        $branches = Branch::query()
+            ->when($restaurantId, fn ($query) => $query->where('restaurant_id', $restaurantId))
+            ->when($branchId, fn ($query) => $query->whereKey($branchId))
+            ->when($branchIds->isNotEmpty(), fn ($query) => $query->whereIn('id', $branchIds))
+            ->orderBy('name')
+            ->get(['id', 'name', 'location', 'restaurant_id']);
+
+        $performanceByBranch = collect($branchPerformance)->keyBy('id');
+
+        return [
+            'active_employees' => $this->employeeRows($restaurantId, $branchId, onlyActive: true),
+            'branch_details' => $branches
+                ->map(function (Branch $branch) use ($performanceByBranch, $dateStart, $dateEnd) {
+                    $performance = $performanceByBranch->get($branch->id, []);
+                    $employees = collect($this->employeeRows(null, (int) $branch->id, onlyActive: false));
+                    $tables = Table::query()
+                        ->where('branch_id', $branch->id)
+                        ->orderBy('name')
+                        ->get(['id', 'branch_id', 'name', 'seats', 'status'])
+                        ->map(fn (Table $table) => [
+                            'id' => $table->id,
+                            'name' => $table->name,
+                            'seats' => (int) ($table->seats ?? 0),
+                            'status' => $table->status,
+                        ])
+                        ->values();
+
+                    $orders = Order::query()
+                        ->with([
+                            'branch:id,name,location',
+                            'table:id,name,status',
+                            'employee.user:id,name,role',
+                            'items:id,order_id,product_id,quantity,total,status,kds_status,refunded_quantity,refunded_amount',
+                            'items.product:id,name',
+                            'statusLogs.user:id,name,role',
+                        ])
+                        ->where('branch_id', $branch->id)
+                        ->whereBetween('order_date', [$dateStart->toDateString(), $dateEnd->toDateString()])
+                        ->orderByDesc('created_at')
+                        ->limit(10)
+                        ->get()
+                        ->map(fn (Order $order) => $this->ownerOrderRow($order))
+                        ->values();
+
+                    $returnedOrderQuery = Order::query()
+                        ->where('branch_id', $branch->id)
+                        ->whereBetween('order_date', [$dateStart->toDateString(), $dateEnd->toDateString()])
+                        ->where(function ($query) {
+                            $query->where('status', 'refunded')
+                                ->orWhereHas('items', fn ($itemQuery) => $this->applyReturnedItemScope($itemQuery));
+                        });
+                    $returnedOrdersCount = (clone $returnedOrderQuery)->count();
+                    $returnedOrders = $returnedOrderQuery
+                        ->with([
+                            'branch:id,name,location',
+                            'table:id,name,status',
+                            'employee.user:id,name,role',
+                            'items:id,order_id,product_id,quantity,total,status,kds_status,refunded_quantity,refunded_amount',
+                            'items.product:id,name',
+                            'statusLogs.user:id,name,role',
+                        ])
+                        ->orderByDesc('created_at')
+                        ->limit(10)
+                        ->get()
+                        ->map(fn (Order $order) => $this->ownerOrderRow($order))
+                        ->values();
+
+                    return [
+                        'id' => $branch->id,
+                        'name' => $branch->name,
+                        'location' => $branch->location,
+                        'sales' => (float) ($performance['sales'] ?? 0),
+                        'orders_count' => (int) ($performance['orders_count'] ?? 0),
+                        'returned_orders_count' => $returnedOrdersCount,
+                        'employees' => $employees->values(),
+                        'active_employees' => $employees->where('active', true)->values(),
+                        'kitchen_shift' => $employees
+                            ->filter(fn (array $employee) => $this->isKitchenEmployee($employee))
+                            ->values(),
+                        'tables' => $tables,
+                        'orders' => $orders,
+                        'returned_orders' => $returnedOrders,
+                    ];
+                })
+                ->values(),
+        ];
+    }
+
+    private function employeeRows(?int $restaurantId, ?int $branchId, bool $onlyActive): array
+    {
+        $employees = Employee::query()
+            ->with([
+                'branch:id,name',
+                'user:id,name,email,role,branch_id',
+                'user.types:id,name',
+            ])
+            ->when($restaurantId, fn ($query) => $query->whereHas('branch', fn ($branchQuery) => $branchQuery->where('restaurant_id', $restaurantId)))
+            ->when($branchId, fn ($query) => $query->where('branch_id', $branchId))
+            ->orderBy('position')
+            ->orderBy('name')
+            ->get(['id', 'user_id', 'branch_id', 'name', 'position']);
+
+        $attendanceByEmployee = $this->openAttendanceByEmployee($employees->pluck('id')->filter()->values());
+        $shiftByUser = $this->openShiftByUser($employees->pluck('user_id')->filter()->values());
+
+        return $employees
+            ->map(function (Employee $employee) use ($attendanceByEmployee, $shiftByUser) {
+                $attendance = $attendanceByEmployee->get($employee->id);
+                $shift = $employee->user_id ? $shiftByUser->get($employee->user_id) : null;
+                $active = $attendance !== null || $shift !== null;
+                $type = $employee->user?->types?->pluck('name')?->first();
+
+                return [
+                    'id' => $employee->id,
+                    'user_id' => $employee->user_id,
+                    'name' => $employee->name ?: ($employee->user?->name ?? "Employee #{$employee->id}"),
+                    'position' => $employee->position,
+                    'role' => $employee->user?->role,
+                    'type' => $type,
+                    'branch_id' => $employee->branch_id,
+                    'branch_name' => $employee->branch?->name,
+                    'active' => $active,
+                    'active_source' => $shift !== null ? 'shift' : ($attendance !== null ? 'attendance' : null),
+                    'check_in' => $attendance?->check_in,
+                    'shift_start' => $shift?->shift_start,
+                ];
+            })
+            ->filter(fn (array $employee) => !$onlyActive || $employee['active'])
+            ->values()
+            ->all();
+    }
+
+    private function openAttendanceByEmployee($employeeIds)
+    {
+        if ($employeeIds->isEmpty()) {
+            return collect();
+        }
+
+        $table = $this->attendanceTableName();
+        if (!$table) {
+            return collect();
+        }
+
+        return DB::table($table)
+            ->whereIn('employee_id', $employeeIds)
+            ->whereDate('date', Carbon::today()->toDateString())
+            ->whereNotNull('check_in')
+            ->whereNull('check_out')
+            ->orderByDesc('check_in')
+            ->get()
+            ->keyBy('employee_id');
+    }
+
+    private function openShiftByUser($userIds)
+    {
+        if ($userIds->isEmpty() || !Schema::hasTable('staff_shifts')) {
+            return collect();
+        }
+
+        $now = Carbon::now();
+
+        return DB::table('staff_shifts')
+            ->whereIn('user_id', $userIds)
+            ->where('shift_start', '<=', $now)
+            ->where(function ($query) use ($now) {
+                $query->whereNull('shift_end')
+                    ->orWhere('shift_end', '>=', $now);
+            })
+            ->where('is_closed', false)
+            ->orderByDesc('shift_start')
+            ->get()
+            ->keyBy('user_id');
+    }
+
+    private function attendanceTableName(): ?string
+    {
+        if (Schema::hasTable('attendance')) {
+            return 'attendance';
+        }
+
+        if (Schema::hasTable('attendances')) {
+            return 'attendances';
+        }
+
+        return null;
+    }
+
+    private function ownerOrderRow(Order $order): array
+    {
+        $returnedItems = $order->items
+            ->filter(fn (OrderItem $item) => $this->isReturnedItem($item))
+            ->values();
+        $cashierLog = $order->statusLogs
+            ->filter(fn ($log) => in_array($log->status, ['paid', 'cashier', 'closed'], true))
+            ->sortByDesc('created_at')
+            ->first();
+        $refundedByNames = DB::table('refunds')
+            ->join('order_items', 'order_items.id', '=', 'refunds.order_item_id')
+            ->leftJoin('users', 'users.id', '=', 'refunds.refunded_by')
+            ->where('order_items.order_id', $order->id)
+            ->pluck('users.name')
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+
+        return [
+            'id' => $order->id,
+            'branch_id' => $order->branch_id,
+            'branch_name' => $order->branch?->name,
+            'table_id' => $order->table_id,
+            'table_name' => $order->table?->name,
+            'order_type' => $order->order_type,
+            'status' => $order->status,
+            'payment_status' => $order->payment_status,
+            'total' => (float) $order->total,
+            'order_date' => $order->order_date,
+            'created_at' => optional($order->created_at)->toDateTimeString(),
+            'waiter_name' => $order->employee?->name ?: $order->employee?->user?->name,
+            'cashier_name' => $cashierLog?->user?->name,
+            'returned_by' => $refundedByNames,
+            'returned_items_count' => $returnedItems->count(),
+            'returned_amount' => round((float) $returnedItems->sum(fn (OrderItem $item) => $item->refunded_amount ?? $item->total), 2),
+            'items' => $order->items
+                ->map(fn (OrderItem $item) => [
+                    'id' => $item->id,
+                    'name' => $item->product?->name ?? 'Item',
+                    'quantity' => (int) $item->quantity,
+                    'total' => (float) $item->total,
+                    'status' => $item->status,
+                    'kds_status' => $item->kds_status,
+                    'refunded_quantity' => (int) ($item->refunded_quantity ?? 0),
+                ])
+                ->values(),
+        ];
+    }
+
+    private function isReturnedItem(OrderItem $item): bool
+    {
+        return in_array($item->status, ['returned', 'refunded', 'canceled', 'cancelled'], true)
+            || in_array($item->kds_status, ['returned', 'refunded', 'canceled', 'cancelled'], true)
+            || (int) ($item->refunded_quantity ?? 0) > 0;
+    }
+
+    private function applyReturnedItemScope($query): void
+    {
+        $query->where(function ($itemQuery) {
+            $itemQuery->whereIn('status', ['returned', 'refunded', 'canceled', 'cancelled'])
+                ->orWhereIn('kds_status', ['returned', 'refunded', 'canceled', 'cancelled'])
+                ->orWhere('refunded_quantity', '>', 0);
+        });
+    }
+
+    private function isKitchenEmployee(array $employee): bool
+    {
+        return str_contains(strtolower((string) ($employee['type'] ?? '')), 'kitchen')
+            || str_contains(strtolower((string) ($employee['position'] ?? '')), 'kitchen');
     }
 }

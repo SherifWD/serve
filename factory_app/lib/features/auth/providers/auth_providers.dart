@@ -25,24 +25,32 @@ class AuthState {
     this.error,
     this.isLoading = false,
     this.hasBootstrapped = false,
+    this.customerOtpChallenge,
   });
 
   final AppSession? session;
   final String? error;
   final bool isLoading;
   final bool hasBootstrapped;
+  final CustomerOtpChallenge? customerOtpChallenge;
 
   AuthState copyWith({
     AppSession? session,
     String? error,
     bool? isLoading,
     bool? hasBootstrapped,
+    CustomerOtpChallenge? customerOtpChallenge,
+    bool clearCustomerOtpChallenge = false,
+    bool clearError = false,
   }) {
     return AuthState(
       session: session ?? this.session,
-      error: error,
+      error: clearError ? null : error ?? this.error,
       isLoading: isLoading ?? this.isLoading,
       hasBootstrapped: hasBootstrapped ?? this.hasBootstrapped,
+      customerOtpChallenge: clearCustomerOtpChallenge
+          ? null
+          : customerOtpChallenge ?? this.customerOtpChallenge,
     );
   }
 }
@@ -71,7 +79,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
     required String password,
     required AppRole role,
   }) async {
-    state = state.copyWith(isLoading: true, error: null);
+    state = state.copyWith(isLoading: true, clearError: true);
     try {
       final session = await _repository.loginStaff(
         email: email,
@@ -81,6 +89,37 @@ class AuthNotifier extends StateNotifier<AuthState> {
       final normalized = await _enforceFixedRole(session);
       state = state.copyWith(
         session: normalized,
+        isLoading: false,
+        hasBootstrapped: true,
+        clearCustomerOtpChallenge: true,
+      );
+    } catch (e) {
+      state = state.copyWith(
+        error: e.toString(),
+        isLoading: false,
+        hasBootstrapped: true,
+      );
+    }
+  }
+
+  Future<void> requestCustomerOtp({
+    required String name,
+    required String phone,
+    String? email,
+  }) async {
+    state = state.copyWith(
+      isLoading: true,
+      clearError: true,
+      clearCustomerOtpChallenge: true,
+    );
+    try {
+      final challenge = await _repository.requestCustomerOtp(
+        name: name,
+        phone: phone,
+        email: email,
+      );
+      state = state.copyWith(
+        customerOtpChallenge: challenge,
         isLoading: false,
         hasBootstrapped: true,
       );
@@ -93,22 +132,24 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
   }
 
-  Future<void> loginCustomer({
-    required String name,
-    required String phone,
-    String? email,
+  Future<void> verifyCustomerOtp({
+    required String code,
   }) async {
-    state = state.copyWith(isLoading: true, error: null);
+    final challenge = state.customerOtpChallenge;
+    if (challenge == null) return;
+
+    state = state.copyWith(isLoading: true, clearError: true);
     try {
-      final session = await _repository.loginCustomer(
-        name: name,
-        phone: phone,
-        email: email,
+      final session = await _repository.verifyCustomerOtp(
+        phone: challenge.phone,
+        email: challenge.email,
+        code: code,
       );
       state = state.copyWith(
         session: session,
         isLoading: false,
         hasBootstrapped: true,
+        clearCustomerOtpChallenge: true,
       );
     } catch (e) {
       state = state.copyWith(
@@ -117,6 +158,10 @@ class AuthNotifier extends StateNotifier<AuthState> {
         hasBootstrapped: true,
       );
     }
+  }
+
+  void resetCustomerOtpChallenge() {
+    state = state.copyWith(clearError: true, clearCustomerOtpChallenge: true);
   }
 
   Future<void> switchRole(AppRole role) async {

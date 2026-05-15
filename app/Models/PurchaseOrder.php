@@ -8,6 +8,13 @@ use Illuminate\Database\Eloquent\Model;
 class PurchaseOrder extends Model
 {
     use HasFactory; protected $guarded =[];
+
+    protected $casts = [
+        'items' => 'array',
+        'received_at' => 'datetime',
+        'order_date' => 'date',
+    ];
+
     public function supplier() {
     return $this->belongsTo(Supplier::class);
 }

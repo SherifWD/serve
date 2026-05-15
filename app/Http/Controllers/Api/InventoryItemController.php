@@ -2,6 +2,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Api\Concerns\EnforcesTenantAccess;
 use App\Models\Ingredient;
 use App\Models\InventoryItem;
 use App\Models\Product;
@@ -9,9 +10,13 @@ use Illuminate\Http\Request;
 
 class InventoryItemController extends Controller
 {
-    public function index()
+    use EnforcesTenantAccess;
+
+    public function index(Request $request)
     {
-        $inventoryItems = InventoryItem::with(['branch', 'ingredient', 'product'])->get();
+        $inventoryItems = $this->branchScoped($request, InventoryItem::query())
+            ->with(['branch', 'ingredient', 'product'])
+            ->get();
         return response()->json(['data' => $inventoryItems]);
     }
 
@@ -35,6 +40,12 @@ class InventoryItemController extends Controller
         }
         if ($ingredientId && $productId) {
             return response()->json(['error' => 'Only one of ingredient_id or product_id should be set'], 422);
+        }
+
+        $data['branch_id'] = $this->branchIdForWrite($request, (int) $data['branch_id']);
+        if ($productId) {
+            $product = Product::query()->findOrFail($productId);
+            abort_unless((int) $product->branch_id === (int) $data['branch_id'], 422, 'Inventory product must belong to the selected branch.');
         }
 
         $data['name'] = $this->resolveName($data);
@@ -64,15 +75,20 @@ class InventoryItemController extends Controller
             return response()->json(['error' => 'Only one of ingredient_id or product_id should be set'], 422);
         }
 
-        $inventoryItem = InventoryItem::findOrFail($id);
+        $inventoryItem = $this->branchScoped($request, InventoryItem::query())->findOrFail($id);
+        $data['branch_id'] = $this->branchIdForWrite($request, (int) $data['branch_id']);
+        if ($productId) {
+            $product = Product::query()->findOrFail($productId);
+            abort_unless((int) $product->branch_id === (int) $data['branch_id'], 422, 'Inventory product must belong to the selected branch.');
+        }
         $data['name'] = $this->resolveName($data);
         $inventoryItem->update($data);
         return response()->json(['data' => $inventoryItem->load(['ingredient', 'product'])]);
     }
 
-    public function destroy($id)
+    public function destroy(Request $request, $id)
     {
-        $inventoryItem = InventoryItem::findOrFail($id);
+        $inventoryItem = $this->branchScoped($request, InventoryItem::query())->findOrFail($id);
         $inventoryItem->delete();
         return response()->json(['message' => 'Item deleted successfully']);
     }

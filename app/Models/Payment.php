@@ -18,4 +18,12 @@ class Payment extends Model
     return $this->belongsTo(Order::class);
 }
 
+public function attempt() {
+    return $this->belongsTo(PaymentAttempt::class, 'payment_attempt_id');
+}
+
+public function device() {
+    return $this->belongsTo(Device::class);
+}
+
 }

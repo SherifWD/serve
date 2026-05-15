@@ -30,8 +30,16 @@ public function payments() {
     return $this->hasMany(Payment::class);
 }
 
+public function paymentAttempts() {
+    return $this->hasMany(PaymentAttempt::class);
+}
+
 public function receipt() {
     return $this->hasOne(Receipt::class);
+}
+
+public function printJobs() {
+    return $this->hasMany(PrintJob::class);
 }
 
 public function statusLogs() {

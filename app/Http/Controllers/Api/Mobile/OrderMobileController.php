@@ -11,6 +11,7 @@ use App\Models\LoyaltyTransaction;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Payment;
+use App\Models\PaymentAttempt;
 use App\Models\Product;
 use App\Models\Receipt;
 use App\Models\Table;
@@ -514,9 +515,16 @@ public function pay(Request $request, $id)
         'amount' => 'nullable|numeric|min:0',
         'payment_method' => 'nullable|string|max:30',
         'email_receipt' => 'nullable|email',
+        'client_mutation_id' => 'nullable|string|max:255',
+        'provider' => 'nullable|string|max:100',
+        'provider_reference' => 'nullable|string|max:255',
+        'payment_attempt_id' => 'nullable|integer|exists:payment_attempts,id',
         'payments' => 'nullable|array|min:1',
         'payments.*.method' => 'required_with:payments|in:cash,card,wallet',
         'payments.*.amount' => 'required_with:payments|numeric|min:0.01',
+        'payments.*.provider' => 'nullable|string|max:100',
+        'payments.*.provider_reference' => 'nullable|string|max:255',
+        'payments.*.payment_attempt_id' => 'nullable|integer|exists:payment_attempts,id',
         'item_ids' => 'nullable|array|min:1',
         'item_ids.*' => 'integer|exists:order_items,id',
     ]);
@@ -546,26 +554,38 @@ public function pay(Request $request, $id)
         }
     }
 
-    DB::transaction(function () use ($data, $order, $paymentItemIds) {
+    $clientMutationId = $request->header('X-Client-Mutation-Id') ?: ($data['client_mutation_id'] ?? null);
+
+    DB::transaction(function () use ($data, $order, $paymentItemIds, $clientMutationId) {
         if (!empty($data['payments'])) {
             foreach ($data['payments'] as $payment) {
-                Payment::create([
+                $record = Payment::create([
                     'order_id' => $order->id,
+                    'payment_attempt_id' => $payment['payment_attempt_id'] ?? null,
                     'method' => $payment['method'],
+                    'provider' => $payment['provider'] ?? null,
+                    'provider_reference' => $payment['provider_reference'] ?? null,
+                    'client_mutation_id' => $clientMutationId,
                     'amount' => $payment['amount'],
                     'item_ids' => $paymentItemIds->isEmpty() ? null : $paymentItemIds->all(),
                     'scope' => $paymentItemIds->isEmpty() ? 'order' : 'items',
                 ]);
+                $this->markPaymentAttemptCaptured($payment['payment_attempt_id'] ?? null, $record);
             }
             $order->payment_method = count($data['payments']) > 1 ? 'mixed' : $data['payments'][0]['method'];
         } else {
-            Payment::create([
+            $record = Payment::create([
                 'order_id' => $order->id,
+                'payment_attempt_id' => $data['payment_attempt_id'] ?? null,
                 'method' => $data['payment_method'],
+                'provider' => $data['provider'] ?? null,
+                'provider_reference' => $data['provider_reference'] ?? null,
+                'client_mutation_id' => $clientMutationId,
                 'amount' => $data['amount'],
                 'item_ids' => $paymentItemIds->isEmpty() ? null : $paymentItemIds->all(),
                 'scope' => $paymentItemIds->isEmpty() ? 'order' : 'items',
             ]);
+            $this->markPaymentAttemptCaptured($data['payment_attempt_id'] ?? null, $record);
             $order->payment_method = $data['payment_method'];
         }
 
@@ -611,6 +631,22 @@ public function pay(Request $request, $id)
         // see below for mailing
     }
     return response()->json(['order' => $order]);
+}
+
+private function markPaymentAttemptCaptured(?int $attemptId, Payment $payment): void
+{
+    if (!$attemptId) {
+        return;
+    }
+
+    PaymentAttempt::query()
+        ->whereKey($attemptId)
+        ->where('order_id', $payment->order_id)
+        ->update([
+            'payment_id' => $payment->id,
+            'status' => 'captured',
+            'captured_at' => now(),
+        ]);
 }
 
 public function receipt(Request $request, $id)

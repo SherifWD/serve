@@ -8,6 +8,11 @@ use Illuminate\Database\Eloquent\Model;
 class AuditLog extends Model
 {
     use HasFactory; protected $guarded =[];
+
+    protected $casts = [
+        'changes' => 'array',
+    ];
+
     public function user() {
     return $this->belongsTo(User::class);
 }

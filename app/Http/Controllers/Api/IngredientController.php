@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Api\Concerns\EnforcesTenantAccess;
 use App\Models\Ingredient;
 use App\Models\IngredientBranch;
 use App\Models\RecipeIngredient;
@@ -11,10 +12,13 @@ use Illuminate\Support\Facades\DB;
 
 class IngredientController extends Controller
 {
+    use EnforcesTenantAccess;
+
     public function index(Request $request)
     {
         // List all ingredients with branch stocks and related recipes
-        $ingredients = Ingredient::with([
+        $ingredients = $this->ingredientQuery($request)->with([
+            'ingredientBranches' => fn ($query) => $this->scopeIngredientBranches($request, $query),
             'ingredientBranches.branch:id,name',
             'recipes:id,description'
         ])->get();
@@ -22,10 +26,11 @@ class IngredientController extends Controller
         return response()->json($ingredients);
     }
 
-    public function show($id)
+    public function show(Request $request, $id)
     {
         // Show one ingredient, all branch stocks, and related recipes
-        $ingredient = Ingredient::with([
+        $ingredient = $this->ingredientQuery($request)->with([
+            'ingredientBranches' => fn ($query) => $this->scopeIngredientBranches($request, $query),
             'ingredientBranches.branch:id,name',
             'recipes:id,description'
         ])->findOrFail($id);
@@ -45,6 +50,10 @@ class IngredientController extends Controller
             'recipe_ingredients.*.recipe_id' => 'required|integer|exists:recipes,id',
             'recipe_ingredients.*.quantity'  => 'required|numeric|min:0',
         ]);
+
+        foreach ($data['ingredient_branches'] ?? [] as $ib) {
+            $this->ensureBranchAccess($request, (int) $ib['branch_id']);
+        }
 
         DB::beginTransaction();
         try {
@@ -88,7 +97,7 @@ class IngredientController extends Controller
 
     public function update(Request $request, $id)
     {
-        $ingredient = Ingredient::findOrFail($id);
+        $ingredient = $this->ingredientQuery($request)->findOrFail($id);
 
         $data = $request->validate([
             'name'   => 'required|string',
@@ -102,6 +111,10 @@ class IngredientController extends Controller
             'recipe_ingredients.*.quantity'  => 'required|numeric|min:0',
         ]);
 
+        foreach ($data['ingredient_branches'] ?? [] as $ib) {
+            $this->ensureBranchAccess($request, (int) $ib['branch_id']);
+        }
+
         DB::beginTransaction();
         try {
             $ingredient->update([
@@ -112,7 +125,12 @@ class IngredientController extends Controller
 
             // Sync ingredient_branches
             // Remove old and add current
-            IngredientBranch::where('ingredient_id', $ingredient->id)->delete();
+            $deleteBranches = IngredientBranch::where('ingredient_id', $ingredient->id);
+            $branchIds = $this->accessibleBranchIds($request);
+            if ($branchIds !== null) {
+                $deleteBranches->whereIn('branch_id', $branchIds);
+            }
+            $deleteBranches->delete();
             if (!empty($data['ingredient_branches'])) {
                 foreach ($data['ingredient_branches'] as $ib) {
                     IngredientBranch::create([
@@ -143,9 +161,9 @@ class IngredientController extends Controller
         }
     }
 
-    public function destroy($id)
+    public function destroy(Request $request, $id)
     {
-        $ingredient = Ingredient::findOrFail($id);
+        $ingredient = $this->ingredientQuery($request)->findOrFail($id);
         $ingredient->delete();
         return response()->json(['message' => 'Deleted.']);
     }
@@ -156,8 +174,9 @@ public function updateStock(Request $request)
         'branch_id' => 'required|exists:branches,id',
         'stock' => 'required|numeric|min:0',
     ]);
+    $this->ensureBranchAccess($request, (int) $data['branch_id']);
 
-    $ingredient = Ingredient::findOrFail($data['ingredient_id']);
+    $ingredient = $this->ingredientQuery($request)->findOrFail($data['ingredient_id']);
 
     // Calculate the total stock if this branch is updated
     $otherBranchesTotal = IngredientBranch::where('ingredient_id', $ingredient->id)
@@ -182,5 +201,36 @@ public function updateStock(Request $request)
 
     return response()->json($ib->load('ingredient', 'branch'));
 }
+
+    private function ingredientQuery(Request $request)
+    {
+        $query = Ingredient::query();
+        $branchIds = $this->accessibleBranchIds($request);
+
+        if ($branchIds !== null) {
+            return $query->whereHas('ingredientBranches', fn ($stockQuery) => $stockQuery->whereIn('branch_id', $branchIds));
+        }
+
+        if ($request->filled('branch_id')) {
+            $query->whereHas('ingredientBranches', fn ($stockQuery) => $stockQuery->where('branch_id', $request->integer('branch_id')));
+        }
+
+        return $query;
+    }
+
+    private function scopeIngredientBranches(Request $request, $query)
+    {
+        $branchIds = $this->accessibleBranchIds($request);
+
+        if ($branchIds !== null) {
+            return $query->whereIn('branch_id', $branchIds);
+        }
+
+        if ($request->filled('branch_id')) {
+            return $query->where('branch_id', $request->integer('branch_id'));
+        }
+
+        return $query;
+    }
 
 }

@@ -17,6 +17,19 @@ class Customer extends Authenticatable
         'remember_token',
     ];
 
+    protected function casts(): array
+    {
+        return [
+            'phone_verified_at' => 'datetime',
+            'email_verified_at' => 'datetime',
+        ];
+    }
+
+    public function otpCodes()
+    {
+        return $this->hasMany(CustomerOtpCode::class);
+    }
+
     public function loyaltyTransactions()
     {
         return $this->hasMany(LoyaltyTransaction::class);

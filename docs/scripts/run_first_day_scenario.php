@@ -588,10 +588,14 @@ $maadiWaiter = $loginStaff($findStaff('Maadi Terrace', 'waiter'), 'waiter');
 $maadiKitchen = $loginStaff($findStaff('Maadi Terrace', 'kitchen'), 'kitchen');
 $maadiCashier = $loginStaff($findStaff('Maadi Terrace', 'cashier'), 'cashier');
 
-$customerLogin = api($httpKernel, 'POST', '/api/customer/auth/login', [
+$customerOtp = api($httpKernel, 'POST', '/api/customer/auth/request-otp', [
     'name' => 'Mona Sami',
     'phone' => '01017770001',
     'email' => 'mona.sami@example.com',
+]);
+$customerLogin = api($httpKernel, 'POST', '/api/customer/auth/verify-otp', [
+    'phone' => '01017770001',
+    'code' => body($customerOtp)['debug_otp_code'],
 ]);
 $customerToken = body($customerLogin)['token'];
 $modifierIds = [

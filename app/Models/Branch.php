@@ -38,4 +38,24 @@ public function orders() {
     return $this->hasMany(Order::class);
 }
 
+public function fiscalProfiles() {
+    return $this->hasMany(FiscalProfile::class);
+}
+
+public function etaReceiptSubmissions() {
+    return $this->hasMany(EtaReceiptSubmission::class);
+}
+
+public function paymentProviderConfigs() {
+    return $this->hasMany(PaymentProviderConfig::class);
+}
+
+public function paymentAttempts() {
+    return $this->hasMany(PaymentAttempt::class);
+}
+
+public function printJobs() {
+    return $this->hasMany(PrintJob::class);
+}
+
 }

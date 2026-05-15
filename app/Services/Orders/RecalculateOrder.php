@@ -1,6 +1,7 @@
 <?php
 namespace App\Services\Orders;
 
+use App\Models\FiscalProfile;
 use App\Models\Order;
 
 class RecalculateOrder {
@@ -19,14 +20,22 @@ class RecalculateOrder {
         }
 
         $taxable = max($subtotal - $discount, 0.0);
+        $profile = FiscalProfile::effectiveForBranch((int) $order->branch_id);
+        $rate = max((float) $profile->vat_rate, 0.0);
 
-        // TODO: Replace with your actual tax engine (per-branch, per-item VAT, etc.)
-        // For now, we use existing $order->tax as-is.
-        $tax = (float)($order->tax ?? 0.0);
+        if ($profile->price_includes_vat && $rate > 0) {
+            $net = round($taxable / (1 + $rate), 2);
+            $tax = round($taxable - $net, 2);
+            $total = round($taxable, 2);
+        } else {
+            $net = round($taxable, 2);
+            $tax = round($net * $rate, 2);
+            $total = round($net + $tax, 2);
+        }
 
-        $order->subtotal = round($subtotal, 2);
-        // If computing tax dynamically: $order->tax = round($taxable * $rate, 2);
-        $order->total    = round($taxable + $tax, 2);
+        $order->subtotal = $net;
+        $order->tax = $tax;
+        $order->total = $total;
         $order->save();
 
         return $order->fresh(['items.product','table']);
