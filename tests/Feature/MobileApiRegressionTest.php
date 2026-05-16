@@ -13,6 +13,7 @@ use App\Models\EtaReceiptSubmission;
 use App\Models\Employee;
 use App\Models\FiscalProfile;
 use App\Models\Device;
+use App\Models\Ingredient;
 use App\Models\InventoryItem;
 use App\Models\InventoryTransaction;
 use App\Models\Menu;
@@ -672,6 +673,41 @@ class MobileApiRegressionTest extends TestCase
         $this->assertSame(0, (int) $product->min_stock);
         $this->assertNotNull($product->recipe);
         $this->assertSame($recipe->description, $product->recipe->description);
+    }
+
+    public function test_dashboard_can_create_branch_recipe_with_ingredients(): void
+    {
+        $admin = User::query()->where('email', 'admin@restaurant-suite.com')->firstOrFail();
+        $branch = Branch::query()
+            ->whereNotNull('restaurant_id')
+            ->firstOrFail();
+        $ingredient = Ingredient::query()->firstOrFail();
+
+        Sanctum::actingAs($admin);
+
+        $this->postJson('/api/recipes', [
+            'description' => 'Regression product recipe',
+            'branch_id' => $branch->id,
+            'ingredients' => [
+                [
+                    'ingredient_id' => $ingredient->id,
+                    'quantity' => 2.5,
+                ],
+            ],
+        ])->assertCreated()
+            ->assertJsonPath('description', 'Regression product recipe')
+            ->assertJsonPath('branch_id', $branch->id)
+            ->assertJsonPath('ingredients.0.id', $ingredient->id);
+
+        $recipe = Recipe::query()
+            ->where('description', 'Regression product recipe')
+            ->firstOrFail();
+
+        $this->assertDatabaseHas('recipe_ingredients', [
+            'recipe_id' => $recipe->id,
+            'ingredient_id' => $ingredient->id,
+            'quantity' => 2.5,
+        ]);
     }
 
     public function test_restaurant_owner_cannot_onboard_restaurants(): void

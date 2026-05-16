@@ -73,3 +73,30 @@ body,
 .rs-pill {
   border-radius: 999px !important;
 }
+
+.dashboard-select-menu,
+.dashboard-select-menu .v-list,
+.v-overlay-container .v-list {
+  background: #f8fafc !important;
+  color: #111827 !important;
+}
+
+.dashboard-select-menu .v-list-item-title,
+.dashboard-select-menu .v-list-item-subtitle,
+.dashboard-select-menu .v-select__selection-text,
+.v-overlay-container .v-list-item-title,
+.v-overlay-container .v-list-item-subtitle {
+  color: #111827 !important;
+  opacity: 1 !important;
+}
+
+.dashboard-select-menu .v-list-item:hover,
+.v-overlay-container .v-list-item:hover {
+  background: #e6f4f1 !important;
+}
+
+.dashboard-select-menu .v-list-item--active .v-list-item-title,
+.v-overlay-container .v-list-item--active .v-list-item-title {
+  color: #0f766e !important;
+  font-weight: 700;
+}

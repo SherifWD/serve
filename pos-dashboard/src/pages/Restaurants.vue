@@ -99,6 +99,14 @@
             {{ editing ? 'Edit venue' : 'Create venue' }}
           </v-card-title>
           <v-card-text>
+            <v-alert
+              v-if="formError"
+              type="error"
+              variant="tonal"
+              class="mb-4"
+            >
+              {{ formError }}
+            </v-alert>
             <v-form @submit.prevent="saveRestaurant">
               <v-text-field
                 v-model="form.name"
@@ -117,7 +125,15 @@
           </v-card-text>
           <v-card-actions class="justify-end px-6 pb-6">
             <v-btn variant="text" @click="dialog = false">Cancel</v-btn>
-            <v-btn color="primary" class="rs-pill" @click="saveRestaurant">Save</v-btn>
+            <v-btn
+              color="primary"
+              class="rs-pill"
+              :loading="saving"
+              :disabled="!canSaveRestaurant"
+              @click="saveRestaurant"
+            >
+              Save
+            </v-btn>
           </v-card-actions>
         </v-card>
       </v-dialog>
@@ -137,6 +153,8 @@ const auth = useAuthStore()
 const restaurants = ref([])
 const dialog = ref(false)
 const editing = ref(false)
+const saving = ref(false)
+const formError = ref('')
 const form = ref({
   id: null,
   name: '',
@@ -156,6 +174,10 @@ const totalBranches = computed(() =>
   restaurants.value.reduce((sum, restaurant) => sum + Number(restaurant.branches_count || 0), 0),
 )
 
+const canSaveRestaurant = computed(() =>
+  Boolean(form.value.name.trim()) && ['restaurant', 'cafe'].includes(form.value.kind),
+)
+
 function authHeaders() {
   return { Authorization: `Bearer ${auth.token}` }
 }
@@ -170,6 +192,7 @@ async function loadRestaurants() {
 
 function openCreate() {
   editing.value = false
+  formError.value = ''
   form.value = {
     id: null,
     name: '',
@@ -180,6 +203,7 @@ function openCreate() {
 
 function openEdit(restaurant) {
   editing.value = true
+  formError.value = ''
   form.value = {
     id: restaurant.id,
     name: restaurant.name,
@@ -189,23 +213,40 @@ function openEdit(restaurant) {
 }
 
 async function saveRestaurant() {
+  if (!canSaveRestaurant.value || saving.value) return
+
   const payload = {
-    name: form.value.name,
+    name: form.value.name.trim(),
     kind: form.value.kind,
   }
 
-  if (editing.value) {
-    await axios.put(`${API_BASE_URL}/restaurants/${form.value.id}`, payload, {
-      headers: authHeaders(),
-    })
-  } else {
-    await axios.post(`${API_BASE_URL}/restaurants`, payload, {
-      headers: authHeaders(),
-    })
-  }
+  try {
+    saving.value = true
+    formError.value = ''
 
-  dialog.value = false
-  await loadRestaurants()
+    if (editing.value) {
+      await axios.put(`${API_BASE_URL}/restaurants/${form.value.id}`, payload, {
+        headers: authHeaders(),
+      })
+    } else {
+      await axios.post(`${API_BASE_URL}/restaurants`, payload, {
+        headers: authHeaders(),
+      })
+    }
+
+    dialog.value = false
+    await loadRestaurants()
+  } catch (error) {
+    formError.value = errorMessage(error)
+  } finally {
+    saving.value = false
+  }
+}
+
+function errorMessage(error) {
+  const errors = error?.response?.data?.errors
+  if (errors) return Object.values(errors).flat().join(' ')
+  return error?.response?.data?.message || error?.response?.data?.error || 'Could not save this restaurant.'
 }
 
 async function removeRestaurant(id) {

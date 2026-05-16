@@ -17,6 +17,8 @@ class RecipeController extends Controller
     {
         // Eager load ingredients if desired
         return $this->branchScoped($request, Recipe::query())->with([
+            'branch:id,name,restaurant_id',
+            'branch.restaurant:id,name,kind',
             'ingredients' => function($q) {
                 $q->select('ingredients.id', 'name', 'unit');
             }
@@ -26,9 +28,13 @@ class RecipeController extends Controller
     // GET /api/recipes/{id}
     public function show(Request $request, $id)
     {
-        $recipe = $this->branchScoped($request, Recipe::with(['ingredients' => function($q) {
-            $q->select('ingredients.id', 'name', 'unit');
-        }]))->findOrFail($id);
+        $recipe = $this->branchScoped($request, Recipe::with([
+            'branch:id,name,restaurant_id',
+            'branch.restaurant:id,name,kind',
+            'ingredients' => function($q) {
+                $q->select('ingredients.id', 'name', 'unit');
+            },
+        ]))->findOrFail($id);
 
         return response()->json($recipe);
     }
@@ -58,7 +64,7 @@ class RecipeController extends Controller
             }
         }
 
-        return response()->json($recipe->load('ingredients'), 201);
+        return response()->json($recipe->load(['branch.restaurant:id,name,kind', 'ingredients']), 201);
     }
 
     // PUT /api/recipes/{id}
@@ -90,7 +96,7 @@ class RecipeController extends Controller
             $recipe->ingredients()->sync($syncData);
         }
 
-        return response()->json($recipe->load('ingredients'));
+        return response()->json($recipe->load(['branch.restaurant:id,name,kind', 'ingredients']));
     }
 
     // DELETE /api/recipes/{id}

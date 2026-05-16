@@ -119,7 +119,7 @@
               <v-alert v-if="branchStockError" type="error" variant="outlined" class="mb-2">
                 {{ branchStockError }}
               </v-alert>
-              <v-btn color="primary" class="mb-3" :disabled="!branchIngredient.branch_id" @click="addBranchStock">Add/Update Branch Stock</v-btn>
+              <v-btn color="primary" type="button" class="mb-3" :disabled="!branchIngredient.branch_id" @click="addBranchStock">Add/Update Branch Stock</v-btn>
               <v-list two-line>
                 <v-list-item v-for="ib in form.ingredient_branches ?? []" :key="ib.branch_id">
                   <v-list-item-title>{{ branchName(ib.branch_id) }}</v-list-item-title>
@@ -167,7 +167,7 @@
               <v-alert v-if="recipeQtyError" type="error" variant="outlined" class="mb-2">
                 {{ recipeQtyError }}
               </v-alert>
-              <v-btn color="primary" class="mb-3" :disabled="!recipeIngredient.recipe_id" @click="addRecipeIngredient">Add/Update Recipe</v-btn>
+              <v-btn color="primary" type="button" class="mb-3" :disabled="!recipeIngredient.recipe_id" @click="addRecipeIngredient">Add/Update Recipe</v-btn>
               <v-list two-line>
                 <v-list-item v-for="ri in form.recipe_ingredients ?? []" :key="ri.recipe_id">
                   <v-list-item-title>{{ recipeName(ri.recipe_id) }}</v-list-item-title>
