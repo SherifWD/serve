@@ -6,13 +6,13 @@
           <div class="rs-panel hero-panel">
             <div>
               <div class="page-kicker">
-                {{ auth.isAdmin ? 'Platform Overview' : 'Restaurant Operations' }}
+                {{ auth.isAdmin ? 'Business Overview' : 'Operations' }}
               </div>
               <h1 class="page-title">
-                {{ auth.isAdmin ? 'Control every restaurant from one live board.' : 'Track live service, branch health, and cash flow.' }}
+                {{ auth.isAdmin ? 'Manage restaurants, branches, and service performance.' : 'Track live service, branch health, and cash flow.' }}
               </h1>
               <p class="page-copy">
-                Monitor restaurant performance, filter by branch, and stay ahead of cashier
+                Review restaurant performance, filter by branch, and stay ahead of cashier
                 pressure, kitchen backlog, low stock, and loyalty activity.
               </p>
             </div>
@@ -302,7 +302,7 @@ const overviewCards = computed(() => [
   {
     label: 'Restaurants',
     value: auth.isAdmin ? summary.value.restaurant_count || restaurants.value.length : auth.user?.restaurant?.name || '1',
-    note: auth.isAdmin ? 'Brands under platform control' : 'Current owner workspace',
+    note: auth.isAdmin ? 'Brands available to your admin account' : 'Current restaurant',
   },
   {
     label: 'Branches',

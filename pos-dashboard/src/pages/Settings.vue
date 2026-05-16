@@ -5,7 +5,7 @@
         <v-col cols="12" lg="8">
           <v-card color="card" elevation="3" class="mb-6 rounded-xl">
             <v-card-title class="d-flex align-center">
-              <span class="text-h5 font-weight-bold settings-title">Platform Settings</span>
+              <span class="text-h5 font-weight-bold settings-title">Account Settings</span>
               <v-spacer />
               <v-chip color="primary" variant="tonal">
                 Connected
@@ -16,7 +16,7 @@
                 <v-col cols="12" md="6">
                   <v-text-field
                     v-model="form.platformName"
-                    label="Platform name"
+                    label="Business name"
                     variant="outlined"
                     density="comfortable"
                   />

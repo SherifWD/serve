@@ -9,7 +9,7 @@
               <h1 class="page-title">Manage owners, supervisors, waiters, cashiers, and kitchen users.</h1>
               <p class="page-copy">
                 Filter by restaurant, branch, or role, then create employee access with the
-                correct branch assignment and workspace types.
+                right branch assignment and role access.
               </p>
             </div>
 
@@ -93,7 +93,7 @@
         <div class="panel-header">
           <div>
             <div class="panel-title">User Directory</div>
-            <div class="panel-subtitle">Every authenticated dashboard or workspace account.</div>
+            <div class="panel-subtitle">Every user who can sign in to the dashboard or staff tools.</div>
           </div>
         </div>
 

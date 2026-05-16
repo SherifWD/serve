@@ -366,6 +366,7 @@ class _CashierWorkspacePageState extends ConsumerState<CashierWorkspacePage> {
             await _future;
           },
           child: ListView(
+            physics: const AlwaysScrollableScrollPhysics(),
             children: [
               _CashierHeader(
                 pendingCount: orders.length,
@@ -696,179 +697,210 @@ class _TicketPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     final currency = NumberFormat.currency(symbol: 'EGP ');
 
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(18),
-        child: Column(
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final compact = constraints.maxWidth < 560;
+        final titleBlock = Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
+            Text(
+              order.tableName ?? 'Walk-in order',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context)
+                  .textTheme
+                  .headlineSmall
+                  ?.copyWith(fontWeight: FontWeight.w900),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              '${order.customerName ?? 'Guest'}${order.branchName == null ? '' : ' • ${order.branchName}'}',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
+        );
+        final actions = Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          alignment: compact ? WrapAlignment.start : WrapAlignment.end,
+          children: [
+            FilledButton.tonalIcon(
+              onPressed: onReceipt,
+              icon: const Icon(Icons.print_outlined),
+              label: Text(
+                  selectedItemIds.isEmpty ? 'Print receipt' : 'Print selected'),
+            ),
+            OutlinedButton.icon(
+              onPressed: onReprint,
+              icon: const Icon(Icons.replay_outlined),
+              label: const Text('Reprint last'),
+            ),
+          ],
+        );
+
+        return Card(
+          child: Padding(
+            padding: EdgeInsets.all(compact ? 14 : 18),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(
-                  child: Column(
+                if (compact)
+                  Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        order.tableName ?? 'Walk-in order',
-                        style: Theme.of(context)
-                            .textTheme
-                            .headlineSmall
-                            ?.copyWith(fontWeight: FontWeight.w900),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        '${order.customerName ?? 'Guest'}${order.branchName == null ? '' : ' • ${order.branchName}'}',
+                      titleBlock,
+                      const SizedBox(height: 12),
+                      _TicketStatusBadge(
+                          label: order.paymentStatus.toUpperCase()),
+                      const SizedBox(height: 10),
+                      actions,
+                    ],
+                  )
+                else
+                  Row(
+                    children: [
+                      Expanded(child: titleBlock),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          _TicketStatusBadge(
+                              label: order.paymentStatus.toUpperCase()),
+                          const SizedBox(height: 8),
+                          actions,
+                        ],
                       ),
                     ],
                   ),
-                ),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
+                const SizedBox(height: 18),
+                Wrap(
+                  spacing: 10,
+                  runSpacing: 10,
                   children: [
-                    _TicketStatusBadge(
-                        label: order.paymentStatus.toUpperCase()),
-                    const SizedBox(height: 8),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      alignment: WrapAlignment.end,
+                    _InfoPill(label: 'Type: ${order.orderType}'),
+                    _InfoPill(
+                        label: 'Paid: ${currency.format(order.paidAmount)}'),
+                    _InfoPill(
+                        label:
+                            'Due: ${currency.format(order.outstandingAmount)}'),
+                  ],
+                ),
+                const SizedBox(height: 18),
+                const Divider(height: 1),
+                const SizedBox(height: 14),
+                Text(
+                  'Ticket items',
+                  style: Theme.of(context)
+                      .textTheme
+                      .titleMedium
+                      ?.copyWith(fontWeight: FontWeight.w800),
+                ),
+                const SizedBox(height: 12),
+                for (final item in order.items)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        FilledButton.tonalIcon(
-                          onPressed: onReceipt,
-                          icon: const Icon(Icons.print_outlined),
-                          label: Text(selectedItemIds.isEmpty
-                              ? 'Print receipt'
-                              : 'Print selected'),
+                        Checkbox(
+                          value: selectedItemIds.contains(item.id),
+                          onChanged: item.isVoided
+                              ? null
+                              : (value) =>
+                                  onItemSelectionChanged(item, value ?? false),
                         ),
-                        OutlinedButton.icon(
-                          onPressed: onReprint,
-                          icon: const Icon(Icons.replay_outlined),
-                          label: const Text('Reprint last'),
+                        const SizedBox(width: 6),
+                        Container(
+                          width: 34,
+                          height: 34,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFFE4CF),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          alignment: Alignment.center,
+                          child: Text(
+                            '${item.quantity}',
+                            style: const TextStyle(fontWeight: FontWeight.w800),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                item.name,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .titleSmall
+                                    ?.copyWith(fontWeight: FontWeight.w800),
+                              ),
+                              if (item.modifiers.isNotEmpty) ...[
+                                const SizedBox(height: 4),
+                                Text(
+                                  item.modifiers.join(' • '),
+                                  style:
+                                      const TextStyle(color: Color(0xFF6B7280)),
+                                ),
+                              ],
+                              if ((item.itemNote ?? '').isNotEmpty) ...[
+                                const SizedBox(height: 4),
+                                Text(
+                                  item.itemNote!,
+                                  style:
+                                      const TextStyle(color: Color(0xFF8B5E34)),
+                                ),
+                              ],
+                              const SizedBox(height: 6),
+                              Wrap(
+                                spacing: 8,
+                                runSpacing: 8,
+                                children: [
+                                  _InfoPill(label: item.kitchenStatusLabel),
+                                  _InfoPill(
+                                    label:
+                                        'Payment ${(item.paymentStatus ?? 'unpaid').toUpperCase()}',
+                                  ),
+                                  if (item.paidAmount > 0)
+                                    _InfoPill(
+                                      label:
+                                          'Paid ${currency.format(item.paidAmount)}',
+                                    ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                        Text(
+                          currency.format(item.total),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontWeight: FontWeight.w800),
                         ),
                       ],
                     ),
-                  ],
-                ),
-              ],
-            ),
-            const SizedBox(height: 18),
-            Wrap(
-              spacing: 10,
-              runSpacing: 10,
-              children: [
-                _InfoPill(label: 'Type: ${order.orderType}'),
-                _InfoPill(label: 'Paid: ${currency.format(order.paidAmount)}'),
-                _InfoPill(
-                    label: 'Due: ${currency.format(order.outstandingAmount)}'),
-              ],
-            ),
-            const SizedBox(height: 18),
-            const Divider(height: 1),
-            const SizedBox(height: 14),
-            Text(
-              'Ticket items',
-              style: Theme.of(context)
-                  .textTheme
-                  .titleMedium
-                  ?.copyWith(fontWeight: FontWeight.w800),
-            ),
-            const SizedBox(height: 12),
-            for (final item in order.items)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                  ),
+                const Divider(height: 28),
+                Row(
                   children: [
-                    Checkbox(
-                      value: selectedItemIds.contains(item.id),
-                      onChanged: item.isVoided
-                          ? null
-                          : (value) =>
-                              onItemSelectionChanged(item, value ?? false),
-                    ),
-                    const SizedBox(width: 6),
-                    Container(
-                      width: 34,
-                      height: 34,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFFFE4CF),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      alignment: Alignment.center,
-                      child: Text(
-                        '${item.quantity}',
-                        style: const TextStyle(fontWeight: FontWeight.w800),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            item.name,
-                            style: Theme.of(context)
-                                .textTheme
-                                .titleSmall
-                                ?.copyWith(fontWeight: FontWeight.w800),
-                          ),
-                          if (item.modifiers.isNotEmpty) ...[
-                            const SizedBox(height: 4),
-                            Text(
-                              item.modifiers.join(' • '),
-                              style: const TextStyle(color: Color(0xFF6B7280)),
-                            ),
-                          ],
-                          if ((item.itemNote ?? '').isNotEmpty) ...[
-                            const SizedBox(height: 4),
-                            Text(
-                              item.itemNote!,
-                              style: const TextStyle(color: Color(0xFF8B5E34)),
-                            ),
-                          ],
-                          const SizedBox(height: 6),
-                          Wrap(
-                            spacing: 8,
-                            runSpacing: 8,
-                            children: [
-                              _InfoPill(label: item.kitchenStatusLabel),
-                              _InfoPill(
-                                label:
-                                    'Payment ${(item.paymentStatus ?? 'unpaid').toUpperCase()}',
-                              ),
-                              if (item.paidAmount > 0)
-                                _InfoPill(
-                                  label:
-                                      'Paid ${currency.format(item.paidAmount)}',
-                                ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
+                    const Text('Order total'),
+                    const Spacer(),
                     Text(
-                      currency.format(item.total),
-                      style: const TextStyle(fontWeight: FontWeight.w800),
+                      currency.format(order.total),
+                      style:
+                          Theme.of(context).textTheme.headlineSmall?.copyWith(
+                                fontWeight: FontWeight.w900,
+                              ),
                     ),
                   ],
                 ),
-              ),
-            const Divider(height: 28),
-            Row(
-              children: [
-                const Text('Order total'),
-                const Spacer(),
-                Text(
-                  currency.format(order.total),
-                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                        fontWeight: FontWeight.w900,
-                      ),
-                ),
               ],
             ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 }
@@ -950,32 +982,40 @@ class _PaymentPanel extends StatelessWidget {
                   ),
             ),
             const SizedBox(height: 14),
-            Row(
-              children: [
-                Expanded(
-                  child: _PaymentSummaryCard(
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final maxWidth = constraints.maxWidth;
+                final columns = maxWidth >= 520 ? 3 : (maxWidth >= 320 ? 2 : 1);
+                const spacing = 10.0;
+                final cardWidth =
+                    (maxWidth - spacing * (columns - 1)) / columns;
+                final cards = [
+                  _PaymentSummaryCard(
                     label: 'Drafted',
                     value: currency.format(draftedTotal),
                     tone: const Color(0xFF0F766E),
                   ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: _PaymentSummaryCard(
+                  _PaymentSummaryCard(
                     label: 'Remaining',
                     value: currency.format(remaining),
                     tone: const Color(0xFFE86C2F),
                   ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: _PaymentSummaryCard(
+                  _PaymentSummaryCard(
                     label: 'Change',
                     value: currency.format(changeDue),
                     tone: const Color(0xFF1D4ED8),
                   ),
-                ),
-              ],
+                ];
+
+                return Wrap(
+                  spacing: spacing,
+                  runSpacing: spacing,
+                  children: [
+                    for (final card in cards)
+                      SizedBox(width: cardWidth, child: card),
+                  ],
+                );
+              },
             ),
             const SizedBox(height: 16),
             Text(
@@ -1074,6 +1114,8 @@ class _PaymentSummaryCard extends StatelessWidget {
           const SizedBox(height: 6),
           Text(
             value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
             style: Theme.of(context).textTheme.titleMedium?.copyWith(
                   fontWeight: FontWeight.w800,
                   color: tone,

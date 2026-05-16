@@ -18,15 +18,15 @@ class ProjectItem {
 
 const projects = [
   ProjectItem(
-    name: 'Orion packaging line upgrade',
+    name: 'New branch opening',
     progress: 0.76,
-    owner: 'PMO',
+    owner: 'Operations',
     due: 'Oct 20',
     status: 'On track',
     team: ['Ana', 'Lee', 'Maria'],
   ),
   ProjectItem(
-    name: 'ERP rollout plant 2',
+    name: 'POS rollout branch 2',
     progress: 0.52,
     owner: 'IT',
     due: 'Nov 4',
@@ -34,9 +34,9 @@ const projects = [
     team: ['Sam', 'Priya', 'Jordan'],
   ),
   ProjectItem(
-    name: 'Safety training Q4',
+    name: 'Food safety training Q4',
     progress: 0.34,
-    owner: 'EHS',
+    owner: 'HR',
     due: 'Oct 30',
     status: 'Behind',
     team: ['Rui', 'Omar'],

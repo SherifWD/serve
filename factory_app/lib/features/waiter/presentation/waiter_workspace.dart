@@ -53,22 +53,23 @@ class _WaiterWorkspacePageState extends ConsumerState<WaiterWorkspacePage> {
           0,
           (sum, table) => sum + table.orderTotal,
         );
-        return Column(
-          children: [
-            _WaiterHero(
-              tableCount: tables.length,
-              activeChecks: occupied.length,
-              activeCovers: covers,
-              liveSales: liveSales,
-            ),
-            const SizedBox(height: 16),
-            Expanded(
-              child: _FloorTab(
-                tables: tables,
-                onRefresh: _refreshTables,
+        return RefreshIndicator(
+          onRefresh: _refreshTables,
+          child: ListView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            children: [
+              _WaiterHero(
+                tableCount: tables.length,
+                activeChecks: occupied.length,
+                activeCovers: covers,
+                liveSales: liveSales,
               ),
-            ),
-          ],
+              const SizedBox(height: 16),
+              _FloorTab(
+                tables: tables,
+              ),
+            ],
+          ),
         );
       },
     );
@@ -92,73 +93,79 @@ class _WaiterHero extends StatelessWidget {
   Widget build(BuildContext context) {
     final currency = NumberFormat.currency(symbol: 'EGP ');
 
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(22),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF1E293B), Color(0xFF334155), Color(0xFF4B5563)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(30),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final maxWidth = constraints.maxWidth;
+        final compact = maxWidth < 560;
+        final metricWidth = compact
+            ? (maxWidth - 12) / 2
+            : maxWidth < 900
+                ? 170.0
+                : 180.0;
+
+        return Container(
+          width: double.infinity,
+          padding: EdgeInsets.all(compact ? 16 : 22),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              colors: [Color(0xFF1E293B), Color(0xFF334155), Color(0xFF4B5563)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(compact ? 22 : 30),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Tableside service board',
-                      style:
-                          Theme.of(context).textTheme.headlineSmall?.copyWith(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w900,
-                              ),
+              Text(
+                'Tableside service board',
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w900,
                     ),
-                    const SizedBox(height: 8),
-                    const Text(
-                      'Fast table access with direct handoff to kitchen and cashier.',
-                      style: TextStyle(color: Colors.white70, height: 1.35),
-                    ),
-                  ],
-                ),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Fast table access with direct handoff to kitchen and cashier.',
+                style: TextStyle(color: Colors.white70, height: 1.35),
+              ),
+              const SizedBox(height: 18),
+              Wrap(
+                spacing: 12,
+                runSpacing: 12,
+                children: [
+                  _HeroMetric(
+                    width: metricWidth,
+                    title: 'Tables',
+                    value: '$tableCount',
+                    accent: const Color(0xFFF59E0B),
+                  ),
+                  _HeroMetric(
+                    width: metricWidth,
+                    title: 'Open orders',
+                    value: '$activeChecks',
+                    accent: const Color(0xFFE86C2F),
+                  ),
+                  _HeroMetric(
+                    width: metricWidth,
+                    title: 'Active covers',
+                    value: '$activeCovers',
+                    accent: const Color(0xFF38BDF8),
+                  ),
+                  _HeroMetric(
+                    width: metricWidth,
+                    title: 'Open value',
+                    value: currency.format(liveSales),
+                    accent: const Color(0xFF34D399),
+                  ),
+                ],
               ),
             ],
           ),
-          const SizedBox(height: 18),
-          Wrap(
-            spacing: 12,
-            runSpacing: 12,
-            children: [
-              _HeroMetric(
-                title: 'Tables',
-                value: '$tableCount',
-                accent: const Color(0xFFF59E0B),
-              ),
-              _HeroMetric(
-                title: 'Open orders',
-                value: '$activeChecks',
-                accent: const Color(0xFFE86C2F),
-              ),
-              _HeroMetric(
-                title: 'Active covers',
-                value: '$activeCovers',
-                accent: const Color(0xFF38BDF8),
-              ),
-              _HeroMetric(
-                title: 'Open value',
-                value: currency.format(liveSales),
-                accent: const Color(0xFF34D399),
-              ),
-            ],
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 }
@@ -166,11 +173,9 @@ class _WaiterHero extends StatelessWidget {
 class _FloorTab extends StatefulWidget {
   const _FloorTab({
     required this.tables,
-    required this.onRefresh,
   });
 
   final List<TableOverview> tables;
-  final Future<void> Function() onRefresh;
 
   @override
   State<_FloorTab> createState() => _FloorTabState();
@@ -205,37 +210,41 @@ class _FloorTabState extends State<_FloorTab> {
   @override
   Widget build(BuildContext context) {
     final width = MediaQuery.of(context).size.width;
-    final crossAxisCount = width > 1300 ? 4 : (width > 800 ? 3 : 2);
+    final crossAxisCount =
+        width > 1300 ? 4 : (width > 760 ? 3 : (width > 560 ? 2 : 1));
+    final aspectRatio = switch (crossAxisCount) {
+      1 => 1.55,
+      2 => 1.25,
+      _ => 1.18,
+    };
     final filteredTables = _filteredTables;
 
-    return RefreshIndicator(
-      onRefresh: widget.onRefresh,
-      child: ListView(
-        children: [
-          const _QuickActionStrip(),
-          const SizedBox(height: 16),
-          _TableFilterStrip(
-            value: _filter,
-            onChanged: (value) => setState(() => _filter = value),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const _QuickActionStrip(),
+        const SizedBox(height: 16),
+        _TableFilterStrip(
+          value: _filter,
+          onChanged: (value) => setState(() => _filter = value),
+        ),
+        const SizedBox(height: 16),
+        GridView.builder(
+          itemCount: filteredTables.length,
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: crossAxisCount,
+            crossAxisSpacing: 14,
+            mainAxisSpacing: 14,
+            childAspectRatio: aspectRatio,
           ),
-          const SizedBox(height: 16),
-          GridView.builder(
-            itemCount: filteredTables.length,
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: crossAxisCount,
-              crossAxisSpacing: 14,
-              mainAxisSpacing: 14,
-              childAspectRatio: 1.18,
-            ),
-            itemBuilder: (context, index) {
-              final table = filteredTables[index];
-              return _TableTile(table: table);
-            },
-          ),
-        ],
-      ),
+          itemBuilder: (context, index) {
+            final table = filteredTables[index];
+            return _TableTile(table: table);
+          },
+        ),
+      ],
     );
   }
 }
@@ -264,13 +273,13 @@ class _QuickActionStrip extends StatelessWidget {
           _QuickActionCard(
             icon: Icons.tune_rounded,
             label: 'Add modifiers',
-            caption: 'Upsell cleanly',
+            caption: 'Adjust items',
           ),
           SizedBox(width: 10),
           _QuickActionCard(
             icon: Icons.soup_kitchen_outlined,
             label: 'Send to kitchen',
-            caption: 'Fire the course',
+            caption: 'Start prep',
           ),
           SizedBox(width: 10),
           _QuickActionCard(
@@ -497,11 +506,13 @@ Color _tableStatusColor(String status) {
 
 class _HeroMetric extends StatelessWidget {
   const _HeroMetric({
+    required this.width,
     required this.title,
     required this.value,
     required this.accent,
   });
 
+  final double width;
   final String title;
   final String value;
   final Color accent;
@@ -509,7 +520,7 @@ class _HeroMetric extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 180,
+      width: width,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.08),
@@ -526,6 +537,8 @@ class _HeroMetric extends StatelessWidget {
           const SizedBox(height: 8),
           Text(
             value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
             style: Theme.of(context).textTheme.titleLarge?.copyWith(
                   color: accent,
                   fontWeight: FontWeight.w900,

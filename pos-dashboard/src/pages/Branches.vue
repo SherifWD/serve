@@ -5,10 +5,10 @@
         <v-col cols="12" lg="8">
           <div class="rs-panel hero-panel">
             <div>
-              <div class="page-kicker">Location Control</div>
+              <div class="page-kicker">Locations</div>
               <h1 class="page-title">Manage branches, map them to restaurants, and keep each location organized.</h1>
               <p class="page-copy">
-                Platform admin can create branches for any venue. Restaurant owners only see and
+                Admin users can create branches for any venue. Restaurant owners only see and
                 manage the branches inside their own brand.
               </p>
             </div>

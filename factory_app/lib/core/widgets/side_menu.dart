@@ -23,7 +23,7 @@ class SideMenu extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Text(
-              'Legacy Menu',
+              'Navigation',
               style: Theme.of(context)
                   .textTheme
                   .titleMedium

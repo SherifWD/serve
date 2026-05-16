@@ -72,7 +72,7 @@ class _WaiterOrderPageState extends ConsumerState<WaiterOrderPage> {
         future: _future,
         builder: (context, snapshot) {
           if (snapshot.connectionState != ConnectionState.done) {
-            return const LoadingView(label: 'Loading table workspace...');
+            return const LoadingView(label: 'Loading table...');
           }
           if (snapshot.hasError) {
             return ErrorView(
@@ -84,6 +84,8 @@ class _WaiterOrderPageState extends ConsumerState<WaiterOrderPage> {
           }
 
           final bundle = snapshot.data!;
+          final canSendToKitchen = bundle.details.orderId != null &&
+              bundle.details.items.any((item) => item.canSendToKitchen);
           final wide = MediaQuery.of(context).size.width > 1120;
 
           return RefreshIndicator(
@@ -130,7 +132,7 @@ class _WaiterOrderPageState extends ConsumerState<WaiterOrderPage> {
                                 controller: _customerNameController,
                                 decoration: const InputDecoration(
                                   labelText: 'Customer name',
-                                  hintText: 'Walk-in / loyalty guest',
+                                  hintText: 'Walk-in guest',
                                 ),
                               ),
                             ),
@@ -153,7 +155,7 @@ class _WaiterOrderPageState extends ConsumerState<WaiterOrderPage> {
                           runSpacing: 12,
                           children: [
                             FilledButton.icon(
-                              onPressed: bundle.details.orderId == null
+                              onPressed: !canSendToKitchen
                                   ? null
                                   : () => _runAction(
                                         () => ref
@@ -242,209 +244,42 @@ class _WaiterOrderPageState extends ConsumerState<WaiterOrderPage> {
     MenuCategoryData category,
     List<ModifierData> modifiers,
   ) async {
-    int quantity = 1;
-    final noteController = TextEditingController();
-    final selectedChoices = <int, int>{};
-    final selectedModifiers = <int>{};
-
-    final added = await showModalBottomSheet<bool>(
+    final draft = await showModalBottomSheet<_AddProductDraft>(
       context: context,
       isScrollControlled: true,
-      builder: (context) {
-        final navigator = Navigator.of(context);
-        return Padding(
-          padding: EdgeInsets.only(
-            left: 20,
-            right: 20,
-            top: 20,
-            bottom: MediaQuery.of(context).viewInsets.bottom + 20,
-          ),
-          child: StatefulBuilder(
-            builder: (context, setSheetState) {
-              return SingleChildScrollView(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(24),
-                      child: SizedBox(
-                        height: 190,
-                        width: double.infinity,
-                        child: BrandedImage(
-                          label: product.name,
-                          imageUrl: product.imageUrl,
-                          kind: BrandedImageKind.dish,
-                          overlay: const LinearGradient(
-                            colors: [Color(0x00000000), Color(0x44000000)],
-                            begin: Alignment.topCenter,
-                            end: Alignment.bottomCenter,
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 18),
-                    Text(
-                      product.name,
-                      style: Theme.of(context)
-                          .textTheme
-                          .titleLarge
-                          ?.copyWith(fontWeight: FontWeight.w800),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'EGP ${product.price.toStringAsFixed(2)}',
-                      style: Theme.of(context)
-                          .textTheme
-                          .titleMedium
-                          ?.copyWith(fontWeight: FontWeight.w800),
-                    ),
-                    const SizedBox(height: 18),
-                    Row(
-                      children: [
-                        const Text('Quantity'),
-                        const Spacer(),
-                        IconButton(
-                          onPressed: quantity > 1
-                              ? () => setSheetState(() => quantity -= 1)
-                              : null,
-                          icon: const Icon(Icons.remove_circle_outline),
-                        ),
-                        Text('$quantity'),
-                        IconButton(
-                          onPressed: () => setSheetState(() => quantity += 1),
-                          icon: const Icon(Icons.add_circle_outline),
-                        ),
-                      ],
-                    ),
-                    TextField(
-                      controller: noteController,
-                      decoration: const InputDecoration(
-                        labelText: 'Order note',
-                        hintText: 'No onions, VIP guest, extra napkins...',
-                      ),
-                    ),
-                    if (category.questions.isNotEmpty) ...[
-                      const SizedBox(height: 20),
-                      for (final question in category.questions) ...[
-                        Text(
-                          question.question,
-                          style: Theme.of(context)
-                              .textTheme
-                              .titleMedium
-                              ?.copyWith(fontWeight: FontWeight.w700),
-                        ),
-                        const SizedBox(height: 10),
-                        Wrap(
-                          spacing: 10,
-                          runSpacing: 10,
-                          children: [
-                            for (final choice in question.choices)
-                              ChoiceChip(
-                                label: Text(choice.label),
-                                selected:
-                                    selectedChoices[question.id] == choice.id,
-                                onSelected: (_) {
-                                  setSheetState(() {
-                                    selectedChoices[question.id] = choice.id;
-                                  });
-                                },
-                              ),
-                          ],
-                        ),
-                        const SizedBox(height: 16),
-                      ],
-                    ],
-                    if (modifiers.isNotEmpty) ...[
-                      Text(
-                        'Modifiers',
-                        style: Theme.of(context)
-                            .textTheme
-                            .titleMedium
-                            ?.copyWith(fontWeight: FontWeight.w700),
-                      ),
-                      const SizedBox(height: 10),
-                      Wrap(
-                        spacing: 10,
-                        runSpacing: 10,
-                        children: [
-                          for (final modifier in modifiers)
-                            FilterChip(
-                              label: Text(
-                                  '${modifier.name} (+${modifier.price.toStringAsFixed(0)})'),
-                              selected: selectedModifiers.contains(modifier.id),
-                              onSelected: (selected) {
-                                setSheetState(() {
-                                  if (selected) {
-                                    selectedModifiers.add(modifier.id);
-                                  } else {
-                                    selectedModifiers.remove(modifier.id);
-                                  }
-                                });
-                              },
-                            ),
-                        ],
-                      ),
-                    ],
-                    const SizedBox(height: 24),
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed: () async {
-                          await ref.read(suiteRepositoryProvider).createOrder(
-                            tableId: widget.table.id,
-                            customerName: _customerNameController.text.trim(),
-                            customerPhone: _customerPhoneController.text.trim(),
-                            items: [
-                              {
-                                'product_id': product.id,
-                                'quantity': quantity,
-                                if (noteController.text.trim().isNotEmpty)
-                                  'note': noteController.text.trim(),
-                                if (selectedChoices.isNotEmpty)
-                                  'answers': selectedChoices.values
-                                      .map(
-                                          (choiceId) => {'choice_id': choiceId})
-                                      .toList(growable: false),
-                                if (selectedModifiers.isNotEmpty)
-                                  'modifiers': selectedModifiers
-                                      .map((modifierId) =>
-                                          {'modifier_id': modifierId})
-                                      .toList(growable: false),
-                              },
-                            ],
-                          );
-
-                          if (!mounted) return;
-                          navigator.pop(true);
-                        },
-                        child: const Text('Add to order'),
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            },
-          ),
-        );
-      },
+      builder: (context) => _AddProductSheet(
+        product: product,
+        category: category,
+        modifiers: modifiers,
+      ),
     );
 
-    noteController.dispose();
+    if (draft == null || !mounted) return;
 
-    if (added == true && mounted) {
+    try {
+      await ref.read(suiteRepositoryProvider).createOrder(
+        tableId: widget.table.id,
+        customerName: _customerNameController.text.trim(),
+        customerPhone: _customerPhoneController.text.trim(),
+        items: [draft.toPayload(product.id)],
+      );
+
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('${product.name} added to the order')),
       );
       setState(() {
         _future = _load();
       });
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(e.toString())));
     }
   }
 
   Future<void> _handleDecrease(OrderItemLine item) async {
-    if (item.quantity <= 1) {
-      await _handleRefund(item);
+    if (!item.canReduceQuantity) {
       return;
     }
 
@@ -452,7 +287,7 @@ class _WaiterOrderPageState extends ConsumerState<WaiterOrderPage> {
       () => ref.read(suiteRepositoryProvider).changeOrderItem(
             orderItemId: item.id,
             quantity: item.quantity - 1,
-            note: 'Reduced quantity from waiter app',
+            note: 'Quantity reduced by floor staff',
           ),
       '${item.name} quantity updated',
     );
@@ -462,7 +297,7 @@ class _WaiterOrderPageState extends ConsumerState<WaiterOrderPage> {
     await _runAction(
       () => ref.read(suiteRepositoryProvider).refundOrderItem(
             orderItemId: item.id,
-            note: 'Refunded from waiter app',
+            note: 'Refunded by floor staff',
           ),
       '${item.name} refunded',
     );
@@ -472,7 +307,7 @@ class _WaiterOrderPageState extends ConsumerState<WaiterOrderPage> {
     await _runAction(
       () => ref.read(suiteRepositoryProvider).returnOrderItemToKitchen(
             orderItemId: item.id,
-            note: 'Returned to kitchen from waiter app',
+            note: 'Returned to kitchen by floor staff',
           ),
       '${item.name} returned to kitchen',
     );
@@ -554,6 +389,227 @@ class _WaiterOrderPageState extends ConsumerState<WaiterOrderPage> {
   }
 }
 
+class _AddProductSheet extends StatefulWidget {
+  const _AddProductSheet({
+    required this.product,
+    required this.category,
+    required this.modifiers,
+  });
+
+  final MenuProduct product;
+  final MenuCategoryData category;
+  final List<ModifierData> modifiers;
+
+  @override
+  State<_AddProductSheet> createState() => _AddProductSheetState();
+}
+
+class _AddProductSheetState extends State<_AddProductSheet> {
+  final _noteController = TextEditingController();
+  final _selectedChoices = <int, int>{};
+  final _selectedModifiers = <int>{};
+  int _quantity = 1;
+
+  @override
+  void dispose() {
+    _noteController.dispose();
+    super.dispose();
+  }
+
+  void _submit() {
+    Navigator.of(context).pop(
+      _AddProductDraft(
+        quantity: _quantity,
+        note: _noteController.text.trim(),
+        choiceIds: _selectedChoices.values.toList(growable: false),
+        modifierIds: _selectedModifiers.toList(growable: false),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final product = widget.product;
+    final category = widget.category;
+    final modifiers = widget.modifiers;
+
+    return Padding(
+      padding: EdgeInsets.only(
+        left: 20,
+        right: 20,
+        top: 20,
+        bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+      ),
+      child: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(24),
+              child: SizedBox(
+                height: 190,
+                width: double.infinity,
+                child: BrandedImage(
+                  label: product.name,
+                  imageUrl: product.imageUrl,
+                  kind: BrandedImageKind.dish,
+                  overlay: const LinearGradient(
+                    colors: [Color(0x00000000), Color(0x44000000)],
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 18),
+            Text(
+              product.name,
+              style: Theme.of(context)
+                  .textTheme
+                  .titleLarge
+                  ?.copyWith(fontWeight: FontWeight.w800),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'EGP ${product.price.toStringAsFixed(2)}',
+              style: Theme.of(context)
+                  .textTheme
+                  .titleMedium
+                  ?.copyWith(fontWeight: FontWeight.w800),
+            ),
+            const SizedBox(height: 18),
+            Row(
+              children: [
+                const Text('Quantity'),
+                const Spacer(),
+                IconButton(
+                  onPressed: _quantity > 1
+                      ? () => setState(() => _quantity -= 1)
+                      : null,
+                  icon: const Icon(Icons.remove_circle_outline),
+                ),
+                Text('$_quantity'),
+                IconButton(
+                  onPressed: () => setState(() => _quantity += 1),
+                  icon: const Icon(Icons.add_circle_outline),
+                ),
+              ],
+            ),
+            TextField(
+              controller: _noteController,
+              decoration: const InputDecoration(
+                labelText: 'Order note',
+                hintText: 'No onions, extra napkins, serve first...',
+              ),
+            ),
+            if (category.questions.isNotEmpty) ...[
+              const SizedBox(height: 20),
+              for (final question in category.questions) ...[
+                Text(
+                  question.question,
+                  style: Theme.of(context)
+                      .textTheme
+                      .titleMedium
+                      ?.copyWith(fontWeight: FontWeight.w700),
+                ),
+                const SizedBox(height: 10),
+                Wrap(
+                  spacing: 10,
+                  runSpacing: 10,
+                  children: [
+                    for (final choice in question.choices)
+                      ChoiceChip(
+                        label: Text(choice.label),
+                        selected: _selectedChoices[question.id] == choice.id,
+                        onSelected: (_) {
+                          setState(() {
+                            _selectedChoices[question.id] = choice.id;
+                          });
+                        },
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+              ],
+            ],
+            if (modifiers.isNotEmpty) ...[
+              Text(
+                'Modifiers',
+                style: Theme.of(context)
+                    .textTheme
+                    .titleMedium
+                    ?.copyWith(fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: 10),
+              Wrap(
+                spacing: 10,
+                runSpacing: 10,
+                children: [
+                  for (final modifier in modifiers)
+                    FilterChip(
+                      label: Text(
+                        '${modifier.name} (+${modifier.price.toStringAsFixed(0)})',
+                      ),
+                      selected: _selectedModifiers.contains(modifier.id),
+                      onSelected: (selected) {
+                        setState(() {
+                          if (selected) {
+                            _selectedModifiers.add(modifier.id);
+                          } else {
+                            _selectedModifiers.remove(modifier.id);
+                          }
+                        });
+                      },
+                    ),
+                ],
+              ),
+            ],
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: _submit,
+                child: const Text('Add to order'),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _AddProductDraft {
+  const _AddProductDraft({
+    required this.quantity,
+    required this.note,
+    required this.choiceIds,
+    required this.modifierIds,
+  });
+
+  final int quantity;
+  final String note;
+  final List<int> choiceIds;
+  final List<int> modifierIds;
+
+  Map<String, dynamic> toPayload(int productId) {
+    return {
+      'product_id': productId,
+      'quantity': quantity,
+      if (note.isNotEmpty) 'note': note,
+      if (choiceIds.isNotEmpty)
+        'answers': choiceIds
+            .map((choiceId) => {'choice_id': choiceId})
+            .toList(growable: false),
+      if (modifierIds.isNotEmpty)
+        'modifiers': modifierIds
+            .map((modifierId) => {'modifier_id': modifierId})
+            .toList(growable: false),
+    };
+  }
+}
+
 class _OrderItemsCard extends StatelessWidget {
   const _OrderItemsCard({
     required this.items,
@@ -575,8 +631,7 @@ class _OrderItemsCard extends StatelessWidget {
           height: 260,
           child: EmptyView(
             title: 'No items yet',
-            description:
-                'Add products from the right-side menu to open the order.',
+            description: 'Add menu items to open the order.',
             icon: Icons.table_restaurant_outlined,
           ),
         ),
@@ -676,17 +731,22 @@ class _OrderItemsCard extends StatelessWidget {
                         children: [
                           IconButton(
                             tooltip: 'Reduce quantity',
-                            onPressed: () => onDecrease(item),
+                            onPressed: item.canReduceQuantity
+                                ? () => onDecrease(item)
+                                : null,
                             icon: const Icon(Icons.remove_circle_outline),
                           ),
                           IconButton(
                             tooltip: 'Refund item',
-                            onPressed: () => onRefund(item),
+                            onPressed:
+                                item.isVoided ? null : () => onRefund(item),
                             icon: const Icon(Icons.restart_alt_outlined),
                           ),
                           IconButton(
                             tooltip: 'Return to kitchen',
-                            onPressed: () => onReturnToKitchen(item),
+                            onPressed: item.canReturnToKitchen
+                                ? () => onReturnToKitchen(item)
+                                : null,
                             icon: const Icon(Icons.soup_kitchen_outlined),
                           ),
                         ],
@@ -803,7 +863,7 @@ class _MenuComposerCardState extends State<_MenuComposerCard> {
             ),
             const SizedBox(height: 4),
             const Text(
-              'Open one category at a time for a cleaner table-side menu.',
+              'Open one category at a time.',
             ),
             const SizedBox(height: 14),
             for (final category in widget.menu)

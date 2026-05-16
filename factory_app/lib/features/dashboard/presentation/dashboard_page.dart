@@ -43,8 +43,7 @@ class DashboardPage extends ConsumerWidget {
     };
 
     final subtitle = switch (session.activeRole) {
-      AppRole.customer =>
-        strings.t('role.customer'),
+      AppRole.customer => strings.t('role.customer'),
       AppRole.waiter => strings.t('role.waiter'),
       AppRole.cashier => strings.t('role.cashier'),
       AppRole.kitchen => strings.t('role.kitchen'),
@@ -59,6 +58,10 @@ class DashboardPage extends ConsumerWidget {
       AppRole.waiter => const Color(0xFFF7F2EA),
       AppRole.owner => const Color(0xFF0F172A),
     };
+    final width = MediaQuery.sizeOf(context).width;
+    final compact = width < 520;
+    final darkChrome = session.activeRole == AppRole.owner ||
+        session.activeRole == AppRole.kitchen;
 
     return Scaffold(
       backgroundColor: background,
@@ -66,20 +69,23 @@ class DashboardPage extends ConsumerWidget {
           ? null
           : AppBar(
               backgroundColor: background,
-              foregroundColor: session.activeRole == AppRole.owner ||
-                      session.activeRole == AppRole.kitchen
-                  ? Colors.white
-                  : null,
-              titleSpacing: 0,
+              foregroundColor: darkChrome ? Colors.white : null,
+              toolbarHeight: compact ? 64 : kToolbarHeight,
+              titleSpacing: compact ? 12 : 0,
               title: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(title),
+                  Text(
+                    title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                   Text(
                     subtitle,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: session.activeRole == AppRole.owner ||
-                                  session.activeRole == AppRole.kitchen
+                          color: darkChrome
                               ? Colors.white70
                               : Theme.of(context).colorScheme.onSurfaceVariant,
                         ),
@@ -109,43 +115,45 @@ class DashboardPage extends ConsumerWidget {
                       ];
                     },
                   ),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 8),
-                  child: Center(
-                    child: Text(
-                      session.name,
-                      style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                            fontWeight: FontWeight.w700,
-                            color: session.activeRole == AppRole.owner ||
-                                    session.activeRole == AppRole.kitchen
-                                ? Colors.white
-                                : null,
-                          ),
+                if (!compact)
+                  ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 160),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      child: Center(
+                        child: Text(
+                          session.name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style:
+                              Theme.of(context).textTheme.labelLarge?.copyWith(
+                                    fontWeight: FontWeight.w700,
+                                    color: darkChrome ? Colors.white : null,
+                                  ),
+                        ),
+                      ),
                     ),
                   ),
-                ),
                 IconButton(
                   tooltip: strings.t('action.logout'),
                   onPressed: () => ref.read(authProvider.notifier).logout(),
                   icon: const Icon(Icons.logout),
                 ),
-                LanguageToggle(
-                  compact: true,
-                  foregroundColor: session.activeRole == AppRole.owner ||
-                          session.activeRole == AppRole.kitchen
-                      ? Colors.white
-                      : null,
-                ),
+                if (width >= 390)
+                  LanguageToggle(
+                    compact: true,
+                    foregroundColor: darkChrome ? Colors.white : null,
+                  ),
               ],
             ),
       body: SafeArea(
         top: isCustomer,
         child: Padding(
           padding: EdgeInsets.fromLTRB(
-            isCustomer ? 0 : 18,
+            isCustomer ? 0 : (compact ? 12 : 18),
             isCustomer ? 0 : 8,
-            isCustomer ? 0 : 18,
-            isCustomer ? 0 : 18,
+            isCustomer ? 0 : (compact ? 12 : 18),
+            isCustomer ? 0 : (compact ? 12 : 18),
           ),
           child: workspace,
         ),

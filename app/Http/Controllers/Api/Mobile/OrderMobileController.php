@@ -486,9 +486,23 @@ public function sendToKDS(Request $request, Order $order)
         return $authResponse;
     }
 
-    // Mark only items that are still pending
+    $pendingActiveItemIds = $order->items()
+        ->whereNotIn('status', self::NON_ACTIVE_ITEM_STATUSES)
+        ->where(function ($query) {
+            $query->whereNull('kds_status')
+                ->orWhere('kds_status', 'pending');
+        })
+        ->pluck('id');
+
+    if ($pendingActiveItemIds->isEmpty()) {
+        return response()->json([
+            'error' => 'No active items are waiting to be sent to kitchen.',
+        ], 422);
+    }
+
+    // Mark only active items that have not been sent before.
     $updated = $order->items()
-        ->whereIn('kds_status', ['pending']) // not previously sent
+        ->whereIn('id', $pendingActiveItemIds)
         ->update([
             'kds_status' => 'queued',
             'kds_sent_at' => now(),

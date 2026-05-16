@@ -141,11 +141,11 @@
           <v-window-item value="stock">
             <div class="pa-6 text-grey-darken-1">
               <v-alert type="info" border="start" color="primary" variant="tonal" class="mb-4">
-                Coming soon: Move stock between branches, log movements, and adjustments here!
+                Coming soon: Move stock between branches, log movements, and record adjustments here.
               </v-alert>
               <div class="text-caption">
                 <v-icon color="primary" size="small" class="mr-1">mdi-information</v-icon>
-                Track stock movements and branch transfers in this section for better audit and control.
+                Track stock movements and branch transfers in this section for clearer audits.
               </div>
             </div>
           </v-window-item>

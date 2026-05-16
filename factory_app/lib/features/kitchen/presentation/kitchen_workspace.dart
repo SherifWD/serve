@@ -317,7 +317,7 @@ class _KitchenWorkspacePageState extends ConsumerState<KitchenWorkspacePage> {
                     child: EmptyView(
                       title: 'Kitchen is clear',
                       description:
-                          'Orders from the waiter app will appear here. This screen is intentionally minimal for speed.',
+                          'New dine-in orders will appear here as soon as they are sent.',
                       icon: Icons.soup_kitchen_outlined,
                     ),
                   )
@@ -460,87 +460,114 @@ class _KitchenHero extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: const Color(0xFF0E1625),
-        borderRadius: BorderRadius.circular(28),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.07)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final maxWidth = constraints.maxWidth;
+        final compact = maxWidth < 640;
+        final metricColumns = maxWidth >= 940
+            ? 5
+            : maxWidth >= 620
+                ? 3
+                : maxWidth >= 300
+                    ? 2
+                    : 1;
+        const metricSpacing = 12.0;
+        final metricWidth =
+            (maxWidth - metricSpacing * (metricColumns - 1)) / metricColumns;
+        final intro = Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Kitchen KDS',
+              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w900,
+                  ),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Minimal, readable, and made for quick movement. Tap a full ticket to move the lane. Tap a single item to move it forward.',
+              style: TextStyle(color: Colors.white70, height: 1.35),
+            ),
+          ],
+        );
+        const hints = Wrap(
+          spacing: 10,
+          runSpacing: 10,
+          children: [
+            _BoardHint(label: 'Tap ticket = move all'),
+            _BoardHint(label: 'Tap item = next step'),
+          ],
+        );
+
+        return Container(
+          padding: EdgeInsets.all(compact ? 16 : 20),
+          decoration: BoxDecoration(
+            color: const Color(0xFF0E1625),
+            borderRadius: BorderRadius.circular(compact ? 22 : 28),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.07)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+              if (!compact)
+                Row(
                   children: [
-                    Text(
-                      'Kitchen KDS',
-                      style:
-                          Theme.of(context).textTheme.headlineSmall?.copyWith(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w900,
-                              ),
-                    ),
-                    const SizedBox(height: 8),
-                    const Text(
-                      'Minimal, readable, and made for quick movement. Tap a full ticket to move the lane. Tap a single item to move it forward.',
-                      style: TextStyle(color: Colors.white70, height: 1.35),
-                    ),
+                    Expanded(child: intro),
+                    hints,
                   ],
                 ),
-              ),
-              const Wrap(
-                spacing: 10,
-                runSpacing: 10,
+              if (compact) ...[
+                intro,
+                const SizedBox(height: 14),
+                hints,
+              ],
+              const SizedBox(height: 18),
+              Wrap(
+                spacing: metricSpacing,
+                runSpacing: metricSpacing,
                 children: [
-                  _BoardHint(label: 'Tap ticket = move all'),
-                  _BoardHint(label: 'Tap item = next step'),
+                  _KitchenMetric(
+                    width: metricWidth,
+                    title: 'Queued',
+                    value: '$queued',
+                    detail: '$queuedItems items',
+                    color: const Color(0xFFF59E0B),
+                  ),
+                  _KitchenMetric(
+                    width: metricWidth,
+                    title: 'Preparing',
+                    value: '$preparing',
+                    detail: '$preparingItems items',
+                    color: const Color(0xFF38BDF8),
+                  ),
+                  _KitchenMetric(
+                    width: metricWidth,
+                    title: 'Ready',
+                    value: '$ready',
+                    detail: '$readyItems items',
+                    color: const Color(0xFF34D399),
+                  ),
+                  _KitchenMetric(
+                    width: metricWidth,
+                    title: 'Served',
+                    value: '$servedItems',
+                    detail: 'items',
+                    color: const Color(0xFFF4F7FB),
+                  ),
+                  _KitchenMetric(
+                    width: metricWidth,
+                    title: 'Returned',
+                    value: '$returnedItems',
+                    detail: 'items',
+                    color: const Color(0xFFF87171),
+                  ),
                 ],
               ),
             ],
           ),
-          const SizedBox(height: 18),
-          Wrap(
-            spacing: 12,
-            runSpacing: 12,
-            children: [
-              _KitchenMetric(
-                title: 'Queued',
-                value: '$queued',
-                detail: '$queuedItems items',
-                color: const Color(0xFFF59E0B),
-              ),
-              _KitchenMetric(
-                title: 'Preparing',
-                value: '$preparing',
-                detail: '$preparingItems items',
-                color: const Color(0xFF38BDF8),
-              ),
-              _KitchenMetric(
-                title: 'Ready',
-                value: '$ready',
-                detail: '$readyItems items',
-                color: const Color(0xFF34D399),
-              ),
-              _KitchenMetric(
-                title: 'Served',
-                value: '$servedItems',
-                detail: 'items',
-                color: const Color(0xFFF4F7FB),
-              ),
-              _KitchenMetric(
-                title: 'Returned',
-                value: '$returnedItems',
-                detail: 'items',
-                color: const Color(0xFFF87171),
-              ),
-            ],
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 }
@@ -579,28 +606,31 @@ class _KitchenLane extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        title,
-                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w900,
-                            ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        subtitle,
-                        style: const TextStyle(color: Colors.white54),
-                      ),
-                    ],
-                  ),
-                ),
-                Container(
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final compact = constraints.maxWidth < 360;
+                final titleBlock = Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w900,
+                          ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      subtitle,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(color: Colors.white54),
+                    ),
+                  ],
+                );
+                final badge = Container(
                   padding:
                       const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   decoration: BoxDecoration(
@@ -614,8 +644,26 @@ class _KitchenLane extends StatelessWidget {
                       fontWeight: FontWeight.w900,
                     ),
                   ),
-                ),
-              ],
+                );
+
+                if (compact) {
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      titleBlock,
+                      const SizedBox(height: 10),
+                      badge,
+                    ],
+                  );
+                }
+
+                return Row(
+                  children: [
+                    Expanded(child: titleBlock),
+                    badge,
+                  ],
+                );
+              },
             ),
             const SizedBox(height: 14),
             if (tickets.isEmpty)
@@ -682,31 +730,34 @@ class _KitchenTicketCard extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  final compact = constraints.maxWidth < 380;
+                  final titleBlock = Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Order #${ticket.id} • ${ticket.tableName}',
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style:
+                            Theme.of(context).textTheme.titleMedium?.copyWith(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w900,
+                                ),
+                      ),
+                      if ((ticket.waiter ?? '').isNotEmpty) ...[
+                        const SizedBox(height: 4),
                         Text(
-                          'Order #${ticket.id} • ${ticket.tableName}',
-                          style:
-                              Theme.of(context).textTheme.titleMedium?.copyWith(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.w900,
-                                  ),
+                          'Waiter ${ticket.waiter}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(color: Colors.white60),
                         ),
-                        if ((ticket.waiter ?? '').isNotEmpty) ...[
-                          const SizedBox(height: 4),
-                          Text(
-                            'Waiter ${ticket.waiter}',
-                            style: const TextStyle(color: Colors.white60),
-                          ),
-                        ],
                       ],
-                    ),
-                  ),
-                  Container(
+                    ],
+                  );
+                  final badge = Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 10,
                       vertical: 8,
@@ -723,8 +774,26 @@ class _KitchenTicketCard extends StatelessWidget {
                         fontSize: 12,
                       ),
                     ),
-                  ),
-                ],
+                  );
+
+                  if (compact) {
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        titleBlock,
+                        const SizedBox(height: 10),
+                        badge,
+                      ],
+                    );
+                  }
+
+                  return Row(
+                    children: [
+                      Expanded(child: titleBlock),
+                      badge,
+                    ],
+                  );
+                },
               ),
               const SizedBox(height: 14),
               for (final item in items)
@@ -810,10 +879,8 @@ class _KitchenItemTile extends StatelessWidget {
                       spacing: 8,
                       runSpacing: 8,
                       children: [
-                        if (item.modifiers.isNotEmpty)
-                          _KitchenSignalToken(
-                            label: '+ ${item.modifiers.length} mods',
-                          ),
+                        for (final modifier in item.modifiers)
+                          _KitchenSignalToken(label: modifier),
                         if ((item.itemNote ?? '').isNotEmpty ||
                             (item.changeNote ?? '').isNotEmpty)
                           _KitchenSignalToken(
@@ -943,12 +1010,14 @@ class _ActionConfirmButton extends StatelessWidget {
 
 class _KitchenMetric extends StatelessWidget {
   const _KitchenMetric({
+    required this.width,
     required this.title,
     required this.value,
     required this.detail,
     required this.color,
   });
 
+  final double width;
   final String title;
   final String value;
   final String detail;
@@ -957,7 +1026,7 @@ class _KitchenMetric extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 180,
+      width: width,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.05),
@@ -970,6 +1039,8 @@ class _KitchenMetric extends StatelessWidget {
           const SizedBox(height: 8),
           Text(
             value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
             style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                   color: color,
                   fontWeight: FontWeight.w900,
@@ -978,6 +1049,8 @@ class _KitchenMetric extends StatelessWidget {
           const SizedBox(height: 4),
           Text(
             detail,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
             style: const TextStyle(color: Colors.white54),
           ),
         ],

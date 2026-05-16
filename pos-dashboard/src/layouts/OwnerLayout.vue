@@ -15,13 +15,13 @@
           <div>
             <div class="brand-title">Restaurant Suite</div>
             <div class="brand-subtitle">
-              {{ auth.isAdmin ? 'Platform Admin Console' : 'Owner Control Center' }}
+              {{ auth.isAdmin ? 'Admin Dashboard' : 'Owner Dashboard' }}
             </div>
           </div>
         </div>
 
         <div class="workspace-card">
-          <div class="workspace-label">Current Workspace</div>
+          <div class="workspace-label">Current Access</div>
           <div class="workspace-name">{{ auth.displayWorkspace }}</div>
           <div class="workspace-meta">
             {{ auth.displayRole }}
@@ -90,7 +90,7 @@
             <template #activator="{ props }">
               <button class="account-button" v-bind="props">
                 <div class="account-copy">
-                  <span class="account-name">{{ auth.user?.name || 'Operator' }}</span>
+                  <span class="account-name">{{ auth.user?.name || 'User' }}</span>
                   <span class="account-email">{{ auth.user?.email || 'No email' }}</span>
                 </div>
                 <div class="account-avatar">
@@ -133,7 +133,7 @@ const navSections = [
     ],
   },
   {
-    title: 'Platform',
+    title: 'Admin',
     items: [
       { to: '/restaurants', title: 'Restaurants', icon: 'mdi-storefront-outline', permission: 'platform.restaurants.manage' },
       { to: '/branches', title: 'Branches', icon: 'mdi-map-marker-radius-outline', permission: 'branches.view' },
@@ -160,7 +160,7 @@ const navSections = [
     ],
   },
   {
-    title: 'Supply Chain',
+    title: 'Inventory',
     items: [
       { to: '/inventory', title: 'Inventory', icon: 'mdi-warehouse', permission: 'inventory.view' },
       { to: '/suppliers', title: 'Suppliers', icon: 'mdi-truck-delivery-outline', permission: 'suppliers.view' },

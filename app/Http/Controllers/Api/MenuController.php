@@ -29,17 +29,17 @@ class MenuController extends Controller
         $data = $request->validate([
             'name' => 'required|string|max:255',
             'branch_id' => 'required|exists:branches,id',
-            'categories' => 'array',
+            'categories' => 'nullable|array',
             'categories.*' => 'exists:categories,id',
         ]);
         $data['branch_id'] = $this->branchIdForWrite($request, (int) $data['branch_id']);
-        $this->ensureCategoriesBelongToBranch($request, $data['categories'] ?? [], (int) $data['branch_id']);
+        $categoryIds = $this->categoryIdsForUse($request, $data['categories'] ?? [], (int) $data['branch_id']);
         $menu = Menu::create([
             'name' => $data['name'],
             'branch_id' => $data['branch_id'],
         ]);
-        if (!empty($data['categories'])) {
-            $menu->categories()->sync($data['categories']);
+        if ($categoryIds) {
+            $menu->categories()->sync($categoryIds);
         }
         return response()->json(['data' => $menu->load('categories')], 201);
     }
@@ -50,17 +50,17 @@ class MenuController extends Controller
         $data = $request->validate([
             'name' => 'required|string|max:255',
             'branch_id' => 'required|exists:branches,id',
-            'categories' => 'array',
+            'categories' => 'nullable|array',
             'categories.*' => 'exists:categories,id',
         ]);
         $data['branch_id'] = $this->branchIdForWrite($request, (int) $data['branch_id']);
-        $this->ensureCategoriesBelongToBranch($request, $data['categories'] ?? [], (int) $data['branch_id']);
+        $categoryIds = $this->categoryIdsForUse($request, $data['categories'] ?? [], (int) $data['branch_id']);
         $menu->update([
             'name' => $data['name'],
             'branch_id' => $data['branch_id'],
         ]);
         if (isset($data['categories'])) {
-            $menu->categories()->sync($data['categories']);
+            $menu->categories()->sync($categoryIds);
         }
         return response()->json(['data' => $menu->load('categories')]);
     }
@@ -73,18 +73,45 @@ class MenuController extends Controller
         return response()->json(['success' => true]);
     }
 
-    private function ensureCategoriesBelongToBranch(Request $request, array $categoryIds, int $branchId): void
+    private function categoryIdsForUse(Request $request, array $categoryIds, int $branchId): array
     {
+        $categoryIds = collect($categoryIds)
+            ->map(fn ($id) => (int) $id)
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+
         if (!$categoryIds) {
-            return;
+            return [];
         }
 
-        $count = Category::query()
-            ->whereIn('id', $categoryIds)
-            ->where('branch_id', $branchId)
-            ->count();
-
-        abort_unless($count === count(array_unique($categoryIds)), 422, 'Menu categories must belong to the selected branch.');
         $this->ensureBranchAccess($request, $branchId);
+
+        $query = Category::query()
+            ->whereIn('id', $categoryIds);
+
+        $user = $request->user();
+        if (!$user?->isPlatformAdmin()) {
+            if ($user?->branch_id) {
+                $query->where(function ($scope) use ($user) {
+                    $scope->whereNull('branch_id')
+                        ->orWhere('branch_id', $user->branch_id);
+                });
+            } elseif ($user?->restaurant_id) {
+                $query->where(function ($scope) use ($user) {
+                    $scope->whereNull('branch_id')
+                        ->orWhereHas('branch', fn ($branchQuery) => $branchQuery->where('restaurant_id', $user->restaurant_id));
+                });
+            } else {
+                $query->whereRaw('1 = 0');
+            }
+        }
+
+        $count = $query->count();
+
+        abort_unless($count === count($categoryIds), 422, 'Menu categories must be available to the selected restaurant.');
+
+        return $categoryIds;
     }
 }

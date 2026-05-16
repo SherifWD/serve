@@ -579,7 +579,7 @@ class _CustomerHomeTabState extends ConsumerState<_CustomerHomeTab> {
                   _HeroSlideData(
                     title: 'Your favorite restaurants, remembered by branch.',
                     subtitle:
-                        'Talabat-inspired discovery for dine-in history, reorder speed, and offers.',
+                        'Find recent visits, favorite branches, and rewards without searching through receipts.',
                     eyebrow: 'Fast reorder',
                     action: 'See popular brands',
                   ),
@@ -587,14 +587,14 @@ class _CustomerHomeTabState extends ConsumerState<_CustomerHomeTab> {
                     title:
                         'Coffee runs, desserts, and brunch spots in one flow.',
                     subtitle:
-                        'Browse restaurants and cafes the same way a modern marketplace app should feel.',
+                        'Browse restaurants, cafes, and dishes in one place.',
                     eyebrow: 'Cafe picks',
                     action: 'Open cafe section',
                   ),
                   _HeroSlideData(
                     title: 'Rewards stay visible while you browse.',
                     subtitle:
-                        'Your points, recent orders, and new restaurants stay on the same home surface.',
+                        'Your points, recent orders, and new restaurants stay on the home screen.',
                     eyebrow: 'Loyalty',
                     action: 'Use your points',
                   ),
@@ -627,15 +627,14 @@ class _CustomerHomeTabState extends ConsumerState<_CustomerHomeTab> {
               const SizedBox(height: 22),
               const _SectionTitle(
                 title: 'Order again',
-                subtitle:
-                    'The last meals you had, with branch memory and one-tap style cards.',
+                subtitle: 'Previous paid orders with branch and item details.',
               ),
               const SizedBox(height: 12),
               if (data.recentOrders.isEmpty)
                 const _SoftEmptyCard(
                   title: 'No previous orders yet',
                   description:
-                      'When a restaurant attaches your phone to a paid order, it will appear here with branch and item memory.',
+                      'When a restaurant adds your phone to a paid order, it will appear here.',
                 )
               else
                 SizedBox(
@@ -672,15 +671,14 @@ class _CustomerHomeTabState extends ConsumerState<_CustomerHomeTab> {
               const SizedBox(height: 22),
               const _SectionTitle(
                 title: 'Popular restaurants',
-                subtitle:
-                    'Image-first brand cards with multi-branch visibility.',
+                subtitle: 'Restaurants available to your account.',
               ),
               const SizedBox(height: 12),
               if (restaurants.isEmpty)
                 const _SoftEmptyCard(
                   title: 'No restaurants available',
                   description:
-                      'Restaurants seeded into the suite will appear here automatically.',
+                      'Restaurants will appear here once they are added.',
                 )
               else
                 SizedBox(
@@ -700,14 +698,14 @@ class _CustomerHomeTabState extends ConsumerState<_CustomerHomeTab> {
               const _SectionTitle(
                 title: 'Cafe and dessert picks',
                 subtitle:
-                    'Separate cafe visibility, like a marketplace should provide.',
+                    'Cafes and bakeries listed separately for quicker browsing.',
               ),
               const SizedBox(height: 12),
               if (cafes.isEmpty)
                 const _SoftEmptyCard(
-                  title: 'No cafes seeded yet',
+                  title: 'No cafes available yet',
                   description:
-                      'Cafes and bakeries will appear here once they exist in the suite.',
+                      'Cafes and bakeries will appear here once they are added.',
                 )
               else
                 SizedBox(
@@ -724,16 +722,15 @@ class _CustomerHomeTabState extends ConsumerState<_CustomerHomeTab> {
                 ),
               const SizedBox(height: 22),
               const _SectionTitle(
-                title: 'Featured dishes on the platform',
-                subtitle:
-                    'Menu items with image surfaces, ready for visual browsing.',
+                title: 'Featured dishes',
+                subtitle: 'Popular menu items with photos when available.',
               ),
               const SizedBox(height: 12),
               if (featuredDishes.isEmpty)
                 const _SoftEmptyCard(
                   title: 'No featured dishes yet',
                   description:
-                      'Once product images are uploaded they will appear here automatically. Until then the app shows rich default artwork.',
+                      'Featured menu items will appear here once photos are uploaded.',
                 )
               else
                 SizedBox(
@@ -925,7 +922,7 @@ class _CustomerRestaurantsTabState
         const _SectionTitle(
           title: 'Restaurants and cafes',
           subtitle:
-              'Talabat-style browse sections with image-forward venue cards.',
+              'Browse available venues with clear photos, branches, and dishes.',
         ),
         const SizedBox(height: 12),
         Row(
@@ -1224,8 +1221,7 @@ class _CustomerRewardsTabState extends ConsumerState<_CustomerRewardsTab> {
           const SizedBox(height: 18),
           const _SectionTitle(
             title: 'Reward perks',
-            subtitle:
-                'A simple, visible wallet section just like a strong marketplace loyalty flow should feel.',
+            subtitle: 'Your points and visit benefits in one place.',
           ),
           const SizedBox(height: 12),
           Row(
@@ -1499,7 +1495,7 @@ class _WalletSnapshotCard extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const Text(
-                        'Restaurant Suite Rewards',
+                        'Rewards',
                         style: TextStyle(
                           color: Colors.white70,
                           fontWeight: FontWeight.w700,
@@ -1518,7 +1514,7 @@ class _WalletSnapshotCard extends StatelessWidget {
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        '$customerName has $ordersCount recent orders remembered in the suite.',
+                        '$customerName has $ordersCount recent orders saved.',
                         style:
                             const TextStyle(color: Colors.white70, height: 1.4),
                       ),
@@ -2589,7 +2585,7 @@ class _RestaurantHeroCard extends StatelessWidget {
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        '${restaurant.branchCount} branches in the suite',
+                        '${restaurant.branchCount} branches available',
                         style: const TextStyle(color: Colors.white70),
                       ),
                     ],
@@ -2783,7 +2779,7 @@ class _CustomerDishDetailSheet extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           const Text(
-            'This customer app currently supports discovery, visit memory, and rewards visibility. Ordering still happens inside the restaurant workflow.',
+            'Ordering is handled by the restaurant team during the visit.',
             style: TextStyle(color: Color(0xFF8B6B4C), height: 1.45),
           ),
         ],

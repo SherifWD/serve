@@ -401,6 +401,19 @@ class OrderItemLine {
   bool get isPaid => paymentStatus == 'paid';
   bool get isVoided =>
       status == 'refunded' || status == 'canceled' || status == 'cancelled';
+  bool get canReduceQuantity => !isVoided && quantity > 1;
+  bool get canSendToKitchen {
+    final kitchenStatus = kdsStatus ?? status;
+    return !isVoided &&
+        (kitchenStatus == null ||
+            kitchenStatus == 'pending' ||
+            kitchenStatus == 'changed');
+  }
+
+  bool get canReturnToKitchen {
+    final kitchenStatus = kdsStatus ?? status;
+    return !isVoided && (kitchenStatus == 'ready' || kitchenStatus == 'served');
+  }
 
   String get kitchenStatusLabel {
     switch (kdsStatus ?? status) {

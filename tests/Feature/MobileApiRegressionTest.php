@@ -15,6 +15,7 @@ use App\Models\FiscalProfile;
 use App\Models\Device;
 use App\Models\InventoryItem;
 use App\Models\InventoryTransaction;
+use App\Models\Menu;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Payment;
@@ -24,6 +25,7 @@ use App\Models\PrintJob;
 use App\Models\Product;
 use App\Models\PurchaseOrder;
 use App\Models\Receipt;
+use App\Models\Recipe;
 use App\Models\RestaurantSubscription;
 use App\Models\StockTransfer;
 use App\Models\SubscriptionPlan;
@@ -78,6 +80,37 @@ class MobileApiRegressionTest extends TestCase
             'note' => 'invalid transition',
         ])->assertUnprocessable()
             ->assertJsonValidationErrors(['action']);
+    }
+
+    public function test_send_to_kds_rejects_order_with_only_refunded_items(): void
+    {
+        $order = Order::query()
+            ->with(['items', 'table'])
+            ->whereHas('table')
+            ->whereHas('items')
+            ->firstOrFail();
+
+        $order->forceFill([
+            'status' => 'pending',
+            'kds_sent_at' => null,
+        ])->save();
+        $order->items()->update([
+            'status' => 'refunded',
+            'kds_status' => 'pending',
+            'kds_sent_at' => null,
+        ]);
+
+        Sanctum::actingAs($this->staffUserForBranch((int) $order->branch_id, 'waiter'));
+
+        $this->postJson("/api/mobile/orders/{$order->id}/send-to-kds")
+            ->assertUnprocessable()
+            ->assertJsonPath('error', 'No active items are waiting to be sent to kitchen.');
+
+        $this->assertNull($order->fresh()->kds_sent_at);
+        $this->assertSame(
+            ['pending'],
+            $order->items()->pluck('kds_status')->unique()->values()->all(),
+        );
     }
 
     public function test_cross_branch_cashier_cannot_pay_a_foreign_order(): void
@@ -294,6 +327,11 @@ class MobileApiRegressionTest extends TestCase
             ->with('order.table')
             ->whereHas('order.table')
             ->firstOrFail();
+        $item->forceFill([
+            'status' => 'ready',
+            'kds_status' => 'ready',
+            'kds_sent_at' => now(),
+        ])->save();
 
         Sanctum::actingAs($this->staffUserForBranch((int) $item->order->branch_id, 'waiter'));
 
@@ -306,6 +344,32 @@ class MobileApiRegressionTest extends TestCase
 
         $this->assertSame('returned', $item->status);
         $this->assertSame('returned', $item->kds_status);
+    }
+
+    public function test_waiter_cannot_return_item_before_kitchen_finishes_it(): void
+    {
+        $item = OrderItem::query()
+            ->with('order.table')
+            ->whereHas('order.table')
+            ->firstOrFail();
+        $item->forceFill([
+            'status' => 'pending',
+            'kds_status' => 'pending',
+            'kds_sent_at' => null,
+        ])->save();
+
+        Sanctum::actingAs($this->staffUserForBranch((int) $item->order->branch_id, 'waiter'));
+
+        $this->patchJson("/api/mobile/order-items/{$item->id}/refund-change", [
+            'action' => 'return',
+            'note' => 'Returned too early',
+        ])->assertUnprocessable()
+            ->assertJsonPath('error', 'Only ready or served items can be returned to kitchen.');
+
+        $item->refresh();
+
+        $this->assertSame('pending', $item->status);
+        $this->assertSame('pending', $item->kds_status);
     }
 
     public function test_owner_summary_includes_date_range_and_branch_stock_label(): void
@@ -504,6 +568,110 @@ class MobileApiRegressionTest extends TestCase
                 ->contains(fn (AuditLog $log) => ($log->changes['path'] ?? null) === 'api/onboarding/restaurants'),
             'Onboarding mutation was not captured in the API audit log.'
         );
+    }
+
+    public function test_dashboard_can_create_multiple_tables_with_optional_seats(): void
+    {
+        $admin = User::query()->where('email', 'admin@restaurant-suite.com')->firstOrFail();
+        $branch = Branch::query()
+            ->whereNotNull('restaurant_id')
+            ->firstOrFail();
+
+        Sanctum::actingAs($admin);
+
+        $response = $this->postJson('/api/tables', [
+            'restaurant_id' => $branch->restaurant_id,
+            'branch_id' => $branch->id,
+            'tables' => [
+                ['name' => 'Regression Patio 1'],
+                ['name' => 'Regression Patio 2', 'seats' => 4],
+            ],
+        ])->assertCreated()
+            ->assertJsonCount(2, 'data');
+
+        $this->assertDatabaseHas('tables', [
+            'branch_id' => $branch->id,
+            'name' => 'Regression Patio 1',
+            'seats' => null,
+        ]);
+        $this->assertDatabaseHas('tables', [
+            'branch_id' => $branch->id,
+            'name' => 'Regression Patio 2',
+            'seats' => 4,
+        ]);
+
+        $tableId = collect($response->json('data'))->firstWhere('name', 'Regression Patio 1')['id'];
+
+        $this->putJson("/api/tables/{$tableId}", [
+            'restaurant_id' => $branch->restaurant_id,
+            'branch_id' => $branch->id,
+            'name' => 'Regression Patio 1A',
+            'seats' => null,
+        ])->assertOk();
+
+        $this->assertDatabaseHas('tables', [
+            'id' => $tableId,
+            'name' => 'Regression Patio 1A',
+            'seats' => null,
+        ]);
+    }
+
+    public function test_dashboard_catalog_can_reuse_categories_and_assign_existing_recipe(): void
+    {
+        $admin = User::query()->where('email', 'admin@restaurant-suite.com')->firstOrFail();
+        $branch = Branch::query()
+            ->whereNotNull('restaurant_id')
+            ->firstOrFail();
+        $category = Category::query()
+            ->whereNotNull('branch_id')
+            ->where('branch_id', '!=', $branch->id)
+            ->firstOrFail();
+        $recipe = Recipe::query()
+            ->where('branch_id', $branch->id)
+            ->first() ?: Recipe::create([
+                'branch_id' => $branch->id,
+                'description' => 'Regression reusable recipe',
+            ]);
+
+        Sanctum::actingAs($admin);
+
+        $categoriesResponse = $this->getJson('/api/categories')
+            ->assertOk();
+        $categoryNames = collect($categoriesResponse->json('data'))
+            ->pluck('name')
+            ->map(fn ($name) => mb_strtolower(trim((string) $name)));
+
+        $this->assertSame(
+            $categoryNames->count(),
+            $categoryNames->unique()->count(),
+            'Category API returned duplicate category names.'
+        );
+
+        $this->postJson('/api/menus', [
+            'name' => 'Regression Shared Category Menu',
+            'branch_id' => $branch->id,
+            'categories' => [$category->id],
+        ])->assertCreated()
+            ->assertJsonPath('data.categories.0.id', $category->id);
+
+        $this->postJson('/api/products', [
+            'name' => 'Regression Recipe Product',
+            'category_id' => $category->id,
+            'branch_id' => $branch->id,
+            'price' => 55,
+            'is_available' => true,
+            'recipe_id' => $recipe->id,
+        ])->assertCreated();
+
+        $product = Product::query()
+            ->where('name', 'Regression Recipe Product')
+            ->with('recipe')
+            ->firstOrFail();
+
+        $this->assertSame((int) $category->id, (int) $product->category_id);
+        $this->assertSame(0, (int) $product->min_stock);
+        $this->assertNotNull($product->recipe);
+        $this->assertSame($recipe->description, $product->recipe->description);
     }
 
     public function test_restaurant_owner_cannot_onboard_restaurants(): void

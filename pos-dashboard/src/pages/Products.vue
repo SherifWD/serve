@@ -77,37 +77,37 @@
           </v-btn>
         </v-toolbar>
         <v-divider />
-        <v-tabs v-model="tab" fixed-tabs color="primary" class="mb-2 mt-4">
-          <v-tab value="general">General Info</v-tab>
-          <v-tab value="recipe">Recipe</v-tab>
-        </v-tabs>
-        <v-window v-model="tab">
-          <!-- General Info Tab -->
-          <v-window-item value="general">
-            <v-form @submit.prevent="saveProduct" class="pa-6">
+        <v-form @submit.prevent="saveProduct">
+          <v-tabs v-model="tab" fixed-tabs color="primary" class="mb-2 mt-4">
+            <v-tab value="general">General Info</v-tab>
+            <v-tab value="recipe">Recipe</v-tab>
+          </v-tabs>
+          <v-window v-model="tab">
+            <!-- General Info Tab -->
+            <v-window-item value="general">
+              <div class="pa-6">
               <v-text-field label="Name" v-model="drawerForm.name" required variant="outlined" color="primary" class="mb-4 rounded-xl" />
-              <v-select label="Category" :items="categories" item-title="name" item-value="id" v-model="drawerForm.category_id" required variant="outlined" color="primary" class="mb-4 rounded-xl" />
-              <v-select label="Branch" :items="branches" item-title="name" item-value="id" v-model="drawerForm.branch_id" required variant="outlined" color="primary" class="mb-4 rounded-xl" />
+              <v-select label="Category" :items="categoryItems" item-title="name" item-value="id" v-model="drawerForm.category_id" required variant="outlined" color="primary" class="mb-4 rounded-xl" :menu-props="{ contentClass: 'dashboard-select-menu' }" />
+              <v-select label="Branch" :items="branches" item-title="name" item-value="id" v-model="drawerForm.branch_id" required variant="outlined" color="primary" class="mb-4 rounded-xl" :menu-props="{ contentClass: 'dashboard-select-menu' }" @update:model-value="onBranchChange" />
               <v-text-field label="Price" v-model="drawerForm.price" type="number" required variant="outlined" color="primary" class="mb-4 rounded-xl" />
+              <v-text-field label="Minimum stock" v-model="drawerForm.min_stock" type="number" min="0" variant="outlined" color="primary" class="mb-4 rounded-xl" />
               <v-switch label="Available" v-model="drawerForm.is_available" color="primary" inset class="mb-6" style="--v-switch-track-color: #2a9d8f;" />
-              <v-btn color="primary" class="rounded-pill mt-2" block size="large" style="color:#181818;font-weight:bold;" type="submit">
-                <v-icon start>mdi-check</v-icon>{{ isEditing ? 'Update' : 'Add' }}
-              </v-btn>
-            </v-form>
-          </v-window-item>
-          <!-- Recipe Tab -->
-          <v-window-item value="recipe">
-            <div class="pa-6">
+              </div>
+            </v-window-item>
+            <!-- Recipe Tab -->
+            <v-window-item value="recipe">
+              <div class="pa-6">
               <v-select
                 label="Recipe"
-                :items="recipes"
-                item-title="description"
+                :items="filteredRecipes"
+                :item-title="recipeTitle"
                 item-value="id"
                 v-model="drawerForm.recipe_id"
                 clearable
                 variant="outlined"
                 color="primary"
                 class="mb-4 rounded-xl"
+                :menu-props="{ contentClass: 'dashboard-select-menu' }"
                 @update:model-value="onRecipeChange"
               />
               <!-- Recipe preview below -->
@@ -127,9 +127,32 @@
                 </div>
                 <div v-else class="text-caption" style="color:#bbb;">No ingredients assigned to this recipe.</div>
               </div>
-            </div>
-          </v-window-item>
-        </v-window>
+              </div>
+            </v-window-item>
+          </v-window>
+
+          <div class="px-6 pb-6">
+            <v-alert
+              v-if="formError"
+              type="error"
+              variant="tonal"
+              class="mb-4"
+            >
+              {{ formError }}
+            </v-alert>
+            <v-btn
+              color="primary"
+              class="rounded-pill mt-2"
+              block
+              size="large"
+              style="color:#181818;font-weight:bold;"
+              type="submit"
+              :disabled="!canSaveProduct"
+            >
+              <v-icon start>mdi-check</v-icon>{{ isEditing ? 'Update' : 'Add' }}
+            </v-btn>
+          </div>
+        </v-form>
       </v-navigation-drawer>
 
       <!-- View Drawer (Read Only) -->
@@ -206,10 +229,12 @@ const drawerForm = ref({
   price: '',
   branch_id: null,
   is_available: true,
+  min_stock: 0,
   recipe_id: null,
 })
 const viewProduct = ref({})
 const search = ref('')
+const formError = ref('')
 
 const headers = [
   { text: 'Name', value: 'name' },
@@ -232,8 +257,32 @@ const filteredProducts = computed(() => {
 
 const selectedRecipe = computed(() => {
   if (!drawerForm.value.recipe_id) return null
-  return recipes.value.find(r => r.id === drawerForm.value.recipe_id)
+  return recipes.value.find(r => Number(r.id) === Number(drawerForm.value.recipe_id))
 })
+
+const categoryItems = computed(() => {
+  const seen = new Set()
+  return categories.value.filter((category) => {
+    const key = category.name.trim().toLowerCase()
+    if (seen.has(key)) return false
+    seen.add(key)
+    return true
+  })
+})
+
+const filteredRecipes = computed(() => {
+  if (!drawerForm.value.branch_id) return recipes.value
+  return recipes.value.filter((recipe) =>
+    !recipe.branch_id || Number(recipe.branch_id) === Number(drawerForm.value.branch_id)
+  )
+})
+
+const canSaveProduct = computed(() =>
+  Boolean(drawerForm.value.name.trim()) &&
+  Boolean(drawerForm.value.category_id) &&
+  Boolean(drawerForm.value.branch_id) &&
+  Number(drawerForm.value.price) >= 0
+)
 
 async function loadProducts() {
   try {
@@ -279,6 +328,7 @@ function openAddDrawer() {
   isEditing.value = false;
   drawerTitle.value = 'Add Product';
   tab.value = 'general';
+  formError.value = '';
   drawerForm.value = { 
     id: null, 
     name: '', 
@@ -286,6 +336,7 @@ function openAddDrawer() {
     price: '', 
     branch_id: null,
     is_available: true, 
+    min_stock: 0,
     recipe_id: null,
   };
   rightDrawer.value = true;
@@ -295,6 +346,7 @@ function openEditDrawer(product) {
   isEditing.value = true;
   drawerTitle.value = 'Edit Product';
   tab.value = 'general';
+  formError.value = '';
   drawerForm.value = {
     id: product.id,
     name: product.name,
@@ -302,6 +354,7 @@ function openEditDrawer(product) {
     price: product.price,
     branch_id: product.branch_id,
     is_available: !!product.is_available,
+    min_stock: product.min_stock ?? 0,
     recipe_id: product.recipe?.id || null,
   };
   rightDrawer.value = true;
@@ -312,32 +365,59 @@ function openViewDrawer(product) {
   viewDrawer.value = true;
 }
 
-function onRecipeChange(val) {
-  // Optionally handle changes
+function recipeTitle(recipe) {
+  return recipe?.description || `Recipe #${recipe?.id ?? ''}`
+}
+
+function onBranchChange() {
+  if (!drawerForm.value.recipe_id) return
+  const stillAvailable = filteredRecipes.value.some((recipe) =>
+    Number(recipe.id) === Number(drawerForm.value.recipe_id)
+  )
+  if (!stillAvailable) drawerForm.value.recipe_id = null
+}
+
+function onRecipeChange() {
+  formError.value = ''
 }
 
 async function saveProduct() {
+  if (!canSaveProduct.value) return
+
   const token = localStorage.getItem('token');
   const url = isEditing.value
     ? `${API_BASE_URL}/products/${drawerForm.value.id}`
     : `${API_BASE_URL}/products`;
   const method = isEditing.value ? 'put' : 'post';
 
-  // Only pass the recipe_id, not the whole recipe object
   const payload = {
-    ...drawerForm.value,
+    name: drawerForm.value.name.trim(),
+    category_id: drawerForm.value.category_id,
+    branch_id: drawerForm.value.branch_id,
+    price: Number(drawerForm.value.price),
+    is_available: drawerForm.value.is_available,
+    min_stock: drawerForm.value.min_stock === '' || drawerForm.value.min_stock === null
+      ? 0
+      : Number(drawerForm.value.min_stock),
     recipe_id: drawerForm.value.recipe_id,
   }
 
   try {
+    formError.value = '';
     await axios[method](url, payload, {
       headers: { Authorization: `Bearer ${token}` }
     });
     rightDrawer.value = false;
     loadProducts();
   } catch (error) {
-    console.error("Error saving product:", error);
+    formError.value = errorMessage(error);
   }
+}
+
+function errorMessage(error) {
+  const errors = error?.response?.data?.errors
+  if (errors) return Object.values(errors).flat().join(' ')
+  return error?.response?.data?.message || error?.response?.data?.error || 'Could not save this product.'
 }
 
 async function deleteProduct(prod) {
@@ -399,5 +479,21 @@ onMounted(() => {
   background: #f6f8f7;
   border: 1px solid #e0eee7;
   border-radius: 1rem;
+}
+
+:deep(.dashboard-select-menu .v-list) {
+  background: #f8fafc !important;
+  color: #111827 !important;
+}
+
+:deep(.dashboard-select-menu .v-list-item-title),
+:deep(.dashboard-select-menu .v-list-item-subtitle) {
+  color: #111827 !important;
+  opacity: 1 !important;
+}
+
+:deep(.dashboard-select-menu .v-list-item--active .v-list-item-title) {
+  color: #0f766e !important;
+  font-weight: 700;
 }
 </style>

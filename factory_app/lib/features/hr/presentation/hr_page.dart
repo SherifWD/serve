@@ -73,7 +73,7 @@ class HrPage extends ConsumerWidget {
                         Text('Alex Lee',
                             style: theme.textTheme.titleMedium
                                 ?.copyWith(fontWeight: FontWeight.bold)),
-                        const Text('Employee - Assembly'),
+                        const Text('Employee - Dining room'),
                       ],
                     ),
                   ],

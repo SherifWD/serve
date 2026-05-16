@@ -20,7 +20,8 @@
                 style="color:#181818;font-weight:bold;"
                 @click="openAdd"
               >
-                <v-icon start>mdi-plus</v-icon> Add Table
+                <v-icon start>mdi-plus</v-icon>
+                Add tables
               </v-btn>
             </v-card-title>
             <v-card-text>
@@ -33,6 +34,18 @@
                 density="comfortable"
                 item-value="id"
               >
+                <template #item.restaurant="{ item }">
+                  {{ restaurantNameForTable(item) }}
+                </template>
+
+                <template #item.branch="{ item }">
+                  {{ item.branch?.name || branchName(item.branch_id) }}
+                </template>
+
+                <template #item.seats="{ item }">
+                  {{ displaySeats(item.seats) }}
+                </template>
+
                 <template #item.actions="{ item }">
                   <v-btn size="small" icon color="primary" class="rounded-xl" @click="openEdit(item)">
                     <v-icon>mdi-pencil</v-icon>
@@ -47,12 +60,11 @@
         </v-col>
       </v-row>
 
-      <!-- Add/Edit Drawer -->
       <v-navigation-drawer
         v-model="drawer"
         location="right"
         temporary
-        width="410"
+        width="560"
         color="surface"
         transition="slide-x-reverse-transition"
         class="drawer-fade"
@@ -60,7 +72,7 @@
       >
         <v-toolbar flat color="surface" class="rounded-t-xl">
           <v-toolbar-title class="font-weight-bold" style="color:#2a9d8f;">
-            {{ editing ? 'Edit Table' : 'Add Table' }}
+            {{ editing ? 'Edit table' : 'Add tables' }}
           </v-toolbar-title>
           <v-spacer />
           <v-btn icon class="rounded-xl" @click="drawer = false">
@@ -70,8 +82,20 @@
         <v-divider />
         <v-form @submit.prevent="saveTable" class="pa-6">
           <v-select
+            label="Restaurant"
+            :items="restaurants"
+            item-title="name"
+            item-value="id"
+            v-model="form.restaurant_id"
+            variant="outlined"
+            color="primary"
+            class="mb-4 rounded-xl"
+            :disabled="!auth.isAdmin && restaurants.length <= 1"
+            @update:modelValue="syncBranchForRestaurant"
+          />
+          <v-select
             label="Branch"
-            :items="branches"
+            :items="filteredBranches"
             item-title="name"
             item-value="id"
             v-model="form.branch_id"
@@ -79,25 +103,79 @@
             variant="outlined"
             color="primary"
             class="mb-4 rounded-xl"
+            no-data-text="Choose a restaurant with branches"
           />
-          <v-text-field
-            label="Table Name"
-            v-model="form.name"
-            required
-            variant="outlined"
-            color="primary"
-            class="mb-4 rounded-xl"
-          />
-          <v-text-field
-            label="Seats"
-            v-model="form.seats"
-            type="number"
-            min="1"
-            required
-            variant="outlined"
-            color="primary"
-            class="mb-4 rounded-xl"
-          />
+
+          <template v-if="editing">
+            <v-text-field
+              label="Table name"
+              v-model="form.name"
+              required
+              variant="outlined"
+              color="primary"
+              class="mb-4 rounded-xl"
+            />
+            <v-text-field
+              label="Seats (optional)"
+              v-model="form.seats"
+              type="number"
+              min="1"
+              clearable
+              variant="outlined"
+              color="primary"
+              class="mb-4 rounded-xl"
+            />
+          </template>
+
+          <template v-else>
+            <div
+              v-for="(row, index) in form.tables"
+              :key="row.key"
+              class="table-row mb-3"
+            >
+              <v-row dense align="center">
+                <v-col cols="12" sm="7">
+                  <v-text-field
+                    :label="`Table ${index + 1} name`"
+                    v-model="row.name"
+                    required
+                    variant="outlined"
+                    color="primary"
+                    hide-details="auto"
+                  />
+                </v-col>
+                <v-col cols="10" sm="4">
+                  <v-text-field
+                    label="Seats (optional)"
+                    v-model="row.seats"
+                    type="number"
+                    min="1"
+                    clearable
+                    variant="outlined"
+                    color="primary"
+                    hide-details="auto"
+                  />
+                </v-col>
+                <v-col cols="2" sm="1" class="d-flex justify-end">
+                  <v-btn
+                    icon
+                    variant="text"
+                    color="red"
+                    :disabled="form.tables.length === 1"
+                    @click="removeTableRow(index)"
+                  >
+                    <v-icon>mdi-delete-outline</v-icon>
+                  </v-btn>
+                </v-col>
+              </v-row>
+            </div>
+
+            <v-btn variant="tonal" color="primary" class="mb-5 rounded-pill" @click="addTableRow">
+              <v-icon start>mdi-plus</v-icon>
+              Add another table
+            </v-btn>
+          </template>
+
           <v-btn
             color="primary"
             class="rounded-pill"
@@ -105,8 +183,10 @@
             size="large"
             style="color:#181818;font-weight:bold;"
             type="submit"
+            :disabled="!canSave"
           >
-            <v-icon start>mdi-check</v-icon>{{ editing ? 'Update' : 'Add' }}
+            <v-icon start>mdi-check</v-icon>
+            {{ editing ? 'Save table' : saveLabel }}
           </v-btn>
         </v-form>
       </v-navigation-drawer>
@@ -115,80 +195,252 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import axios from 'axios'
 import { API_BASE_URL } from '../lib/api'
 import OwnerLayout from '@/layouts/OwnerLayout.vue'
+import { useAuthStore } from '../store/auth'
+
+const auth = useAuthStore()
 
 const tables = ref([])
+const restaurants = ref([])
 const branches = ref([])
 const drawer = ref(false)
 const editing = ref(false)
-const form = ref({ id: null, branch_id: null, name: '', seats: 1 })
+let rowKey = 0
+const form = ref(createEmptyForm())
 
 const headers = [
   { title: 'ID', key: 'id' },
-  { title: 'Branch', key: 'branch.name' },
-  { title: 'Table Name', key: 'name' },
+  { title: 'Restaurant', key: 'restaurant' },
+  { title: 'Branch', key: 'branch' },
+  { title: 'Table name', key: 'name' },
   { title: 'Seats', key: 'seats' },
-  { title: 'Actions', key: 'actions', sortable: false }
+  { title: 'Status', key: 'status' },
+  { title: 'Actions', key: 'actions', sortable: false },
 ]
 
+const filteredBranches = computed(() => {
+  if (!form.value.restaurant_id) return branches.value
+
+  return branches.value.filter((branch) =>
+    Number(branchRestaurantId(branch)) === Number(form.value.restaurant_id),
+  )
+})
+
+const rowsToSave = computed(() =>
+  (form.value.tables || []).filter((row) => row.name.trim()),
+)
+
+const saveLabel = computed(() => {
+  const count = rowsToSave.value.length
+  return count === 1 ? 'Create table' : `Create ${count} tables`
+})
+
+const canSave = computed(() => {
+  if (!form.value.branch_id) return false
+
+  if (editing.value) {
+    return Boolean(form.value.name.trim()) && validSeats(form.value.seats)
+  }
+
+  return rowsToSave.value.length > 0 &&
+    form.value.tables.every((row) => !row.name.trim() || validSeats(row.seats))
+})
+
+function authHeaders() {
+  return { Authorization: `Bearer ${auth.token || localStorage.getItem('token')}` }
+}
+
+function createTableRow() {
+  rowKey += 1
+  return { key: rowKey, name: '', seats: null }
+}
+
+function createEmptyForm() {
+  return {
+    id: null,
+    restaurant_id: defaultRestaurantId(),
+    branch_id: null,
+    name: '',
+    seats: null,
+    tables: [createTableRow()],
+  }
+}
+
+function defaultRestaurantId() {
+  return auth.user?.restaurant_id ??
+    auth.user?.branch?.restaurant_id ??
+    restaurants.value[0]?.id ??
+    branchRestaurantId(branches.value[0]) ??
+    null
+}
+
+function branchRestaurantId(branch) {
+  return branch?.restaurant_id ?? branch?.restaurant?.id ?? null
+}
+
+function branchName(branchId) {
+  return branches.value.find((branch) => Number(branch.id) === Number(branchId))?.name || 'Not set'
+}
+
+function restaurantNameForTable(table) {
+  const branch = table.branch ||
+    branches.value.find((candidate) => Number(candidate.id) === Number(table.branch_id))
+  const restaurantId = branchRestaurantId(branch)
+
+  return branch?.restaurant?.name ||
+    restaurants.value.find((restaurant) => Number(restaurant.id) === Number(restaurantId))?.name ||
+    'Not set'
+}
+
+function displaySeats(seats) {
+  return seats ? seats : 'Not set'
+}
+
+function validSeats(value) {
+  if (value === null || value === undefined || value === '') return true
+  return Number.isInteger(Number(value)) && Number(value) >= 1
+}
+
+function normalizeSeats(value) {
+  if (value === null || value === undefined || value === '') return null
+  return Number(value)
+}
+
+function syncBranchForRestaurant() {
+  const branchesForRestaurant = filteredBranches.value
+  const selectedBranchStillAvailable = branchesForRestaurant.some((branch) =>
+    Number(branch.id) === Number(form.value.branch_id),
+  )
+
+  if (!selectedBranchStillAvailable) {
+    form.value.branch_id = branchesForRestaurant[0]?.id ?? null
+  }
+}
+
+function addTableRow() {
+  form.value.tables.push(createTableRow())
+}
+
+function removeTableRow(index) {
+  if (form.value.tables.length === 1) return
+  form.value.tables.splice(index, 1)
+}
+
 async function loadTables() {
-  const token = localStorage.getItem('token')
   const res = await axios.get(`${API_BASE_URL}/tables`, {
-    headers: { Authorization: `Bearer ${token}` }
+    headers: authHeaders(),
   })
   tables.value = res.data.data || res.data
 }
 
+async function loadRestaurants() {
+  const res = await axios.get(`${API_BASE_URL}/restaurants`, {
+    headers: authHeaders(),
+  })
+  restaurants.value = res.data.data || res.data
+}
+
 async function loadBranches() {
-  const token = localStorage.getItem('token')
   const res = await axios.get(`${API_BASE_URL}/branches`, {
-    headers: { Authorization: `Bearer ${token}` }
+    headers: authHeaders(),
   })
   branches.value = res.data.data || res.data
 }
 
+function hydrateFallbackRestaurant() {
+  if (restaurants.value.length) return
+
+  const restaurantId = defaultRestaurantId()
+  if (!restaurantId) return
+
+  const branch = branches.value.find((item) => Number(branchRestaurantId(item)) === Number(restaurantId))
+  restaurants.value = [{
+    id: restaurantId,
+    name: auth.user?.restaurant?.name || branch?.restaurant?.name || 'Assigned restaurant',
+  }]
+}
+
 function openAdd() {
   editing.value = false
-  form.value = { id: null, branch_id: null, name: '', seats: 1 }
+  form.value = createEmptyForm()
+  syncBranchForRestaurant()
   drawer.value = true
 }
+
 function openEdit(table) {
   editing.value = true
-  form.value = { ...table }
+  const branch = table.branch ||
+    branches.value.find((candidate) => Number(candidate.id) === Number(table.branch_id))
+
+  form.value = {
+    id: table.id,
+    restaurant_id: branchRestaurantId(branch) ?? defaultRestaurantId(),
+    branch_id: table.branch_id,
+    name: table.name,
+    seats: table.seats ?? null,
+    tables: [createTableRow()],
+  }
   drawer.value = true
 }
+
 async function saveTable() {
-  const token = localStorage.getItem('token')
+  if (!canSave.value) return
+
   if (editing.value) {
-    await axios.put(`${API_BASE_URL}/tables/${form.value.id}`, form.value, {
-      headers: { Authorization: `Bearer ${token}` }
+    await axios.put(`${API_BASE_URL}/tables/${form.value.id}`, {
+      restaurant_id: form.value.restaurant_id,
+      branch_id: form.value.branch_id,
+      name: form.value.name.trim(),
+      seats: normalizeSeats(form.value.seats),
+    }, {
+      headers: authHeaders(),
     })
   } else {
-    await axios.post(`${API_BASE_URL}/tables`, form.value, {
-      headers: { Authorization: `Bearer ${token}` }
+    await axios.post(`${API_BASE_URL}/tables`, {
+      restaurant_id: form.value.restaurant_id,
+      branch_id: form.value.branch_id,
+      tables: rowsToSave.value.map((row) => ({
+        name: row.name.trim(),
+        seats: normalizeSeats(row.seats),
+      })),
+    }, {
+      headers: authHeaders(),
     })
   }
+
   drawer.value = false
-  loadTables()
+  await loadTables()
 }
+
 async function deleteTable(id) {
-  const token = localStorage.getItem('token')
   await axios.delete(`${API_BASE_URL}/tables/${id}`, {
-    headers: { Authorization: `Bearer ${token}` }
+    headers: authHeaders(),
   })
-  loadTables()
+  await loadTables()
 }
-onMounted(() => {
-  loadTables()
-  loadBranches()
+
+onMounted(async () => {
+  await Promise.all([
+    loadRestaurants(),
+    loadBranches(),
+    loadTables(),
+  ])
+  hydrateFallbackRestaurant()
 })
 </script>
 
 <style scoped>
 .v-card, .v-data-table, .v-toolbar, .v-navigation-drawer, .v-form, .v-btn, .v-text-field, .v-select, .v-switch {
   border-radius: 2rem !important;
+}
+
+.table-row {
+  border: 1px solid rgba(42, 157, 143, 0.18);
+  border-radius: 1.25rem;
+  padding: 0.75rem;
+  background: rgba(42, 157, 143, 0.04);
 }
 </style>

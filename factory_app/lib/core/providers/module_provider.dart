@@ -13,7 +13,7 @@ final allModulesProvider = Provider<List<AppModule>>((ref) {
       icon: Icons.dashboard_outlined,
       route: '/home/dashboard',
       allowedRoles: {UserRole.owner, UserRole.manager, UserRole.employee},
-      description: 'KPIs, production stats, and alerts',
+      description: 'KPIs, service stats, and alerts',
     ),
     AppModule(
       id: 'reports',

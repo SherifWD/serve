@@ -24,6 +24,6 @@ const hrRequests = [
 
 const hrDocuments = [
   DocumentItem(name: 'Contract - Ana', type: 'PDF', owner: 'HR'),
-  DocumentItem(name: 'Policy - Safety', type: 'PDF', owner: 'EHS'),
+  DocumentItem(name: 'Policy - Food safety', type: 'PDF', owner: 'Operations'),
   DocumentItem(name: 'Handbook', type: 'PDF', owner: 'HR'),
 ];

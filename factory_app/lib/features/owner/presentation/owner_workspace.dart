@@ -167,6 +167,7 @@ class _OwnerWorkspacePageState extends ConsumerState<OwnerWorkspacePage> {
 
         final summary = snapshot.data!;
         final width = MediaQuery.of(context).size.width;
+        final compact = width < 560;
         final wide = width > 1220;
         final branchIds =
             summary.branchOptions.map((branch) => branch.id).toSet();
@@ -194,7 +195,7 @@ class _OwnerWorkspacePageState extends ConsumerState<OwnerWorkspacePage> {
               await _future;
             },
             child: ListView(
-              padding: const EdgeInsets.all(16),
+              padding: EdgeInsets.all(compact ? 12 : 16),
               children: [
                 _OwnerHero(summary: summary, currency: currency),
                 const SizedBox(height: 16),
@@ -211,61 +212,7 @@ class _OwnerWorkspacePageState extends ConsumerState<OwnerWorkspacePage> {
                   onPrintReceipt: _printOwnerReceipt,
                 ),
                 const SizedBox(height: 16),
-                Wrap(
-                  spacing: 14,
-                  runSpacing: 14,
-                  children: [
-                    _OwnerKpiCard(
-                      title: 'Revenue',
-                      value: currency.format(summary.totalSales),
-                      caption: 'Paid sales',
-                      color: const Color(0xFFE86C2F),
-                      icon: Icons.attach_money_outlined,
-                    ),
-                    _OwnerKpiCard(
-                      title: 'Orders',
-                      value: '${summary.ordersCount}',
-                      caption: 'Paid count',
-                      color: const Color(0xFF38BDF8),
-                      icon: Icons.receipt_long_outlined,
-                    ),
-                    _OwnerKpiCard(
-                      title: 'AOV',
-                      value: currency.format(summary.avgOrderValue),
-                      caption: 'Average ticket',
-                      color: const Color(0xFF34D399),
-                      icon: Icons.shopping_bag_outlined,
-                    ),
-                    _OwnerKpiCard(
-                      title: 'Live floor',
-                      value: '${summary.activeTables}',
-                      caption: 'Active tables',
-                      color: const Color(0xFFF59E0B),
-                      icon: Icons.table_restaurant_outlined,
-                    ),
-                    _OwnerKpiCard(
-                      title: 'Cashier queue',
-                      value: '${summary.cashierQueue}',
-                      caption: 'Waiting to settle',
-                      color: const Color(0xFFF97316),
-                      icon: Icons.point_of_sale_outlined,
-                    ),
-                    _OwnerKpiCard(
-                      title: 'KDS backlog',
-                      value: '${summary.kdsBacklog}',
-                      caption: 'Queued or cooking',
-                      color: const Color(0xFF22D3EE),
-                      icon: Icons.restaurant_menu_outlined,
-                    ),
-                    _OwnerKpiCard(
-                      title: 'Loyalty',
-                      value: '${summary.loyaltyMembers}',
-                      caption: 'Tracked guests',
-                      color: const Color(0xFFA78BFA),
-                      icon: Icons.workspace_premium_outlined,
-                    ),
-                  ],
-                ),
+                _OwnerKpiGrid(summary: summary, currency: currency),
                 const SizedBox(height: 16),
                 _BranchPerformancePanel(
                   branches: summary.branchPerformance,
@@ -508,73 +455,195 @@ class _OwnerHero extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(22),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF111C44), Color(0xFF172554), Color(0xFF0F766E)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(32),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final compact = constraints.maxWidth < 620;
+        final glance = Container(
+          width: compact ? double.infinity : 220,
+          padding: const EdgeInsets.all(18),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(24),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Period at a glance',
+                style: TextStyle(color: Colors.white70),
+              ),
+              const SizedBox(height: 10),
+              Text(
+                currency.format(summary.totalSales),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w900,
+                    ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                '${summary.ordersCount} paid orders',
+                style: const TextStyle(color: Colors.white70),
+              ),
+            ],
+          ),
+        );
+
+        final lead = Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Owner dashboard',
+              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w900,
+                  ),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Live sales, branch health, staffing, stock, and settlement signals.',
+              style: TextStyle(color: Colors.white70, height: 1.35),
+            ),
+            const SizedBox(height: 16),
+            Wrap(
+              spacing: 10,
+              runSpacing: 10,
               children: [
-                Wrap(
-                  spacing: 10,
-                  runSpacing: 10,
+                _HeroActionChip(
+                  icon: Icons.store_mall_directory_outlined,
+                  label: '${summary.branchPerformance.length} branches live',
+                ),
+                _HeroActionChip(
+                  icon: Icons.inventory_2_outlined,
+                  label: '${summary.lowStockItems.length} stock alerts',
+                ),
+              ],
+            ),
+          ],
+        );
+
+        return Container(
+          padding: EdgeInsets.all(compact ? 16 : 22),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              colors: [Color(0xFF111C44), Color(0xFF172554), Color(0xFF0F766E)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(compact ? 24 : 32),
+          ),
+          child: compact
+              ? Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _HeroActionChip(
-                      icon: Icons.store_mall_directory_outlined,
-                      label:
-                          '${summary.branchPerformance.length} branches live',
-                    ),
-                    _HeroActionChip(
-                      icon: Icons.inventory_2_outlined,
-                      label: '${summary.lowStockItems.length} stock alerts',
-                    ),
+                    lead,
+                    const SizedBox(height: 16),
+                    glance,
+                  ],
+                )
+              : Row(
+                  children: [
+                    Expanded(child: lead),
+                    const SizedBox(width: 18),
+                    glance,
                   ],
                 ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 18),
-          Container(
-            width: 220,
-            padding: const EdgeInsets.all(18),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(24),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Period at a glance',
-                  style: TextStyle(color: Colors.white70),
-                ),
-                const SizedBox(height: 10),
-                Text(
-                  currency.format(summary.totalSales),
-                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w900,
-                      ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  '${summary.ordersCount} paid orders',
-                  style: const TextStyle(color: Colors.white70),
-                ),
-              ],
-            ),
-          ),
-        ],
+        );
+      },
+    );
+  }
+}
+
+class _OwnerKpiGrid extends StatelessWidget {
+  const _OwnerKpiGrid({
+    required this.summary,
+    required this.currency,
+  });
+
+  final OwnerSummary summary;
+  final NumberFormat currency;
+
+  @override
+  Widget build(BuildContext context) {
+    final cards = [
+      _OwnerKpiCard(
+        title: 'Revenue',
+        value: currency.format(summary.totalSales),
+        caption: 'Paid sales',
+        color: const Color(0xFFE86C2F),
+        icon: Icons.attach_money_outlined,
       ),
+      _OwnerKpiCard(
+        title: 'Orders',
+        value: '${summary.ordersCount}',
+        caption: 'Paid count',
+        color: const Color(0xFF38BDF8),
+        icon: Icons.receipt_long_outlined,
+      ),
+      _OwnerKpiCard(
+        title: 'AOV',
+        value: currency.format(summary.avgOrderValue),
+        caption: 'Average ticket',
+        color: const Color(0xFF34D399),
+        icon: Icons.shopping_bag_outlined,
+      ),
+      _OwnerKpiCard(
+        title: 'Live floor',
+        value: '${summary.activeTables}',
+        caption: 'Active tables',
+        color: const Color(0xFFF59E0B),
+        icon: Icons.table_restaurant_outlined,
+      ),
+      _OwnerKpiCard(
+        title: 'Cashier queue',
+        value: '${summary.cashierQueue}',
+        caption: 'Waiting to settle',
+        color: const Color(0xFFF97316),
+        icon: Icons.point_of_sale_outlined,
+      ),
+      _OwnerKpiCard(
+        title: 'KDS backlog',
+        value: '${summary.kdsBacklog}',
+        caption: 'Queued or cooking',
+        color: const Color(0xFF22D3EE),
+        icon: Icons.restaurant_menu_outlined,
+      ),
+      _OwnerKpiCard(
+        title: 'Loyalty',
+        value: '${summary.loyaltyMembers}',
+        caption: 'Tracked guests',
+        color: const Color(0xFFA78BFA),
+        icon: Icons.workspace_premium_outlined,
+      ),
+    ];
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final maxWidth = constraints.maxWidth;
+        final columns = maxWidth >= 1100
+            ? 4
+            : maxWidth >= 720
+                ? 3
+                : maxWidth >= 420
+                    ? 2
+                    : 1;
+        const spacing = 14.0;
+        final cardWidth = (maxWidth - spacing * (columns - 1)) / columns;
+
+        return Wrap(
+          spacing: spacing,
+          runSpacing: spacing,
+          children: [
+            for (final card in cards)
+              SizedBox(
+                width: cardWidth,
+                child: card,
+              ),
+          ],
+        );
+      },
     );
   }
 }
@@ -597,7 +666,7 @@ class _OwnerKpiCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 206,
+      width: double.infinity,
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: const Color(0xFF111827),
@@ -620,6 +689,8 @@ class _OwnerKpiCard extends StatelessWidget {
           const SizedBox(height: 8),
           Text(
             value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
             style: Theme.of(context).textTheme.titleLarge?.copyWith(
                   color: Colors.white,
                   fontWeight: FontWeight.w900,
@@ -628,6 +699,8 @@ class _OwnerKpiCard extends StatelessWidget {
           const SizedBox(height: 6),
           Text(
             caption,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
             style: const TextStyle(color: Colors.white38),
           ),
         ],
@@ -671,9 +744,10 @@ class _BranchPerformancePanel extends StatelessWidget {
                           color: Colors.white.withValues(alpha: 0.04),
                           borderRadius: BorderRadius.circular(20),
                         ),
-                        child: Row(
-                          children: [
-                            Container(
+                        child: LayoutBuilder(
+                          builder: (context, constraints) {
+                            final compact = constraints.maxWidth < 520;
+                            final rank = Container(
                               width: 38,
                               height: 38,
                               decoration: BoxDecoration(
@@ -689,36 +763,40 @@ class _BranchPerformancePanel extends StatelessWidget {
                                   fontWeight: FontWeight.w900,
                                 ),
                               ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    branches[i].name,
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .titleMedium
-                                        ?.copyWith(
-                                          color: Colors.white,
-                                          fontWeight: FontWeight.w800,
-                                        ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    branches[i].location ?? 'No location set',
-                                    style:
-                                        const TextStyle(color: Colors.white54),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.end,
+                            );
+                            final branchText = Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  branches[i].name,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .titleMedium
+                                      ?.copyWith(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.w800,
+                                      ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  branches[i].location ?? 'No location set',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(color: Colors.white54),
+                                ),
+                              ],
+                            );
+                            final salesText = Column(
+                              crossAxisAlignment: compact
+                                  ? CrossAxisAlignment.start
+                                  : CrossAxisAlignment.end,
                               children: [
                                 Text(
                                   currency.format(branches[i].sales),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
                                   style: const TextStyle(
                                     color: Colors.white,
                                     fontWeight: FontWeight.w900,
@@ -730,13 +808,43 @@ class _BranchPerformancePanel extends StatelessWidget {
                                   style: const TextStyle(color: Colors.white54),
                                 ),
                               ],
-                            ),
-                            const SizedBox(width: 8),
-                            const Icon(
-                              Icons.chevron_right,
-                              color: Colors.white54,
-                            ),
-                          ],
+                            );
+
+                            if (compact) {
+                              return Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      rank,
+                                      const SizedBox(width: 12),
+                                      Expanded(child: branchText),
+                                      const Icon(
+                                        Icons.chevron_right,
+                                        color: Colors.white54,
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 12),
+                                  salesText,
+                                ],
+                              );
+                            }
+
+                            return Row(
+                              children: [
+                                rank,
+                                const SizedBox(width: 12),
+                                Expanded(child: branchText),
+                                salesText,
+                                const SizedBox(width: 8),
+                                const Icon(
+                                  Icons.chevron_right,
+                                  color: Colors.white54,
+                                ),
+                              ],
+                            );
+                          },
                         ),
                       ),
                     ),

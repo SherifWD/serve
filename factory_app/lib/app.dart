@@ -30,12 +30,6 @@ class RestaurantSuiteApp extends ConsumerWidget {
       theme: AppTheme.light,
       debugShowCheckedModeBanner: false,
       routerConfig: router,
-      builder: (context, child) {
-        return Directionality(
-          textDirection: language.textDirection,
-          child: child ?? const SizedBox.shrink(),
-        );
-      },
     );
   }
 }

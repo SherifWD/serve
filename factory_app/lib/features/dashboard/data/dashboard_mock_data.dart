@@ -19,15 +19,15 @@ class ActivityItem {
 
 const kpiData = [
   Kpi(
-      title: 'Production output',
-      value: '1,240 units',
+      title: 'Service volume',
+      value: '1,240 orders',
       trend: '+12% vs last week'),
   Kpi(title: 'Active employees', value: '86', trend: 'Stable'),
   Kpi(title: 'Pending tasks', value: '23', trend: '-5 since yesterday'),
-  Kpi(title: 'Quality issues', value: '3', trend: '-1 vs avg'),
+  Kpi(title: 'Service issues', value: '3', trend: '-1 vs avg'),
 ];
 
-const productionTrend = [72.0, 80.0, 78.0, 90.0, 96.0, 94.0, 102.0];
+const serviceTrend = [72.0, 80.0, 78.0, 90.0, 96.0, 94.0, 102.0];
 
 const taskDistribution = {
   'In progress': 48.0,
@@ -37,17 +37,17 @@ const taskDistribution = {
 };
 
 const alerts = [
-  AlertItem(message: 'Mixer A overdue for maintenance', level: 'High'),
+  AlertItem(message: 'Espresso machine maintenance is due', level: 'High'),
   AlertItem(message: '5 employees missing afternoon check-in', level: 'Medium'),
-  AlertItem(message: 'Project Orion milestone slips by 2 days', level: 'Low'),
+  AlertItem(message: 'Menu rollout milestone slipped by 2 days', level: 'Low'),
 ];
 
 const activities = [
   ActivityItem(
-      label: 'Supervisor Ana approved overtime for Line 3',
+      label: 'Supervisor Ana approved overtime for dining room',
       timestamp: '2 min ago'),
   ActivityItem(
-      label: 'New NCR opened for QA - Batch 221', timestamp: '18 min ago'),
+      label: 'Service follow-up opened for Order 221', timestamp: '18 min ago'),
   ActivityItem(
       label: 'Maintenance ticket #151 resolved', timestamp: '1 hr ago'),
 ];

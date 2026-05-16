@@ -66,31 +66,28 @@ class AppStrings {
       AppLanguage.ar: 'تغيير اللغة',
     },
     'login.preparing': {
-      AppLanguage.en: 'Preparing restaurant suite...',
+      AppLanguage.en: 'Preparing sign in...',
       AppLanguage.ar: 'جاري تجهيز نظام المطعم...',
     },
     'login.customerTitle': {
-      AppLanguage.en: 'Customer app access',
+      AppLanguage.en: 'Guest access',
       AppLanguage.ar: 'دخول تطبيق العملاء',
     },
     'login.staffTitle': {
-      AppLanguage.en: 'Staff suite sign in',
+      AppLanguage.en: 'Team sign in',
       AppLanguage.ar: 'تسجيل دخول فريق العمل',
     },
     'login.customerSubtitle': {
-      AppLanguage.en:
-          'View previous orders, loyalty points, and registered restaurants.',
+      AppLanguage.en: 'View your orders, rewards, and saved restaurants.',
       AppLanguage.ar: 'تابع الطلبات السابقة ونقاط الولاء والمطاعم المسجلة.',
     },
     'login.staffSubtitle': {
-      AppLanguage.en:
-          'Choose the exact staff workspace you want to run: waiter, cashier, kitchen, or owner.',
+      AppLanguage.en: 'Sign in with your staff account.',
       AppLanguage.ar:
           'اختر مساحة العمل المطلوبة: النادل أو الكاشير أو المطبخ أو المالك.',
     },
     'login.pinnedSubtitle': {
-      AppLanguage.en:
-          'This app is pinned to the selected workspace for a cleaner branch rollout.',
+      AppLanguage.en: 'This device opens directly to its assigned role.',
       AppLanguage.ar:
           'هذا التطبيق مثبت على مساحة عمل محددة لتشغيل الفرع بسهولة.',
     },
@@ -119,11 +116,11 @@ class AppStrings {
       AppLanguage.ar: 'البريد الإلكتروني (اختياري)',
     },
     'login.workspace': {
-      AppLanguage.en: 'Workspace',
+      AppLanguage.en: 'Role',
       AppLanguage.ar: 'مساحة العمل',
     },
     'login.pinnedWorkspace': {
-      AppLanguage.en: 'Pinned workspace',
+      AppLanguage.en: 'Assigned role',
       AppLanguage.ar: 'مساحة العمل المثبتة',
     },
     'login.signingIn': {
@@ -155,23 +152,22 @@ class AppStrings {
       AppLanguage.ar: 'تغيير رقم الهاتف',
     },
     'login.devOtp': {
-      AppLanguage.en: 'Development code: {code}',
-      AppLanguage.ar: 'رمز التطوير: {code}',
+      AppLanguage.en: 'Verification code: {code}',
+      AppLanguage.ar: 'رمز التحقق: {code}',
     },
     'login.customerNote': {
-      AppLanguage.en:
-          'Customer access is protected with OTP before a session token is issued.',
+      AppLanguage.en: 'We verify your phone before opening your account.',
       AppLanguage.ar: 'يتم حماية دخول العميل برمز تحقق قبل إصدار جلسة الدخول.',
     },
     'login.staffNote': {
       AppLanguage.en:
-          'The selected role is enforced against the backend type list, so the staff suite only opens against the correct permission set.',
+          'Your role determines the screens and actions available after sign in.',
       AppLanguage.ar:
           'يتم التحقق من الدور عبر الخادم حتى لا تفتح مساحة العمل إلا بالصلاحيات الصحيحة.',
     },
     'login.lockedNote': {
       AppLanguage.en:
-          'This role-specific app stays locked to one operational role for branch devices and staff training.',
+          'This device is set up for one role to keep daily service simple.',
       AppLanguage.ar:
           'يبقى هذا التطبيق مثبتا على دور تشغيلي واحد لأجهزة الفروع وتدريب الفريق.',
     },
@@ -181,13 +177,13 @@ class AppStrings {
     },
     'hero.title': {
       AppLanguage.en:
-          'One platform for guest loyalty, table service, kitchen flow, payments, and ownership control.',
+          'Service, kitchen, payments, rewards, and ownership in one place.',
       AppLanguage.ar:
           'منصة واحدة للولاء وخدمة الطاولات والمطبخ والمدفوعات وتحكم المالك.',
     },
     'hero.subtitle': {
       AppLanguage.en:
-          'Designed for Egyptian restaurants and cafes that need a cleaner operator UX than the current stack and more control than off-the-shelf POS bundles.',
+          'Built for restaurants and cafes that need clear daily operations across every location.',
       AppLanguage.ar:
           'مصمم للمطاعم والكافيهات في مصر التي تحتاج تجربة تشغيل أوضح وتحكما أعلى من أنظمة نقاط البيع الجاهزة.',
     },
@@ -232,24 +228,24 @@ class AppStrings {
       AppLanguage.ar: 'مالك',
     },
     'app.customer': {
-      AppLanguage.en: 'Customer App',
-      AppLanguage.ar: 'تطبيق العملاء',
+      AppLanguage.en: 'Guest',
+      AppLanguage.ar: 'الضيف',
     },
     'app.waiter': {
-      AppLanguage.en: 'Waiter App',
-      AppLanguage.ar: 'تطبيق النادل',
+      AppLanguage.en: 'Floor Service',
+      AppLanguage.ar: 'خدمة الطاولات',
     },
     'app.cashier': {
-      AppLanguage.en: 'Cashier App',
-      AppLanguage.ar: 'تطبيق الكاشير',
+      AppLanguage.en: 'Cashier',
+      AppLanguage.ar: 'الكاشير',
     },
     'app.kitchen': {
-      AppLanguage.en: 'Kitchen App',
-      AppLanguage.ar: 'تطبيق المطبخ',
+      AppLanguage.en: 'Kitchen',
+      AppLanguage.ar: 'المطبخ',
     },
     'app.owner': {
-      AppLanguage.en: 'Owner Control Center',
-      AppLanguage.ar: 'مركز تحكم المالك',
+      AppLanguage.en: 'Owner Dashboard',
+      AppLanguage.ar: 'لوحة المالك',
     },
     'action.switchRole': {
       AppLanguage.en: 'Switch role',
@@ -260,8 +256,8 @@ class AppStrings {
       AppLanguage.ar: 'تسجيل الخروج',
     },
     'customer.deliveringTo': {
-      AppLanguage.en: 'Delivering the restaurant suite memory to',
-      AppLanguage.ar: 'نجهز تجربة المطعم باسم',
+      AppLanguage.en: 'Welcome back,',
+      AppLanguage.ar: 'مرحبا بعودتك،',
     },
     'customer.guest': {
       AppLanguage.en: 'Guest',

@@ -17,6 +17,7 @@ class TableMobileController extends Controller
 {
     private const ACTIVE_ORDER_STATUSES = ['pending', 'open', 'running', 'cashier'];
     private const NON_ACTIVE_ITEM_STATUSES = ['canceled', 'cancelled', 'refunded'];
+    private const RETURNABLE_KITCHEN_STATUSES = ['ready', 'served'];
 
     private function nonNegativeStockExpression(float|int $delta): string
     {
@@ -412,6 +413,22 @@ public function batchSendToCashier(Request $request)
         return response()->json([
             'error' => 'Quantity cannot exceed the original item quantity.',
         ], 422);
+    }
+
+    if (in_array($item->status, self::NON_ACTIVE_ITEM_STATUSES, true)) {
+        return response()->json([
+            'error' => 'This item has already been refunded or canceled.',
+        ], 422);
+    }
+
+    if ($action === 'return') {
+        $kitchenStatus = $item->kds_status ?? $item->status;
+
+        if (!in_array($kitchenStatus, self::RETURNABLE_KITCHEN_STATUSES, true)) {
+            return response()->json([
+                'error' => 'Only ready or served items can be returned to kitchen.',
+            ], 422);
+        }
     }
 
     $before  = $item->toArray();

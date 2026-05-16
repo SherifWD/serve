@@ -15,26 +15,26 @@ extension AppFlavorX on AppFlavor {
   String get title {
     switch (this) {
       case AppFlavor.suite:
-        return 'Restaurant Staff App';
+        return 'Restaurant Staff';
       case AppFlavor.customer:
-        return 'Restaurant Customer App';
+        return 'Guest Access';
       case AppFlavor.waiter:
-        return 'Restaurant Waiter App';
+        return 'Floor Service';
       case AppFlavor.cashier:
-        return 'Restaurant Cashier App';
+        return 'Cashier';
       case AppFlavor.kitchen:
-        return 'Restaurant Kitchen App';
+        return 'Kitchen';
       case AppFlavor.owner:
-        return 'Restaurant Owner App';
+        return 'Owner Dashboard';
     }
   }
 
   String get shellLabel {
     switch (this) {
       case AppFlavor.suite:
-        return 'Staff suite';
+        return 'Staff';
       case AppFlavor.customer:
-        return 'Customer';
+        return 'Guest';
       case AppFlavor.waiter:
         return 'Waiter';
       case AppFlavor.cashier:

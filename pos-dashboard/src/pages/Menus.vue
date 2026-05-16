@@ -98,6 +98,14 @@
         </v-toolbar>
         <v-divider />
         <v-form @submit.prevent="saveMenu" class="pa-6">
+          <v-alert
+            v-if="formError"
+            type="error"
+            variant="tonal"
+            class="mb-4"
+          >
+            {{ formError }}
+          </v-alert>
           <v-text-field
             label="Menu Name"
             v-model="drawerForm.name"
@@ -121,7 +129,7 @@
           />
           <v-select
             label="Categories"
-            :items="categories"
+            :items="categoryItems"
             item-title="name"
             item-value="id"
             v-model="drawerForm.categories"
@@ -139,6 +147,7 @@
             size="large"
             style="color:#181818;font-weight:bold;"
             type="submit"
+            :disabled="!canSaveMenu"
           >
             <v-icon start>mdi-check</v-icon>{{ isEditing ? 'Update' : 'Add' }}
           </v-btn>
@@ -221,6 +230,7 @@ const drawerForm = ref({
 })
 const viewMenu = ref({})
 const search = ref('')
+const formError = ref('')
 
 const headers = [
   { title: 'Name', value: 'name' },
@@ -237,6 +247,20 @@ const filteredMenus = computed(() => {
     (menu.branch?.name ?? '').toLowerCase().includes(q)
   )
 })
+
+const categoryItems = computed(() => {
+  const seen = new Set()
+  return categories.value.filter((category) => {
+    const key = category.name.trim().toLowerCase()
+    if (seen.has(key)) return false
+    seen.add(key)
+    return true
+  })
+})
+
+const canSaveMenu = computed(() =>
+  Boolean(drawerForm.value.name.trim()) && Boolean(drawerForm.value.branch_id)
+)
 
 async function loadMenus() {
   try {
@@ -272,6 +296,7 @@ function openAddDrawer() {
   isEditing.value = false
   drawerTitle.value = 'Add Menu'
   drawerForm.value = { id: null, name: '', branch_id: null, categories: [] }
+  formError.value = ''
   rightDrawer.value = true
 }
 
@@ -284,6 +309,7 @@ function openEditDrawer(menu) {
     branch_id: menu.branch_id,
     categories: (menu.categories ?? []).map(c => c.id)
   }
+  formError.value = ''
   rightDrawer.value = true
 }
 
@@ -293,16 +319,34 @@ function openViewDrawer(menu) {
 }
 
 async function saveMenu() {
+  if (!canSaveMenu.value) return
+
   const token = localStorage.getItem('token')
   const url = isEditing.value
     ? `${API_BASE_URL}/menus/${drawerForm.value.id}`
     : `${API_BASE_URL}/menus`
   const method = isEditing.value ? 'put' : 'post'
-  await axios[method](url, drawerForm.value, {
-    headers: { Authorization: `Bearer ${token}` }
-  })
-  rightDrawer.value = false
-  loadMenus()
+  formError.value = ''
+
+  try {
+    await axios[method](url, {
+      ...drawerForm.value,
+      name: drawerForm.value.name.trim(),
+      categories: [...new Set(drawerForm.value.categories)],
+    }, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+    rightDrawer.value = false
+    loadMenus()
+  } catch (error) {
+    formError.value = errorMessage(error)
+  }
+}
+
+function errorMessage(error) {
+  const errors = error?.response?.data?.errors
+  if (errors) return Object.values(errors).flat().join(' ')
+  return error?.response?.data?.message || error?.response?.data?.error || 'Could not save this menu.'
 }
 
 async function deleteMenu(menu) {

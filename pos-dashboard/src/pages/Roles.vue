@@ -6,9 +6,9 @@
           <div class="rs-panel hero-panel">
             <div>
               <div class="page-kicker">Access Governance</div>
-              <h1 class="page-title">Roles and permission bundles for every workspace.</h1>
+              <h1 class="page-title">Roles and permission bundles for every team.</h1>
               <p class="page-copy">
-                Keep system-wide admin powers separate from restaurant owner controls and
+                Keep admin access separate from restaurant owner permissions and
                 branch-level employee access.
               </p>
             </div>

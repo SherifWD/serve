@@ -5,8 +5,8 @@
         <v-col cols="12" lg="8">
           <div class="rs-panel hero-panel">
             <div>
-              <div class="page-kicker">Platform Control</div>
-              <h1 class="page-title">Restaurants and cafes across the full SaaS network.</h1>
+              <div class="page-kicker">Restaurants</div>
+              <h1 class="page-title">Restaurants and cafes in your account.</h1>
               <p class="page-copy">
                 Create brands, classify them as restaurants or cafes, and track how many
                 branches and users already exist under each venue.
@@ -45,16 +45,16 @@
         v-if="!auth.isAdmin"
         type="info"
         variant="tonal"
-        class="mb-4"
-      >
-        Restaurants are controlled by the platform admin account.
+      class="mb-4"
+    >
+        Restaurant records are managed by an admin account.
       </v-alert>
 
       <div class="rs-panel table-panel">
         <div class="panel-header">
           <div>
             <div class="panel-title">Venue Directory</div>
-            <div class="panel-subtitle">Every restaurant and cafe registered in the solution.</div>
+            <div class="panel-subtitle">Every restaurant and cafe registered in this account.</div>
           </div>
         </div>
 

@@ -49,7 +49,7 @@ export const useAuthStore = defineStore('auth', {
     displayWorkspace: (state) => {
       if (state.user?.restaurant?.name) return state.user.restaurant.name
       if (state.user?.branch?.name) return state.user.branch.name
-      return 'Platform Control'
+      return 'All restaurants'
     },
     can: (state) => (permission) => {
       if (!permission) return true

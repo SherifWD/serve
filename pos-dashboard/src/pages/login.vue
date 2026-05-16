@@ -3,25 +3,25 @@
     <div class="login-hero">
       <div class="hero-copy">
         <div class="hero-kicker">Restaurant Suite</div>
-        <h1 class="hero-title">Run every branch from one dark command center.</h1>
+        <h1 class="hero-title">Manage every restaurant from one clear dashboard.</h1>
         <p class="hero-subtitle">
-          Platform admin can control every restaurant. Owners can monitor live operations,
-          branch performance, inventory, and permissions from a single dashboard.
+          Admins manage venues and access. Owners follow live service, branch performance,
+          inventory, payments, and permissions from the same place.
         </p>
       </div>
 
       <div class="hero-points">
         <div class="hero-point">
           <v-icon icon="mdi-domain" />
-          <span>Multi-restaurant platform control</span>
+          <span>Multi-restaurant administration</span>
         </div>
         <div class="hero-point">
           <v-icon icon="mdi-chart-line" />
-          <span>Live branch KPIs and payment mix</span>
+          <span>Live branch performance and payments</span>
         </div>
         <div class="hero-point">
           <v-icon icon="mdi-shield-account" />
-          <span>Granular roles and permissions</span>
+          <span>Role-based access and permissions</span>
         </div>
       </div>
     </div>
@@ -30,10 +30,10 @@
       <div class="card-header">
         <div>
           <div class="card-kicker">Secure Access</div>
-          <div class="card-title">Dashboard Login</div>
+          <div class="card-title">Sign in</div>
         </div>
         <v-chip color="primary" variant="tonal" class="rs-pill">
-          Dark Mode
+          Secure session
         </v-chip>
       </div>
 
@@ -78,15 +78,9 @@
           class="rs-pill login-button"
           :loading="loading"
         >
-          Sign In
+          Sign in
         </v-btn>
       </v-form>
-
-      <div class="seed-hint">
-        <div class="seed-hint-title">Seeded admin</div>
-        <div>admin@restaurant-suite.com / password</div>
-        <div class="seed-hint-api">API: {{ API_BASE_URL }}</div>
-      </div>
     </v-card>
   </div>
 </template>
@@ -101,8 +95,8 @@ import { useAuthStore } from '../store/auth'
 const router = useRouter()
 const auth = useAuthStore()
 
-const email = ref('admin@restaurant-suite.com')
-const password = ref('password')
+const email = ref('')
+const password = ref('')
 const error = ref('')
 const loading = ref(false)
 
@@ -158,8 +152,7 @@ async function login() {
 }
 
 .hero-kicker,
-.card-kicker,
-.seed-hint-title {
+.card-kicker {
   color: var(--rs-text-muted);
   text-transform: uppercase;
   letter-spacing: 0.14em;
@@ -224,20 +217,6 @@ async function login() {
 .login-button {
   height: 52px !important;
   font-weight: 700;
-}
-
-.seed-hint {
-  margin-top: 24px;
-  padding-top: 18px;
-  border-top: 1px solid var(--rs-border);
-  color: var(--rs-text-soft);
-}
-
-.seed-hint-api {
-  margin-top: 6px;
-  color: var(--rs-text-muted);
-  font-size: 0.82rem;
-  word-break: break-all;
 }
 
 @media (max-width: 1100px) {

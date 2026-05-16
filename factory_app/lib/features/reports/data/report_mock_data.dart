@@ -16,8 +16,8 @@ class ReportItem {
 
 const reportItems = [
   ReportItem(
-    title: 'Daily production summary',
-    category: 'Production',
+    title: 'Daily sales summary',
+    category: 'Sales',
     owner: 'Ana Jimenez',
     date: 'Today',
     status: 'Ready',
@@ -30,19 +30,19 @@ const reportItems = [
     status: 'Pending',
   ),
   ReportItem(
-    title: 'Quality NCR log',
-    category: 'QA',
-    owner: 'QA Desk',
+    title: 'Service issue log',
+    category: 'Service',
+    owner: 'Floor team',
     date: 'Yesterday',
     status: 'Ready',
   ),
   ReportItem(
-    title: 'Project Orion milestones',
+    title: 'New branch milestones',
     category: 'Projects',
-    owner: 'PMO',
+    owner: 'Operations',
     date: 'This week',
     status: 'Delayed',
   ),
 ];
 
-const reportFilters = ['Production', 'HR', 'QA', 'Projects'];
+const reportFilters = ['Sales', 'HR', 'Service', 'Projects'];

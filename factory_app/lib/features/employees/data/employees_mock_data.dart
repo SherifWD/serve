@@ -16,22 +16,22 @@ const employees = [
   EmployeeItem(
       name: 'Ana Jimenez',
       role: 'Supervisor',
-      department: 'Assembly',
+      department: 'Dining room',
       performance: 'A'),
   EmployeeItem(
       name: 'Lee Wong',
-      role: 'Technician',
-      department: 'Maintenance',
+      role: 'Kitchen lead',
+      department: 'Kitchen',
       performance: 'B+'),
   EmployeeItem(
       name: 'Sam Patel',
       role: 'Planner',
-      department: 'Planning',
+      department: 'Operations',
       performance: 'A-'),
   EmployeeItem(
       name: 'Maria Lopez',
-      role: 'Operator',
-      department: 'Packaging',
+      role: 'Server',
+      department: 'Dining room',
       performance: 'B'),
 ];
 
