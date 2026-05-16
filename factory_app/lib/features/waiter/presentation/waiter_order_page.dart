@@ -431,7 +431,9 @@ class _AddProductSheetState extends State<_AddProductSheet> {
   Widget build(BuildContext context) {
     final product = widget.product;
     final category = widget.category;
-    final modifiers = widget.modifiers;
+    final modifiers = widget.modifiers
+        .where((modifier) => modifier.appliesToCategory(category.id))
+        .toList(growable: false);
 
     return Padding(
       padding: EdgeInsets.only(
@@ -831,6 +833,12 @@ class _MenuComposerCard extends StatefulWidget {
 class _MenuComposerCardState extends State<_MenuComposerCard> {
   int? _openCategoryId;
 
+  int _modifierCountFor(MenuCategoryData category) {
+    return widget.modifiers
+        .where((modifier) => modifier.appliesToCategory(category.id))
+        .length;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -902,7 +910,9 @@ class _MenuComposerCardState extends State<_MenuComposerCard> {
                                     ),
                                     const SizedBox(height: 4),
                                     Text(
-                                      '${category.products.length} products • ${category.questions.length} questions • ${widget.modifiers.length} modifiers',
+                                      '${category.products.length} products • '
+                                      '${category.questions.length} questions • '
+                                      '${_modifierCountFor(category)} modifiers',
                                       style: const TextStyle(
                                         color: Color(0xFF64748B),
                                       ),

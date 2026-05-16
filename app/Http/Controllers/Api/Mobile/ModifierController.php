@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Api\Mobile;
 
 use App\Http\Controllers\Controller;
+use App\Models\Branch;
+use App\Models\Modifier;
 use Illuminate\Http\Request;
 
 class ModifierController extends Controller
@@ -11,11 +13,20 @@ class ModifierController extends Controller
 {
     $user = $request->user();
     $branchId = $user->branch_id;
-    $restaurantId = $user->restaurant_id;
+    $restaurantId = $user->restaurant_id ?: ($branchId
+        ? Branch::query()->whereKey($branchId)->value('restaurant_id')
+        : null);
 
-    // Or load branch/restaurant as needed
-    $modifiers = \App\Models\Modifier::whereNull('restaurant_id')
-        ->orWhere('restaurant_id', $restaurantId)
+    $modifiers = Modifier::query()
+        ->select('id', 'name', 'price', 'restaurant_id', 'category_id')
+        ->where('is_active', true)
+        ->where(function ($query) use ($restaurantId) {
+            $query->whereNull('restaurant_id');
+
+            if ($restaurantId) {
+                $query->orWhere('restaurant_id', $restaurantId);
+            }
+        })
         ->orderBy('name')
         ->get();
 

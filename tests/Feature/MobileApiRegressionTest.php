@@ -14,9 +14,11 @@ use App\Models\Employee;
 use App\Models\FiscalProfile;
 use App\Models\Device;
 use App\Models\Ingredient;
+use App\Models\IngredientBranch;
 use App\Models\InventoryItem;
 use App\Models\InventoryTransaction;
 use App\Models\Menu;
+use App\Models\Modifier;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Payment;
@@ -31,6 +33,7 @@ use App\Models\RestaurantSubscription;
 use App\Models\StockTransfer;
 use App\Models\SubscriptionPlan;
 use App\Models\Supplier;
+use App\Models\Table;
 use App\Models\User;
 use Database\Seeders\DatabaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -186,6 +189,7 @@ class MobileApiRegressionTest extends TestCase
         Sanctum::actingAs($this->staffUserForBranch((int) $order->branch_id, 'waiter'));
 
         $product = $order->items->first()->product ?? Product::query()->firstOrFail();
+        $this->ensureProductStockAvailable($product, (int) $order->branch_id);
 
         $response = $this->postJson('/api/mobile/orders', [
             'table_id' => $order->table_id,
@@ -203,6 +207,126 @@ class MobileApiRegressionTest extends TestCase
             $order->items->count(),
             $order->fresh('items')->items->count(),
         );
+    }
+
+    public function test_waiter_cannot_order_product_when_recipe_ingredient_branch_stock_is_empty(): void
+    {
+        $branch = Branch::query()
+            ->whereHas('tables')
+            ->whereHas('users', fn ($query) => $query->where('email', 'like', 'waiter%@example.com'))
+            ->firstOrFail();
+        $table = Table::query()->where('branch_id', $branch->id)->firstOrFail();
+        $category = Category::query()->firstOrCreate([
+            'branch_id' => $branch->id,
+            'name' => 'Regression Stock Menu',
+        ]);
+        $ingredient = Ingredient::query()->create([
+            'name' => 'Regression Empty Ingredient',
+            'unit' => 'g',
+            'stock' => 0,
+        ]);
+        IngredientBranch::query()->create([
+            'ingredient_id' => $ingredient->id,
+            'branch_id' => $branch->id,
+            'stock' => 0,
+        ]);
+        InventoryItem::query()->create([
+            'branch_id' => $branch->id,
+            'ingredient_id' => $ingredient->id,
+            'name' => $ingredient->name,
+            'unit' => 'g',
+            'quantity' => 0,
+            'min_stock' => 1,
+        ]);
+        $product = Product::query()->create([
+            'name' => 'Regression Empty Ingredient Product',
+            'category_id' => $category->id,
+            'branch_id' => $branch->id,
+            'price' => 30,
+            'is_available' => true,
+            'stock' => 20,
+            'min_stock' => 1,
+            'sku' => 'REG-EMPTY-INGREDIENT',
+        ]);
+        $recipe = Recipe::query()->create([
+            'product_id' => $product->id,
+            'branch_id' => $branch->id,
+            'description' => 'Regression empty ingredient recipe',
+        ]);
+        $recipe->ingredients()->attach($ingredient->id, ['quantity' => 1]);
+
+        Sanctum::actingAs($this->staffUserForBranch((int) $branch->id, 'waiter'));
+
+        $menuResponse = $this->getJson('/api/mobile/products')->assertOk();
+        $menuProductIds = collect($menuResponse->json('data'))
+            ->flatMap(fn ($category) => $category['products'] ?? [])
+            ->pluck('id')
+            ->all();
+
+        $this->assertNotContains($product->id, $menuProductIds);
+
+        $this->postJson('/api/mobile/orders', [
+            'table_id' => $table->id,
+            'items' => [
+                ['product_id' => $product->id, 'quantity' => 1],
+            ],
+        ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['items']);
+
+        $this->assertFalse(OrderItem::query()->where('product_id', $product->id)->exists());
+    }
+
+    public function test_waiter_cannot_order_product_when_finished_product_inventory_is_empty(): void
+    {
+        $branch = Branch::query()
+            ->whereHas('tables')
+            ->whereHas('users', fn ($query) => $query->where('email', 'like', 'waiter%@example.com'))
+            ->firstOrFail();
+        $table = Table::query()->where('branch_id', $branch->id)->firstOrFail();
+        $category = Category::query()->firstOrCreate([
+            'branch_id' => $branch->id,
+            'name' => 'Regression Finished Stock Menu',
+        ]);
+        $product = Product::query()->create([
+            'name' => 'Regression Empty Finished Product',
+            'category_id' => $category->id,
+            'branch_id' => $branch->id,
+            'price' => 45,
+            'is_available' => true,
+            'stock' => 20,
+            'min_stock' => 1,
+            'sku' => 'REG-EMPTY-FINISHED',
+        ]);
+        InventoryItem::query()->create([
+            'branch_id' => $branch->id,
+            'product_id' => $product->id,
+            'name' => $product->name,
+            'unit' => 'each',
+            'quantity' => 0,
+            'min_stock' => 1,
+        ]);
+
+        Sanctum::actingAs($this->staffUserForBranch((int) $branch->id, 'waiter'));
+
+        $menuResponse = $this->getJson('/api/mobile/products')->assertOk();
+        $menuProductIds = collect($menuResponse->json('data'))
+            ->flatMap(fn ($category) => $category['products'] ?? [])
+            ->pluck('id')
+            ->all();
+
+        $this->assertNotContains($product->id, $menuProductIds);
+
+        $this->postJson('/api/mobile/orders', [
+            'table_id' => $table->id,
+            'items' => [
+                ['product_id' => $product->id, 'quantity' => 1],
+            ],
+        ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['items']);
+
+        $this->assertFalse(OrderItem::query()->where('product_id', $product->id)->exists());
     }
 
     public function test_cashier_can_pay_selected_item_without_closing_table(): void
@@ -673,6 +797,97 @@ class MobileApiRegressionTest extends TestCase
         $this->assertSame(0, (int) $product->min_stock);
         $this->assertNotNull($product->recipe);
         $this->assertSame($recipe->description, $product->recipe->description);
+    }
+
+    public function test_dashboard_can_manage_category_questions_and_modifiers(): void
+    {
+        $admin = User::query()->where('email', 'admin@restaurant-suite.com')->firstOrFail();
+        $branch = Branch::query()
+            ->whereNotNull('restaurant_id')
+            ->firstOrFail();
+
+        Sanctum::actingAs($admin);
+
+        $categoryId = $this->postJson('/api/categories', [
+            'name' => 'Regression Category Options',
+            'branch_id' => $branch->id,
+            'questions' => [
+                [
+                    'question' => 'Choose a side',
+                    'choices' => [
+                        ['choice' => 'Fries'],
+                        ['choice' => 'Rice'],
+                    ],
+                ],
+            ],
+            'modifiers' => [
+                ['name' => 'Extra regression sauce', 'price' => 7.5],
+            ],
+        ])->assertCreated()
+            ->assertJsonPath('questions.0.question', 'Choose a side')
+            ->assertJsonPath('questions.0.choices.0.choice', 'Fries')
+            ->assertJsonPath('modifiers.0.name', 'Extra regression sauce')
+            ->json('id');
+
+        $modifier = Modifier::query()
+            ->where('name', 'Extra regression sauce')
+            ->firstOrFail();
+
+        $this->assertSame((int) $categoryId, (int) $modifier->category_id);
+        $this->assertSame((int) $branch->restaurant_id, (int) $modifier->restaurant_id);
+
+        $product = Product::create([
+            'name' => 'Regression Category Product',
+            'category_id' => $categoryId,
+            'branch_id' => $branch->id,
+            'price' => 45,
+            'sku' => 'REGCAT01',
+            'stock' => 25,
+            'is_available' => true,
+            'min_stock' => 1,
+        ]);
+        $this->ensureProductStockAvailable($product, (int) $branch->id);
+
+        Sanctum::actingAs($this->staffUserForBranch((int) $branch->id, 'waiter'));
+
+        $this->getJson('/api/mobile/products')
+            ->assertOk()
+            ->assertJsonFragment(['question' => 'Choose a side'])
+            ->assertJsonFragment(['choice' => 'Fries']);
+
+        $this->getJson('/api/mobile/modifiers/available')
+            ->assertOk()
+            ->assertJsonFragment([
+                'id' => $modifier->id,
+                'category_id' => $categoryId,
+            ]);
+
+        $otherCategory = Category::create([
+            'name' => 'Regression Other Category',
+            'branch_id' => $branch->id,
+        ]);
+        $otherModifier = Modifier::create([
+            'name' => 'Wrong category modifier',
+            'price' => 4,
+            'restaurant_id' => $branch->restaurant_id,
+            'category_id' => $otherCategory->id,
+            'is_active' => true,
+        ]);
+        $table = Table::query()->where('branch_id', $branch->id)->firstOrFail();
+
+        $this->postJson('/api/mobile/orders', [
+            'table_id' => $table->id,
+            'items' => [
+                [
+                    'product_id' => $product->id,
+                    'quantity' => 1,
+                    'modifiers' => [
+                        ['modifier_id' => $otherModifier->id],
+                    ],
+                ],
+            ],
+        ])->assertUnprocessable()
+            ->assertJsonValidationErrors(['items']);
     }
 
     public function test_dashboard_can_create_branch_recipe_with_ingredients(): void
@@ -1507,5 +1722,44 @@ class MobileApiRegressionTest extends TestCase
             ->where('branch_id', $branchId)
             ->where('email', 'like', "{$prefix}%@example.com")
             ->firstOrFail();
+    }
+
+    private function ensureProductStockAvailable(Product $product, int $branchId, float $quantity = 10000): void
+    {
+        $product->loadMissing('recipe.ingredients');
+
+        if ($product->recipe && $product->recipe->ingredients->isNotEmpty()) {
+            foreach ($product->recipe->ingredients as $ingredient) {
+                IngredientBranch::query()->updateOrCreate(
+                    ['ingredient_id' => $ingredient->id, 'branch_id' => $branchId],
+                    ['stock' => $quantity],
+                );
+
+                InventoryItem::query()->updateOrCreate(
+                    ['branch_id' => $branchId, 'ingredient_id' => $ingredient->id],
+                    [
+                        'name' => $ingredient->name,
+                        'unit' => $ingredient->unit ?? 'unit',
+                        'quantity' => $quantity,
+                        'min_stock' => 1,
+                    ],
+                );
+            }
+
+            return;
+        }
+
+        $product->stock = max((int) $product->stock, (int) $quantity);
+        $product->save();
+
+        InventoryItem::query()->updateOrCreate(
+            ['branch_id' => $branchId, 'product_id' => $product->id],
+            [
+                'name' => $product->name,
+                'unit' => 'each',
+                'quantity' => $quantity,
+                'min_stock' => 1,
+            ],
+        );
     }
 }

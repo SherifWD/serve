@@ -147,13 +147,32 @@
                 label="Assign to Recipe"
                 v-model="recipeIngredient.recipe_id"
                 :items="recipes"
-                item-title="description"
+                :item-title="recipeTitle"
                 item-value="id"
                 clearable
                 variant="outlined"
                 color="primary"
                 class="mb-2"
+                :menu-props="{ contentClass: 'dashboard-select-menu' }"
               />
+              <div v-if="selectedRecipe" class="recipe-preview pa-4 mb-4">
+                <div class="font-weight-bold mb-2" style="color:#2a9d8f;">
+                  {{ recipeTitle(selectedRecipe) }}
+                </div>
+                <div v-if="selectedRecipe.ingredients && selectedRecipe.ingredients.length" class="ingredient-list">
+                  <v-chip
+                    v-for="ingredient in selectedRecipe.ingredients"
+                    :key="ingredient.id"
+                    color="success"
+                    variant="elevated"
+                    size="small"
+                  >
+                    <b>{{ ingredient.name }}</b>
+                    <span v-if="ingredient.pivot">&nbsp;- {{ ingredient.pivot.quantity }} {{ ingredient.unit || '' }}</span>
+                  </v-chip>
+                </div>
+                <div v-else class="text-caption" style="color:#64748b;">No ingredients assigned to this recipe.</div>
+              </div>
               <v-text-field
                 label="Quantity"
                 v-model="recipeIngredient.quantity"
@@ -237,10 +256,38 @@ const filteredIngredients = computed(() =>
 )
 
 function branchName(id) {
-  return branches.value.find(b => b.id === id)?.name || '—'
+  return branches.value.find(b => Number(b.id) === Number(id))?.name || '-'
 }
 function recipeName(id) {
-  return recipes.value.find(r => r.id === id)?.description || '—'
+  const recipe = recipes.value.find(r => Number(r.id) === Number(id))
+  return recipe ? recipeTitle(recipe) : '-'
+}
+
+const selectedRecipe = computed(() => {
+  if (!recipeIngredient.value.recipe_id) return null
+  return recipes.value.find(r => Number(r.id) === Number(recipeIngredient.value.recipe_id)) || null
+})
+
+function recipeTitle(recipe) {
+  const description = (recipe?.description ?? '').trim()
+  if (description) return description
+
+  const ingredients = recipeIngredientSummary(recipe)
+  if (ingredients) return ingredients
+
+  return `Recipe #${recipe?.id ?? ''}`
+}
+
+function recipeIngredientSummary(recipe) {
+  return (recipe?.ingredients ?? [])
+    .map(ingredient => {
+      const quantity = ingredient.pivot?.quantity ?? ingredient.quantity ?? ''
+      const unit = ingredient.unit ? ` ${ingredient.unit}` : ''
+      const amount = quantity !== '' && quantity !== null ? ` ${quantity}${unit}` : ''
+      return `${ingredient.name}${amount}`
+    })
+    .filter(Boolean)
+    .join(', ')
 }
 
 // --- Sums for validation ---
@@ -375,19 +422,19 @@ function addRecipeIngredient() {
   const newQty = Number(recipeIngredient.value.quantity)
   if (isNaN(newQty) || newQty < 0) return
   const otherRecipes = form.value.recipe_ingredients.filter(
-    ri => ri.recipe_id !== recipeIngredient.value.recipe_id
+    ri => Number(ri.recipe_id) !== Number(recipeIngredient.value.recipe_id)
   )
   const totalIfAdd = otherRecipes.reduce((sum, ri) => sum + Number(ri.quantity), 0) + newQty
   if (form.value.stock && totalIfAdd > Number(form.value.stock)) {
     recipeQtyError.value = `Sum for all recipe assignments (${totalIfAdd}) can't exceed global stock (${form.value.stock})`
     return
   }
-  const existing = form.value.recipe_ingredients.find(ri => ri.recipe_id === recipeIngredient.value.recipe_id)
+  const existing = form.value.recipe_ingredients.find(ri => Number(ri.recipe_id) === Number(recipeIngredient.value.recipe_id))
   if (existing) {
     existing.quantity = newQty
   } else {
     form.value.recipe_ingredients.push({
-      recipe_id: recipeIngredient.value.recipe_id,
+      recipe_id: Number(recipeIngredient.value.recipe_id),
       quantity: newQty
     })
   }
@@ -395,7 +442,7 @@ function addRecipeIngredient() {
   validateGlobalStock()
 }
 function removeRecipeIngredient(recipe_id) {
-  form.value.recipe_ingredients = form.value.recipe_ingredients.filter(ri => ri.recipe_id !== recipe_id)
+  form.value.recipe_ingredients = form.value.recipe_ingredients.filter(ri => Number(ri.recipe_id) !== Number(recipe_id))
   validateGlobalStock()
 }
 
@@ -432,5 +479,15 @@ onMounted(() => {
 <style scoped>
 .v-card, .v-data-table, .v-toolbar, .v-navigation-drawer, .v-form, .v-btn, .v-text-field, .v-select, .v-switch {
   border-radius: 2rem !important;
+}
+.recipe-preview {
+  background: #f6f8f7;
+  border: 1px solid #e0eee7;
+  border-radius: 1rem;
+}
+.ingredient-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
 }
 </style>

@@ -12,6 +12,7 @@ use App\Models\PaymentProviderConfig;
 use App\Models\PrintJob;
 use App\Models\Product;
 use App\Models\Table;
+use App\Services\Inventory\ProductStockService;
 use Illuminate\Http\Request;
 
 class MobileSyncController extends Controller
@@ -42,6 +43,18 @@ class MobileSyncController extends Controller
             ->latest('updated_at')
             ->limit(100)
             ->get();
+        $stock = app(ProductStockService::class);
+        $products = Product::query()
+            ->where('branch_id', $branchId)
+            ->where('is_available', true)
+            ->when($since, fn ($query) => $query->where('updated_at', '>', $since))
+            ->with(['category', 'recipe.ingredients'])
+            ->orderBy('name')
+            ->limit(250)
+            ->get()
+            ->filter(fn (Product $product) => $stock->isAvailable($product, (int) $branchId))
+            ->values();
+        $products->each(fn (Product $product) => $product->unsetRelation('recipe'));
 
         return response()->json([
             'server_time' => now()->toISOString(),
@@ -81,14 +94,7 @@ class MobileSyncController extends Controller
                     ->orderBy('name')
                     ->get(),
                 'orders' => $orders,
-                'products' => Product::query()
-                    ->where('branch_id', $branchId)
-                    ->where('is_available', true)
-                    ->when($since, fn ($query) => $query->where('updated_at', '>', $since))
-                    ->with('category')
-                    ->orderBy('name')
-                    ->limit(250)
-                    ->get(),
+                'products' => $products,
                 'inventory_alerts' => InventoryItem::query()
                     ->where('branch_id', $branchId)
                     ->whereColumn('quantity', '<=', 'min_stock')

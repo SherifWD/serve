@@ -8,6 +8,7 @@ use App\Models\Branch;
 use App\Models\CategoryAnswer;
 use App\Models\Customer;
 use App\Models\LoyaltyTransaction;
+use App\Models\Modifier;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Payment;
@@ -15,11 +16,12 @@ use App\Models\PaymentAttempt;
 use App\Models\Product;
 use App\Models\Receipt;
 use App\Models\Table;
+use App\Services\Inventory\ProductStockService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 
 class OrderMobileController extends Controller
 {
@@ -126,17 +128,6 @@ class OrderMobileController extends Controller
             ->unique()
             ->values()
             ->all();
-    }
-
-    private function nonNegativeStockExpression(float|int $delta): string
-    {
-        $delta = (float) $delta;
-
-        if (DB::connection()->getDriverName() === 'sqlite') {
-            return "CASE WHEN stock + ($delta) < 0 THEN 0 ELSE stock + ($delta) END";
-        }
-
-        return "GREATEST(stock + ($delta), 0)";
     }
 
     public function index(Request $request)
@@ -282,13 +273,15 @@ public function batchSendToCashier(Request $request)
         'coupon_code' => 'nullable|string|max:50'
     ]);
 
-    $table = Table::findOrFail($data['table_id']);
+    $table = Table::with('branch')->findOrFail($data['table_id']);
     if ($authResponse = $this->ensureBranchAccessible($request, (int) $table->branch_id)) {
         return $authResponse;
     }
+    $restaurantId = $table->branch?->restaurant_id;
 
     DB::beginTransaction();
     try {
+        $stockService = app(ProductStockService::class);
         $customer = $this->resolveCustomer($data);
 
         $openOrder = Order::where('table_id', $table->id)
@@ -318,11 +311,30 @@ public function batchSendToCashier(Request $request)
         $branchId = $table->branch_id;
 
         // Helper: sum modifier price for modifier_ids
-        $sumModifierPrice = function(array $mods): float {
+        $sumModifierPrice = function(array $mods, Product $product) use ($restaurantId): float {
             if (empty($mods)) return 0.0;
             $ids = array_values(array_filter(array_map(fn($m) => $m['modifier_id'] ?? null, $mods)));
             if (empty($ids)) return 0.0;
-            $rows = \App\Models\Modifier::whereIn('id', $ids)->get(['id','price']);
+            $rows = Modifier::query()
+                ->whereIn('id', $ids)
+                ->where('is_active', true)
+                ->where(function ($query) use ($restaurantId) {
+                    $query->whereNull('restaurant_id');
+
+                    if ($restaurantId) {
+                        $query->orWhere('restaurant_id', $restaurantId);
+                    }
+                })
+                ->where(function ($query) use ($product) {
+                    $query->whereNull('category_id')
+                        ->orWhere('category_id', $product->category_id);
+                })
+                ->get(['id','price']);
+            if ($rows->count() !== count(array_unique($ids))) {
+                throw ValidationException::withMessages([
+                    'items' => ['Selected modifier is not available for this product category.'],
+                ]);
+            }
             $byId = $rows->keyBy('id');
             $sum = 0.0;
             foreach ($ids as $id) {
@@ -332,50 +344,26 @@ public function batchSendToCashier(Request $request)
             return $sum;
         };
 
-        // Helper: adjust stock (recipes or product), direction -1 on create
-        $adjustStock = function(\App\Models\Product $product, int $qty, int $direction = -1) use ($branchId) {
-            $product->loadMissing('recipe.ingredients');
-
-            if ($product->recipe && $product->recipe->ingredients->count()) {
-                foreach ($product->recipe->ingredients as $ingredient) {
-                    $pivotQty = (float)$ingredient->pivot->quantity;
-                    $delta = $pivotQty * $qty * $direction;
-
-                    // Prefer ingredient_branches if exists; else fallback to ingredients.stock
-                    $ib = \DB::table('ingredient_branches')
-                        ->where('ingredient_id', $ingredient->id)
-                        ->where('branch_id', $branchId)
-                        ->first();
-
-                    if ($ib) {
-                        // update stock safely
-                        \DB::table('ingredient_branches')
-                            ->where('id', $ib->id)
-                            ->update(['stock' => \DB::raw($this->nonNegativeStockExpression($delta))]); // prevent negative
-                    } else {
-                        // fallback
-                        $ingredient->update(['stock' => max(0, (float)$ingredient->stock + $delta)]);
-                    }
-                }
-            } else {
-                // simple product stock (if you track it on products)
-                if (Schema::hasColumn('products','stock')) {
-                    $delta = $qty * $direction;
-                    $product->update(['stock' => \DB::raw($this->nonNegativeStockExpression($delta))]);
-                }
-            }
-        };
-
         // (Optional) Validate required questions if your data has 'required'
         $questionsByCategory = []; // if you can provide, otherwise skip checking
 
         foreach ($data['items'] as $item) {
-            $product = Product::findOrFail($item['product_id']);
+            $product = Product::query()
+                ->whereKey($item['product_id'])
+                ->where('branch_id', $branchId)
+                ->where('is_available', true)
+                ->first();
+
+            if (!$product) {
+                throw ValidationException::withMessages([
+                    'items' => ['Selected product is not available for this branch.'],
+                ]);
+            }
 
             // --- compute base + modifiers ---
             $baseUnit = (float)$product->price;
             $mods = $item['modifiers'] ?? [];
-            $modsUnit = $sumModifierPrice($mods); // price per 1 unit of product
+            $modsUnit = $sumModifierPrice($mods, $product); // price per 1 unit of product
             $unitPrice = $baseUnit + $modsUnit;
 
             $qty = (int)$item['quantity'];
@@ -390,6 +378,8 @@ public function batchSendToCashier(Request $request)
                     : $itemDiscount;
             }
             $itemTotal = max(0, round($itemTotal, 2));
+
+            $stockService->consume($product, (int) $branchId, $qty);
 
             $orderItem = OrderItem::create([
                 'order_id'   => $order->id,
@@ -427,9 +417,6 @@ public function batchSendToCashier(Request $request)
                     }
                 }
             }
-
-            // stock deduction
-            $adjustStock($product, $qty, -1);
         }
 
         // order-level discount
@@ -471,6 +458,9 @@ public function batchSendToCashier(Request $request)
         $this->appendItemRuntimeState($order);
         return response()->json(['order' => $order], $openOrder ? 200 : 201);
 
+    } catch (ValidationException $e) {
+        DB::rollBack();
+        throw $e;
     } catch (\Throwable $e) {
         DB::rollBack();
         return response()->json([

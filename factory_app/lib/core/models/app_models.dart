@@ -750,17 +750,25 @@ class ModifierData {
     required this.id,
     required this.name,
     required this.price,
+    this.categoryId,
   });
 
   final int id;
   final String name;
   final double price;
+  final int? categoryId;
+
+  bool appliesToCategory(int categoryId) {
+    return this.categoryId == null || this.categoryId == categoryId;
+  }
 
   factory ModifierData.fromJson(Map<String, dynamic> json) {
     return ModifierData(
       id: jsonInt(json['id']),
       name: jsonString(json['name']),
       price: jsonDouble(json['price']),
+      categoryId:
+          json['category_id'] == null ? null : jsonInt(json['category_id']),
     );
   }
 }

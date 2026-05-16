@@ -12,4 +12,12 @@ class Modifier extends Model
     return $this->hasMany(MenuModifier::class);
 }
 
+public function category() {
+    return $this->belongsTo(Category::class);
+}
+
+public function restaurant() {
+    return $this->belongsTo(Restaurant::class);
+}
+
 }

@@ -23,4 +23,8 @@ public function menus()
 public function questions() {
     return $this->hasMany(CategoryQuestion::class);
 }
+
+public function modifiers() {
+    return $this->hasMany(Modifier::class)->where('is_active', true)->orderBy('name');
+}
 }

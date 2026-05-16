@@ -9,6 +9,7 @@ use App\Models\Branch;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Table;
+use App\Services\Inventory\ProductStockService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -18,17 +19,6 @@ class TableMobileController extends Controller
     private const ACTIVE_ORDER_STATUSES = ['pending', 'open', 'running', 'cashier'];
     private const NON_ACTIVE_ITEM_STATUSES = ['canceled', 'cancelled', 'refunded'];
     private const RETURNABLE_KITCHEN_STATUSES = ['ready', 'served'];
-
-    private function nonNegativeStockExpression(float|int $delta): string
-    {
-        $delta = (float) $delta;
-
-        if (DB::connection()->getDriverName() === 'sqlite') {
-            return "CASE WHEN stock + ($delta) < 0 THEN 0 ELSE stock + ($delta) END";
-        }
-
-        return "GREATEST(stock + ($delta), 0)";
-    }
 
     private function ensureBranchAccessible(Request $request, int $branchId): ?JsonResponse
     {
@@ -435,22 +425,14 @@ public function batchSendToCashier(Request $request)
     $product = $item->product;
     $branchId = $order->branch_id;
 
-    // Adjust stock (prefer branch stock if you have it)
-    $adjustStock = function($product, $qty, $direction = 1) use ($branchId) {
-        $product->loadMissing('recipe.ingredients');
-        if ($product->recipe) {
-            foreach ($product->recipe->ingredients as $ingredient) {
-                $delta = $ingredient->pivot->quantity * $qty * $direction;
-                // If you track per-branch:
-                DB::table('ingredient_branches')
-                    ->where('ingredient_id', $ingredient->id)
-                    ->where('branch_id', $branchId)
-                    ->update(['stock' => DB::raw($this->nonNegativeStockExpression($delta))]);
-            }
-        } else {
-            // fallback: product stock
-            $product->increment('stock', $qty * $direction);
+    $stockService = app(ProductStockService::class);
+    $adjustStock = function($product, $qty, $direction = 1) use ($branchId, $stockService) {
+        if ($direction < 0) {
+            $stockService->consume($product, (int) $branchId, (int) $qty);
+            return;
         }
+
+        $stockService->restore($product, (int) $branchId, (int) $qty);
     };
 
     return DB::transaction(function () use ($action, $qty, $note, $restoreStock, $userId, $item, $order, $product, $before, $adjustStock) {
