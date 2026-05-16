@@ -2,7 +2,7 @@
   <div class="login-page">
     <div class="login-hero">
       <div class="hero-copy">
-        <div class="hero-kicker">Restaurant Suite</div>
+        <div class="hero-kicker">Janova Suite</div>
         <h1 class="hero-title">Manage every restaurant from one clear dashboard.</h1>
         <p class="hero-subtitle">
           Admins manage venues and access. Owners follow live service, branch performance,

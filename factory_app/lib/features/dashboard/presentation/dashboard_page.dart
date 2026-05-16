@@ -72,26 +72,26 @@ class DashboardPage extends ConsumerWidget {
               foregroundColor: darkChrome ? Colors.white : null,
               toolbarHeight: compact ? 64 : kToolbarHeight,
               titleSpacing: compact ? 12 : 0,
-              title: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  Text(
-                    subtitle,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: darkChrome
-                              ? Colors.white70
-                              : Theme.of(context).colorScheme.onSurfaceVariant,
-                        ),
-                  ),
-                ],
-              ),
+              // title: Column(
+              //   crossAxisAlignment: CrossAxisAlignment.start,
+              //   children: [
+              //     Text(
+              //       title,
+              //       maxLines: 1,
+              //       overflow: TextOverflow.ellipsis,
+              //     ),
+              //     Text(
+              //       subtitle,
+              //       maxLines: 1,
+              //       overflow: TextOverflow.ellipsis,
+              //       style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              //             color: darkChrome
+              //                 ? Colors.white70
+              //                 : Theme.of(context).colorScheme.onSurfaceVariant,
+              //           ),
+              //     ),
+              //   ],
+              // ),
               actions: [
                 if (fixedRole == null && roles.length > 1)
                   PopupMenuButton<AppRole>(

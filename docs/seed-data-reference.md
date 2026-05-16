@@ -1,4 +1,4 @@
-# Restaurant Suite Demo Seed Data
+# Janova Suite Demo Seed Data
 
 This project now uses a full demo seeder by default:
 

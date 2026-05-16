@@ -408,13 +408,13 @@ class _HeroPanel extends ConsumerWidget {
               _HeroPill(label: strings.t('hero.ownerAnalytics')),
             ],
           ),
-          const SizedBox(height: 24),
-          Text(
-            'API: $apiBaseUrl',
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: Colors.white.withValues(alpha: 0.82),
-            ),
-          ),
+          // const SizedBox(height: 24),
+          // Text(
+          //   'API: $apiBaseUrl',
+          //   style: theme.textTheme.bodySmall?.copyWith(
+          //     color: Colors.white.withValues(alpha: 0.82),
+          //   ),
+          // ),
         ],
       ),
     );

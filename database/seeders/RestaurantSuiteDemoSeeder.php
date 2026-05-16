@@ -425,7 +425,7 @@ class RestaurantSuiteDemoSeeder extends Seeder
         $user = User::updateOrCreate(
             ['email' => 'admin@restaurant-suite.com'],
             [
-                'name' => 'Restaurant Suite Admin',
+                'name' => 'Janova Suite Admin',
                 'password' => Hash::make('password'),
                 'role' => 'admin',
                 'restaurant_id' => null,

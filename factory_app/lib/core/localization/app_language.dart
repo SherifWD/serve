@@ -172,7 +172,7 @@ class AppStrings {
           'يبقى هذا التطبيق مثبتا على دور تشغيلي واحد لأجهزة الفروع وتدريب الفريق.',
     },
     'hero.brand': {
-      AppLanguage.en: 'Restaurant Suite',
+      AppLanguage.en: 'Janova Suite',
       AppLanguage.ar: 'نظام المطاعم',
     },
     'hero.title': {

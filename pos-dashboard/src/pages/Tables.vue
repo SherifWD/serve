@@ -25,9 +25,57 @@
               </v-btn>
             </v-card-title>
             <v-card-text>
+              <v-text-field
+                v-model="search"
+                label="Search tables..."
+                prepend-inner-icon="mdi-magnify"
+                clearable
+                class="mb-4"
+              />
+              <v-row dense class="mb-4">
+                <v-col cols="12" md="3">
+                  <v-select
+                    v-model="filters.restaurant_id"
+                    :items="restaurants"
+                    item-title="name"
+                    item-value="id"
+                    label="Restaurant"
+                    clearable
+                    variant="outlined"
+                    density="comfortable"
+                  />
+                </v-col>
+                <v-col cols="12" md="3">
+                  <v-select
+                    v-model="filters.branch_id"
+                    :items="branches"
+                    item-title="name"
+                    item-value="id"
+                    label="Branch"
+                    clearable
+                    variant="outlined"
+                    density="comfortable"
+                  />
+                </v-col>
+                <v-col cols="12" md="3">
+                  <v-select
+                    v-model="filters.status"
+                    :items="statusFilterItems"
+                    label="Status"
+                    clearable
+                    variant="outlined"
+                    density="comfortable"
+                  />
+                </v-col>
+                <v-col cols="12" md="3" class="d-flex align-center">
+                  <v-btn variant="tonal" color="primary" class="rounded-pill" @click="resetFilters">
+                    <v-icon start>mdi-filter-remove-outline</v-icon>Reset filters
+                  </v-btn>
+                </v-col>
+              </v-row>
               <v-data-table
                 :headers="headers"
-                :items="tables"
+                :items="filteredTables"
                 :items-per-page="10"
                 class="rounded-xl"
                 style="border-radius:1.5rem;overflow:hidden;"
@@ -210,6 +258,12 @@ const drawer = ref(false)
 const editing = ref(false)
 let rowKey = 0
 const form = ref(createEmptyForm())
+const search = ref('')
+const filters = ref({
+  restaurant_id: null,
+  branch_id: null,
+  status: null,
+})
 
 const headers = [
   { title: 'ID', key: 'id' },
@@ -220,6 +274,22 @@ const headers = [
   { title: 'Status', key: 'status' },
   { title: 'Actions', key: 'actions', sortable: false },
 ]
+
+const statusFilterItems = [
+  { title: 'Open', value: 'open' },
+  { title: 'Occupied', value: 'occupied' },
+]
+
+const filteredTables = computed(() => {
+  const q = search.value.toLowerCase()
+
+  return tables.value.filter(table =>
+    matchesTableSearch(table, q) &&
+    (!filters.value.restaurant_id || Number(tableRestaurantId(table)) === Number(filters.value.restaurant_id)) &&
+    (!filters.value.branch_id || Number(table.branch_id) === Number(filters.value.branch_id)) &&
+    (!filters.value.status || table.status === filters.value.status)
+  )
+})
 
 const filteredBranches = computed(() => {
   if (!form.value.restaurant_id) return branches.value
@@ -295,8 +365,33 @@ function restaurantNameForTable(table) {
     'Not set'
 }
 
+function tableRestaurantId(table) {
+  const branch = table.branch ||
+    branches.value.find((candidate) => Number(candidate.id) === Number(table.branch_id))
+
+  return branchRestaurantId(branch)
+}
+
 function displaySeats(seats) {
   return seats ? seats : 'Not set'
+}
+
+function matchesTableSearch(table, query) {
+  if (!query) return true
+
+  return (table.name || '').toLowerCase().includes(query) ||
+    (table.status || '').toLowerCase().includes(query) ||
+    branchName(table.branch_id).toLowerCase().includes(query) ||
+    restaurantNameForTable(table).toLowerCase().includes(query)
+}
+
+function resetFilters() {
+  search.value = ''
+  filters.value = {
+    restaurant_id: null,
+    branch_id: null,
+    status: null,
+  }
 }
 
 function validSeats(value) {

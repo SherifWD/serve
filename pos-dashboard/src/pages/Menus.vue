@@ -33,6 +33,39 @@
                 style="max-width:400px;"
                 color="primary"
               />
+              <v-row dense class="mb-4">
+                <v-col cols="12" md="4">
+                  <v-select
+                    v-model="filters.branch_id"
+                    :items="branches"
+                    item-title="name"
+                    item-value="id"
+                    label="Branch"
+                    clearable
+                    variant="outlined"
+                    density="comfortable"
+                    :menu-props="{ contentClass: 'dashboard-select-menu' }"
+                  />
+                </v-col>
+                <v-col cols="12" md="4">
+                  <v-select
+                    v-model="filters.category_id"
+                    :items="categoryItems"
+                    item-title="name"
+                    item-value="id"
+                    label="Category"
+                    clearable
+                    variant="outlined"
+                    density="comfortable"
+                    :menu-props="{ contentClass: 'dashboard-select-menu' }"
+                  />
+                </v-col>
+                <v-col cols="12" md="4" class="d-flex align-center">
+                  <v-btn variant="tonal" color="primary" class="rounded-pill" @click="resetFilters">
+                    <v-icon start>mdi-filter-remove-outline</v-icon>Reset filters
+                  </v-btn>
+                </v-col>
+              </v-row>
               <v-data-table
                 :headers="headers"
                 :items="filteredMenus"
@@ -231,6 +264,10 @@ const drawerForm = ref({
 const viewMenu = ref({})
 const search = ref('')
 const formError = ref('')
+const filters = ref({
+  branch_id: null,
+  category_id: null,
+})
 
 const headers = [
   { title: 'Name', value: 'name' },
@@ -240,11 +277,14 @@ const headers = [
 ]
 
 const filteredMenus = computed(() => {
-  if (!search.value) return menus.value
   const q = search.value.toLowerCase()
   return menus.value.filter(menu =>
-    menu.name.toLowerCase().includes(q) ||
-    (menu.branch?.name ?? '').toLowerCase().includes(q)
+    (!q ||
+      menu.name.toLowerCase().includes(q) ||
+      (menu.branch?.name ?? '').toLowerCase().includes(q) ||
+      (menu.categories ?? []).some(category => category.name.toLowerCase().includes(q))) &&
+    (!filters.value.branch_id || Number(menu.branch_id) === Number(filters.value.branch_id)) &&
+    (!filters.value.category_id || (menu.categories ?? []).some(category => Number(category.id) === Number(filters.value.category_id)))
   )
 })
 
@@ -347,6 +387,14 @@ function errorMessage(error) {
   const errors = error?.response?.data?.errors
   if (errors) return Object.values(errors).flat().join(' ')
   return error?.response?.data?.message || error?.response?.data?.error || 'Could not save this menu.'
+}
+
+function resetFilters() {
+  search.value = ''
+  filters.value = {
+    branch_id: null,
+    category_id: null,
+  }
 }
 
 async function deleteMenu(menu) {

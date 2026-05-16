@@ -27,6 +27,46 @@
               style="max-width:400px;"
               color="primary"
             />
+            <v-row dense class="mb-4">
+              <v-col cols="12" md="4">
+                <v-select
+                  v-model="filters.branch_id"
+                  :items="branches"
+                  item-title="name"
+                  item-value="id"
+                  label="Branch"
+                  clearable
+                  variant="outlined"
+                  density="comfortable"
+                  :menu-props="{ contentClass: 'dashboard-select-menu' }"
+                />
+              </v-col>
+              <v-col cols="12" md="3">
+                <v-select
+                  v-model="filters.questions"
+                  :items="presenceFilterItems"
+                  label="Questions"
+                  clearable
+                  variant="outlined"
+                  density="comfortable"
+                />
+              </v-col>
+              <v-col cols="12" md="3">
+                <v-select
+                  v-model="filters.modifiers"
+                  :items="presenceFilterItems"
+                  label="Modifiers"
+                  clearable
+                  variant="outlined"
+                  density="comfortable"
+                />
+              </v-col>
+              <v-col cols="12" md="2" class="d-flex align-center">
+                <v-btn variant="tonal" color="primary" class="rounded-pill" @click="resetFilters">
+                  <v-icon start>mdi-filter-remove-outline</v-icon>Reset
+                </v-btn>
+              </v-col>
+            </v-row>
             <v-data-table
               :headers="headers"
               :items="filteredCategories"
@@ -273,6 +313,11 @@ const form = ref(blankForm())
 const search = ref('')
 const formError = ref('')
 let localKey = 0
+const filters = ref({
+  branch_id: null,
+  questions: null,
+  modifiers: null,
+})
 
 const headers = [
   { title: 'Name', value: 'name' },
@@ -282,13 +327,22 @@ const headers = [
   { title: 'Actions', value: 'actions', sortable: false }
 ]
 
+const presenceFilterItems = [
+  { title: 'Configured', value: 'has' },
+  { title: 'Not configured', value: 'none' },
+]
+
 const filteredCategories = computed(() => {
-  if (!search.value) return categories.value
   const q = search.value.toLowerCase()
   return categories.value.filter(cat =>
-    cat.name.toLowerCase().includes(q) ||
-    (cat.branch?.name ?? '').toLowerCase().includes(q) ||
-    (cat.modifiers ?? []).some(modifier => modifier.name.toLowerCase().includes(q))
+    (!q ||
+      cat.name.toLowerCase().includes(q) ||
+      (cat.branch?.name ?? '').toLowerCase().includes(q) ||
+      (cat.questions ?? []).some(question => question.question.toLowerCase().includes(q)) ||
+      (cat.modifiers ?? []).some(modifier => modifier.name.toLowerCase().includes(q))) &&
+    (!filters.value.branch_id || Number(cat.branch_id) === Number(filters.value.branch_id)) &&
+    matchesPresenceFilter(questionCount(cat), filters.value.questions) &&
+    matchesPresenceFilter(modifierCount(cat), filters.value.modifiers)
   )
 })
 
@@ -394,6 +448,20 @@ function questionCount(category) {
 
 function modifierCount(category) {
   return category.modifiers?.length ?? 0
+}
+
+function matchesPresenceFilter(count, value) {
+  if (!value) return true
+  return value === 'has' ? count > 0 : count === 0
+}
+
+function resetFilters() {
+  search.value = ''
+  filters.value = {
+    branch_id: null,
+    questions: null,
+    modifiers: null,
+  }
 }
 
 function blankForm() {

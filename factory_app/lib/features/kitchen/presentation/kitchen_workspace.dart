@@ -474,31 +474,7 @@ class _KitchenHero extends StatelessWidget {
         const metricSpacing = 12.0;
         final metricWidth =
             (maxWidth - metricSpacing * (metricColumns - 1)) / metricColumns;
-        final intro = Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Kitchen KDS',
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w900,
-                  ),
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              'Minimal, readable, and made for quick movement. Tap a full ticket to move the lane. Tap a single item to move it forward.',
-              style: TextStyle(color: Colors.white70, height: 1.35),
-            ),
-          ],
-        );
-        const hints = Wrap(
-          spacing: 10,
-          runSpacing: 10,
-          children: [
-            _BoardHint(label: 'Tap ticket = move all'),
-            _BoardHint(label: 'Tap item = next step'),
-          ],
-        );
+        
 
         return Container(
           padding: EdgeInsets.all(compact ? 16 : 20),
@@ -511,17 +487,7 @@ class _KitchenHero extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               if (!compact)
-                Row(
-                  children: [
-                    Expanded(child: intro),
-                    hints,
-                  ],
-                ),
-              if (compact) ...[
-                intro,
-                const SizedBox(height: 14),
-                hints,
-              ],
+                
               const SizedBox(height: 18),
               Wrap(
                 spacing: metricSpacing,

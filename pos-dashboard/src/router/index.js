@@ -131,8 +131,8 @@ router.beforeEach((to, from, next) => {
   const auth = useAuthStore()
 
   document.title = to.meta?.title
-    ? `Restaurant Suite | ${to.meta.title}`
-    : 'Restaurant Suite Dashboard'
+    ? `Janova Suite | ${to.meta.title}`
+    : 'Janova Suite Dashboard'
 
   if (to.meta.requiresAuth && !auth.isAuthenticated) {
     next('/login')

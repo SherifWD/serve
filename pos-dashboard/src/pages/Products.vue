@@ -21,6 +21,59 @@
                 style="max-width:400px;"
                 color="primary"
               />
+              <v-row dense class="mb-4">
+                <v-col cols="12" sm="6" lg="3">
+                  <v-select
+                    v-model="filters.branch_id"
+                    :items="branches"
+                    item-title="name"
+                    item-value="id"
+                    label="Branch"
+                    clearable
+                    variant="outlined"
+                    density="comfortable"
+                    :menu-props="{ contentClass: 'dashboard-select-menu' }"
+                  />
+                </v-col>
+                <v-col cols="12" sm="6" lg="3">
+                  <v-select
+                    v-model="filters.category_id"
+                    :items="categoryItems"
+                    item-title="name"
+                    item-value="id"
+                    label="Category"
+                    clearable
+                    variant="outlined"
+                    density="comfortable"
+                    :menu-props="{ contentClass: 'dashboard-select-menu' }"
+                  />
+                </v-col>
+                <v-col cols="12" sm="6" lg="2">
+                  <v-select
+                    v-model="filters.availability"
+                    :items="availabilityItems"
+                    label="Availability"
+                    clearable
+                    variant="outlined"
+                    density="comfortable"
+                  />
+                </v-col>
+                <v-col cols="12" sm="6" lg="2">
+                  <v-select
+                    v-model="filters.recipe"
+                    :items="recipeFilterItems"
+                    label="Recipe"
+                    clearable
+                    variant="outlined"
+                    density="comfortable"
+                  />
+                </v-col>
+                <v-col cols="12" lg="2" class="d-flex align-center">
+                  <v-btn variant="tonal" color="primary" class="rounded-pill" @click="resetFilters">
+                    <v-icon start>mdi-filter-remove-outline</v-icon>Reset
+                  </v-btn>
+                </v-col>
+              </v-row>
               <v-data-table
                 :headers="headers"
                 :items="filteredProducts"
@@ -239,6 +292,12 @@ const drawerForm = ref({
 const viewProduct = ref({})
 const search = ref('')
 const formError = ref('')
+const filters = ref({
+  branch_id: null,
+  category_id: null,
+  availability: null,
+  recipe: null,
+})
 
 const headers = [
   { text: 'Name', value: 'name' },
@@ -249,13 +308,25 @@ const headers = [
   { title: 'Actions', value: 'actions', sortable: false }
 ]
 
+const availabilityItems = [
+  { title: 'Available', value: 'available' },
+  { title: 'Unavailable', value: 'unavailable' },
+  { title: 'Low stock', value: 'low_stock' },
+]
+
+const recipeFilterItems = [
+  { title: 'Has recipe', value: 'has_recipe' },
+  { title: 'No recipe', value: 'no_recipe' },
+]
+
 const filteredProducts = computed(() => {
-  if (!search.value) return products.value
   const q = search.value.toLowerCase()
   return products.value.filter(prod =>
-    prod.name.toLowerCase().includes(q) ||
-    (prod.category?.name ?? '').toLowerCase().includes(q) ||
-    (prod.branch?.name ?? '').toLowerCase().includes(q)
+    matchesProductSearch(prod, q) &&
+    (!filters.value.branch_id || Number(prod.branch_id) === Number(filters.value.branch_id)) &&
+    (!filters.value.category_id || Number(prod.category_id) === Number(filters.value.category_id)) &&
+    matchesAvailabilityFilter(prod) &&
+    matchesRecipeFilter(prod)
   )
 })
 
@@ -405,6 +476,43 @@ function onBranchChange() {
 
 function onRecipeChange() {
   formError.value = ''
+}
+
+function matchesProductSearch(product, query) {
+  if (!query) return true
+
+  return product.name.toLowerCase().includes(query) ||
+    (product.category?.name ?? '').toLowerCase().includes(query) ||
+    (product.branch?.name ?? '').toLowerCase().includes(query) ||
+    (product.recipe ? recipeTitle(product.recipe).toLowerCase().includes(query) : false)
+}
+
+function matchesAvailabilityFilter(product) {
+  if (!filters.value.availability) return true
+  if (filters.value.availability === 'available') return !!product.is_available
+  if (filters.value.availability === 'unavailable') return !product.is_available
+  if (filters.value.availability === 'low_stock') {
+    return Number(product.stock ?? 0) <= Number(product.min_stock ?? 0)
+  }
+
+  return true
+}
+
+function matchesRecipeFilter(product) {
+  if (!filters.value.recipe) return true
+  if (filters.value.recipe === 'has_recipe') return !!product.recipe
+  if (filters.value.recipe === 'no_recipe') return !product.recipe
+  return true
+}
+
+function resetFilters() {
+  search.value = ''
+  filters.value = {
+    branch_id: null,
+    category_id: null,
+    availability: null,
+    recipe: null,
+  }
 }
 
 async function saveProduct() {

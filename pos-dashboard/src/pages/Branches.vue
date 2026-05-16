@@ -57,6 +57,15 @@
               @update:modelValue="loadBranches"
             />
           </v-col>
+          <v-col cols="12" md="6">
+            <v-text-field
+              v-model="search"
+              label="Search branches..."
+              prepend-inner-icon="mdi-magnify"
+              clearable
+              variant="outlined"
+            />
+          </v-col>
         </v-row>
       </div>
 
@@ -70,7 +79,7 @@
 
         <v-data-table
           :headers="headers"
-          :items="branches"
+          :items="filteredBranches"
           item-value="id"
           class="rs-table"
           hide-default-footer
@@ -139,7 +148,7 @@
 </template>
 
 <script setup>
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import axios from 'axios'
 import OwnerLayout from '@/layouts/OwnerLayout.vue'
 import { API_BASE_URL } from '../lib/api'
@@ -152,6 +161,7 @@ const branches = ref([])
 const dialog = ref(false)
 const editing = ref(false)
 const selectedRestaurant = ref(auth.user?.restaurant_id ?? null)
+const search = ref('')
 const form = ref(createEmptyForm())
 
 const headers = [
@@ -161,6 +171,17 @@ const headers = [
   { title: 'Location', key: 'location' },
   { title: 'Actions', key: 'actions', sortable: false, width: 120 },
 ]
+
+const filteredBranches = computed(() => {
+  const q = search.value.toLowerCase()
+  if (!q) return branches.value
+
+  return branches.value.filter(branch =>
+    (branch.name || '').toLowerCase().includes(q) ||
+    (branch.location || '').toLowerCase().includes(q) ||
+    (branch.restaurant?.name || '').toLowerCase().includes(q)
+  )
+})
 
 function createEmptyForm() {
   return {

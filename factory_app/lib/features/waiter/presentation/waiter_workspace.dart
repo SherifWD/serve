@@ -117,20 +117,6 @@ class _WaiterHero extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                'Tableside service board',
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w900,
-                    ),
-              ),
-              const SizedBox(height: 8),
-              const Text(
-                'Fast table access with direct handoff to kitchen and cashier.',
-                style: TextStyle(color: Colors.white70, height: 1.35),
-              ),
               const SizedBox(height: 18),
               Wrap(
                 spacing: 12,

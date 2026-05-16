@@ -11,6 +11,46 @@
         </v-card-title>
         <v-card-text>
           <v-text-field v-model="search" label="Search ingredients..." prepend-inner-icon="mdi-magnify" clearable class="mb-4" />
+          <v-row dense class="mb-4">
+            <v-col cols="12" sm="6" lg="3">
+              <v-select
+                v-model="filters.branch_id"
+                :items="branches"
+                item-title="name"
+                item-value="id"
+                label="Branch stock"
+                clearable
+                variant="outlined"
+                density="comfortable"
+                :menu-props="{ contentClass: 'dashboard-select-menu' }"
+              />
+            </v-col>
+            <v-col cols="12" sm="6" lg="3">
+              <v-select
+                v-model="filters.unit"
+                :items="unitItems"
+                label="Unit"
+                clearable
+                variant="outlined"
+                density="comfortable"
+              />
+            </v-col>
+            <v-col cols="12" sm="6" lg="3">
+              <v-select
+                v-model="filters.stock"
+                :items="stockFilterItems"
+                label="Stock"
+                clearable
+                variant="outlined"
+                density="comfortable"
+              />
+            </v-col>
+            <v-col cols="12" sm="6" lg="3" class="d-flex align-center">
+              <v-btn variant="tonal" color="primary" class="rounded-pill" @click="resetFilters">
+                <v-icon start>mdi-filter-remove-outline</v-icon>Reset filters
+              </v-btn>
+            </v-col>
+          </v-row>
           <v-data-table
             :headers="headers"
             :items="filteredIngredients"
@@ -221,6 +261,11 @@ const drawer = ref(false)
 const isEditing = ref(false)
 const tab = ref('general')
 const saving = ref(false)
+const filters = ref({
+  branch_id: null,
+  unit: null,
+  stock: null,
+})
 
 const globalStockError = ref('')
 const branchStockError = ref('')
@@ -246,14 +291,61 @@ const headers = [
   { title: 'Actions', value: 'actions', sortable: false }
 ]
 
-const filteredIngredients = computed(() =>
-  !search.value
-    ? ingredients.value
-    : ingredients.value.filter(i =>
-        i.name.toLowerCase().includes(search.value.toLowerCase()) ||
-        i.unit.toLowerCase().includes(search.value.toLowerCase())
-      )
+const unitItems = computed(() =>
+  [...new Set(ingredients.value.map(ingredient => ingredient.unit).filter(Boolean))].sort()
 )
+
+const stockFilterItems = [
+  { title: 'Low stock', value: 'low' },
+  { title: 'Healthy stock', value: 'healthy' },
+  { title: 'Assigned to selected branch', value: 'assigned' },
+]
+
+const filteredIngredients = computed(() => {
+  const q = search.value.toLowerCase()
+
+  return ingredients.value.filter(ingredient =>
+    matchesIngredientSearch(ingredient, q) &&
+    (!filters.value.unit || ingredient.unit === filters.value.unit) &&
+    matchesIngredientBranchFilter(ingredient) &&
+    matchesIngredientStockFilter(ingredient)
+  )
+})
+
+function matchesIngredientSearch(ingredient, query) {
+  if (!query) return true
+
+  return ingredient.name.toLowerCase().includes(query) ||
+    ingredient.unit.toLowerCase().includes(query) ||
+    (ingredient.ingredient_branches ?? []).some(stock => branchName(stock.branch_id).toLowerCase().includes(query))
+}
+
+function matchesIngredientBranchFilter(ingredient) {
+  if (!filters.value.branch_id) return true
+  return (ingredient.ingredient_branches ?? []).some(stock => Number(stock.branch_id) === Number(filters.value.branch_id))
+}
+
+function matchesIngredientStockFilter(ingredient) {
+  if (!filters.value.stock) return true
+
+  if (filters.value.stock === 'assigned') {
+    return filters.value.branch_id
+      ? matchesIngredientBranchFilter(ingredient)
+      : (ingredient.ingredient_branches ?? []).length > 0
+  }
+
+  const isLow = Number(ingredient.stock ?? 0) <= Number(ingredient.min_stock ?? 0)
+  return filters.value.stock === 'low' ? isLow : !isLow
+}
+
+function resetFilters() {
+  search.value = ''
+  filters.value = {
+    branch_id: null,
+    unit: null,
+    stock: null,
+  }
+}
 
 function branchName(id) {
   return branches.value.find(b => Number(b.id) === Number(id))?.name || '-'

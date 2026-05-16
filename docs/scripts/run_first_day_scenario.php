@@ -256,7 +256,7 @@ $recordStep(
     'Web Dashboard',
     'Login',
     'Platform Admin',
-    $adminUser['name'] ?? 'Restaurant Suite Admin',
+    $adminUser['name'] ?? 'Janova Suite Admin',
     'Signed into the platform dashboard with the seeded admin account.',
     'Admin session token was issued successfully and cross-restaurant control is available.',
     ['api' => $adminLogin]
@@ -279,7 +279,7 @@ $recordStep(
     'Web Dashboard',
     'Restaurants',
     'Platform Admin',
-    $adminUser['name'] ?? 'Restaurant Suite Admin',
+    $adminUser['name'] ?? 'Janova Suite Admin',
     sprintf('Opened Restaurants, clicked Add Restaurant, entered `%s`, selected `%s`, and clicked Save.', $restaurant['name'], $restaurant['kind']),
     'The new restaurant was created and became available for branch, owner, menu, and employee setup.',
     ['api' => $restaurantResponse]
@@ -309,7 +309,7 @@ $recordStep(
     'Web Dashboard',
     'Branches',
     'Platform Admin',
-    $adminUser['name'] ?? 'Restaurant Suite Admin',
+    $adminUser['name'] ?? 'Janova Suite Admin',
     'Opened Branches, clicked Add Branch three times, and created Downtown Flagship, New Cairo Studio, and Maadi Terrace for the new restaurant.',
     'All three operational branches were created and linked to Harbor Ember Kitchen.',
     ['branches' => $scenario['branches']]
@@ -396,7 +396,7 @@ $recordStep(
     'Web Dashboard',
     'Users',
     'Platform Admin',
-    $adminUser['name'] ?? 'Restaurant Suite Admin',
+    $adminUser['name'] ?? 'Janova Suite Admin',
     'Opened Users and provisioned the owner, stakeholder, supervisor, waiter, cashier, and kitchen users for the new restaurant.',
     'The restaurant now has authenticated accounts for admin control, owner oversight, and branch operations on the waiter, cashier, kitchen, and owner apps.',
     ['accounts' => $scenario['accounts']]

@@ -49,9 +49,37 @@
           </div>
         </div>
 
+        <v-row dense class="mb-4">
+          <v-col cols="12" md="5">
+            <v-text-field
+              v-model="search"
+              label="Search roles or permissions..."
+              prepend-inner-icon="mdi-magnify"
+              clearable
+              variant="outlined"
+              density="comfortable"
+            />
+          </v-col>
+          <v-col cols="12" md="3">
+            <v-select
+              v-model="filters.permission_group"
+              :items="permissionGroupItems"
+              label="Permission group"
+              clearable
+              variant="outlined"
+              density="comfortable"
+            />
+          </v-col>
+          <v-col cols="12" md="4" class="d-flex align-center">
+            <v-btn variant="tonal" color="primary" class="rs-pill" @click="resetFilters">
+              <v-icon start>mdi-filter-remove-outline</v-icon>Reset filters
+            </v-btn>
+          </v-col>
+        </v-row>
+
         <v-data-table
           :headers="headers"
-          :items="roles"
+          :items="filteredRoles"
           item-value="id"
           class="rs-table"
           hide-default-footer
@@ -159,6 +187,10 @@ const roles = ref([])
 const permissions = ref([])
 const dialog = ref(false)
 const editing = ref(false)
+const search = ref('')
+const filters = ref({
+  permission_group: null,
+})
 const form = ref({
   id: null,
   name: '',
@@ -183,6 +215,32 @@ const permissionGroups = computed(() => {
 
   return [...grouped.entries()].map(([name, items]) => ({ name, items }))
 })
+
+const permissionGroupItems = computed(() =>
+  permissionGroups.value.map(group => group.name)
+)
+
+const filteredRoles = computed(() => {
+  const q = search.value.toLowerCase()
+
+  return roles.value.filter(role =>
+    (!q ||
+      role.name.toLowerCase().includes(q) ||
+      role.permissions.some(permission => permission.toLowerCase().includes(q))) &&
+    matchesRolePermissionGroup(role)
+  )
+})
+
+function matchesRolePermissionGroup(role) {
+  if (!filters.value.permission_group) return true
+
+  const groupPermissions = permissionGroups.value
+    .find(group => group.name === filters.value.permission_group)
+    ?.items
+    ?.map(permission => permission.name) ?? []
+
+  return role.permissions.some(permission => groupPermissions.includes(permission))
+}
 
 function authHeaders() {
   return { Authorization: `Bearer ${auth.token}` }
@@ -242,6 +300,13 @@ async function removeRole(id) {
     headers: authHeaders(),
   })
   await loadRoles()
+}
+
+function resetFilters() {
+  search.value = ''
+  filters.value = {
+    permission_group: null,
+  }
 }
 
 onMounted(loadRoles)

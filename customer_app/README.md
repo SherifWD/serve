@@ -1,6 +1,6 @@
 # Restaurant Customer App
 
-This Flutter project is the standalone customer-facing application for Restaurant Suite. It reuses the shared package from [factory_app](/Applications/XAMPP/xamppfiles/htdocs/pos_restaurant/factory_app) but boots directly into the customer experience.
+This Flutter project is the standalone customer-facing application for Janova Suite. It reuses the shared package from [factory_app](/Applications/XAMPP/xamppfiles/htdocs/pos_restaurant/factory_app) but boots directly into the customer experience.
 
 ## Install
 

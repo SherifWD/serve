@@ -130,7 +130,7 @@ const apiBaseUrl = API_BASE_URL
 const showSaved = ref(false)
 
 const form = ref({
-  platformName: 'Restaurant Suite',
+  platformName: 'Janova Suite',
   supportEmail: 'support@example.com',
   defaultCurrency: 'EGP',
   timezone: 'Africa/Cairo',

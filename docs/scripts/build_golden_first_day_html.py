@@ -426,7 +426,7 @@ def build_html(data: dict) -> str:
   <div class="layout">
     <div class="hero">
       <h1>Golden First Day Scenario</h1>
-      <p>Real first-day sanity run for a newly signed restaurant using the full Restaurant Suite flow from platform admin setup through end-of-day owner review.</p>
+      <p>Real first-day sanity run for a newly signed restaurant using the full Janova Suite flow from platform admin setup through end-of-day owner review.</p>
       <div class="pill-row">
         <span class="pill">{escape(data['restaurant']['name'])}</span>
         <span class="pill">Generated {escape(generated_at.strftime('%Y-%m-%d %H:%M UTC'))}</span>
@@ -454,7 +454,7 @@ def build_html(data: dict) -> str:
           <tbody>
             <tr><td>Owner</td><td>{escape(data['accounts']['owner']['name'])}</td><td><code>{escape(data['accounts']['owner']['email'])}</code></td></tr>
             <tr><td>Stakeholder</td><td>{escape(data['accounts']['stakeholder']['name'])}</td><td><code>{escape(data['accounts']['stakeholder']['email'])}</code></td></tr>
-            <tr><td>Admin</td><td>Restaurant Suite Admin</td><td><code>admin@restaurant-suite.com</code></td></tr>
+            <tr><td>Admin</td><td>Janova Suite Admin</td><td><code>admin@restaurant-suite.com</code></td></tr>
           </tbody>
         </table>
       </div>

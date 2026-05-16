@@ -1,4 +1,4 @@
-# Restaurant Suite Deployment Guide
+# Janova Suite Deployment Guide
 
 Updated: April 11, 2026
 
@@ -159,7 +159,7 @@ php artisan key:generate --force
 Minimum production `.env` shape:
 
 ```dotenv
-APP_NAME="Restaurant Suite"
+APP_NAME="Janova Suite"
 APP_ENV=production
 APP_DEBUG=false
 APP_URL=https://api.example.com

@@ -15,7 +15,10 @@ class MobileProductController extends Controller
         $branchId = $user?->branch_id;
 
         $categories = Category::query()
-            ->when($branchId, fn ($query) => $query->where('branch_id', $branchId))
+            ->when($branchId, fn ($query) => $query->where(function ($scope) use ($branchId) {
+                $scope->where('branch_id', $branchId)
+                    ->orWhereHas('menus', fn ($menuQuery) => $menuQuery->where('branch_id', $branchId));
+            }))
             ->with([
                 'products' => function ($query) use ($branchId) {
                     $query->select('id', 'name', 'price', 'category_id', 'image', 'branch_id', 'stock')

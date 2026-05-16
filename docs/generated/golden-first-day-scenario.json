@@ -948,7 +948,7 @@
             "surface": "Web Dashboard",
             "page": "Login",
             "actor_role": "Platform Admin",
-            "actor_name": "Restaurant Suite Admin",
+            "actor_name": "Janova Suite Admin",
             "action": "Signed into the platform dashboard with the seeded admin account.",
             "result": "Admin session token was issued successfully and cross-restaurant control is available.",
             "api": {
@@ -959,7 +959,7 @@
                     "token": "1|jcsb0sqNVVh0uEBoig5XNaUoqQvkoXGdTErSmjd59221d889",
                     "user": {
                         "id": 1,
-                        "name": "Restaurant Suite Admin",
+                        "name": "Janova Suite Admin",
                         "email": "admin@restaurant-suite.com",
                         "role": "admin",
                         "roles": [
@@ -1015,7 +1015,7 @@
             "surface": "Web Dashboard",
             "page": "Restaurants",
             "actor_role": "Platform Admin",
-            "actor_name": "Restaurant Suite Admin",
+            "actor_name": "Janova Suite Admin",
             "action": "Opened Restaurants, clicked Add Restaurant, entered `Harbor Ember Kitchen`, selected `restaurant`, and clicked Save.",
             "result": "The new restaurant was created and became available for branch, owner, menu, and employee setup.",
             "api": {
@@ -1036,7 +1036,7 @@
             "surface": "Web Dashboard",
             "page": "Branches",
             "actor_role": "Platform Admin",
-            "actor_name": "Restaurant Suite Admin",
+            "actor_name": "Janova Suite Admin",
             "action": "Opened Branches, clicked Add Branch three times, and created Downtown Flagship, New Cairo Studio, and Maadi Terrace for the new restaurant.",
             "result": "All three operational branches were created and linked to Harbor Ember Kitchen.",
             "branches": [
@@ -1062,7 +1062,7 @@
             "surface": "Web Dashboard",
             "page": "Users",
             "actor_role": "Platform Admin",
-            "actor_name": "Restaurant Suite Admin",
+            "actor_name": "Janova Suite Admin",
             "action": "Opened Users and provisioned the owner, stakeholder, supervisor, waiter, cashier, and kitchen users for the new restaurant.",
             "result": "The restaurant now has authenticated accounts for admin control, owner oversight, and branch operations on the waiter, cashier, kitchen, and owner apps.",
             "accounts": {
@@ -2418,21 +2418,21 @@
             "route": "/#/restaurants",
             "user": "admin",
             "token": "1|jcsb0sqNVVh0uEBoig5XNaUoqQvkoXGdTErSmjd59221d889",
-            "user_json": "{\"id\":1,\"name\":\"Restaurant Suite Admin\",\"email\":\"admin@restaurant-suite.com\",\"role\":\"admin\",\"roles\":[\"admin\"],\"permissions\":[\"platform.restaurants.manage\",\"platform.branches.manage\",\"platform.users.manage\",\"platform.roles.manage\",\"dashboard.view\",\"branches.view\",\"branches.manage\",\"users.view\",\"users.manage\",\"roles.view\",\"orders.view\",\"orders.manage\",\"cashier.manage\",\"kds.manage\",\"tables.view\",\"tables.manage\",\"menu.view\",\"menu.manage\",\"categories.view\",\"categories.manage\",\"products.view\",\"products.manage\",\"inventory.view\",\"inventory.manage\",\"suppliers.view\",\"suppliers.manage\",\"ingredients.view\",\"ingredients.manage\",\"recipes.view\",\"recipes.manage\",\"employees.view\",\"employees.manage\",\"settings.view\",\"settings.manage\"],\"branch_id\":null,\"branch\":null,\"restaurant_id\":null,\"restaurant\":null,\"types\":[]}"
+            "user_json": "{\"id\":1,\"name\":\"Janova Suite Admin\",\"email\":\"admin@restaurant-suite.com\",\"role\":\"admin\",\"roles\":[\"admin\"],\"permissions\":[\"platform.restaurants.manage\",\"platform.branches.manage\",\"platform.users.manage\",\"platform.roles.manage\",\"dashboard.view\",\"branches.view\",\"branches.manage\",\"users.view\",\"users.manage\",\"roles.view\",\"orders.view\",\"orders.manage\",\"cashier.manage\",\"kds.manage\",\"tables.view\",\"tables.manage\",\"menu.view\",\"menu.manage\",\"categories.view\",\"categories.manage\",\"products.view\",\"products.manage\",\"inventory.view\",\"inventory.manage\",\"suppliers.view\",\"suppliers.manage\",\"ingredients.view\",\"ingredients.manage\",\"recipes.view\",\"recipes.manage\",\"employees.view\",\"employees.manage\",\"settings.view\",\"settings.manage\"],\"branch_id\":null,\"branch\":null,\"restaurant_id\":null,\"restaurant\":null,\"types\":[]}"
         },
         {
             "file": "admin-branches.png",
             "route": "/#/branches",
             "user": "admin",
             "token": "1|jcsb0sqNVVh0uEBoig5XNaUoqQvkoXGdTErSmjd59221d889",
-            "user_json": "{\"id\":1,\"name\":\"Restaurant Suite Admin\",\"email\":\"admin@restaurant-suite.com\",\"role\":\"admin\",\"roles\":[\"admin\"],\"permissions\":[\"platform.restaurants.manage\",\"platform.branches.manage\",\"platform.users.manage\",\"platform.roles.manage\",\"dashboard.view\",\"branches.view\",\"branches.manage\",\"users.view\",\"users.manage\",\"roles.view\",\"orders.view\",\"orders.manage\",\"cashier.manage\",\"kds.manage\",\"tables.view\",\"tables.manage\",\"menu.view\",\"menu.manage\",\"categories.view\",\"categories.manage\",\"products.view\",\"products.manage\",\"inventory.view\",\"inventory.manage\",\"suppliers.view\",\"suppliers.manage\",\"ingredients.view\",\"ingredients.manage\",\"recipes.view\",\"recipes.manage\",\"employees.view\",\"employees.manage\",\"settings.view\",\"settings.manage\"],\"branch_id\":null,\"branch\":null,\"restaurant_id\":null,\"restaurant\":null,\"types\":[]}"
+            "user_json": "{\"id\":1,\"name\":\"Janova Suite Admin\",\"email\":\"admin@restaurant-suite.com\",\"role\":\"admin\",\"roles\":[\"admin\"],\"permissions\":[\"platform.restaurants.manage\",\"platform.branches.manage\",\"platform.users.manage\",\"platform.roles.manage\",\"dashboard.view\",\"branches.view\",\"branches.manage\",\"users.view\",\"users.manage\",\"roles.view\",\"orders.view\",\"orders.manage\",\"cashier.manage\",\"kds.manage\",\"tables.view\",\"tables.manage\",\"menu.view\",\"menu.manage\",\"categories.view\",\"categories.manage\",\"products.view\",\"products.manage\",\"inventory.view\",\"inventory.manage\",\"suppliers.view\",\"suppliers.manage\",\"ingredients.view\",\"ingredients.manage\",\"recipes.view\",\"recipes.manage\",\"employees.view\",\"employees.manage\",\"settings.view\",\"settings.manage\"],\"branch_id\":null,\"branch\":null,\"restaurant_id\":null,\"restaurant\":null,\"types\":[]}"
         },
         {
             "file": "admin-users.png",
             "route": "/#/users",
             "user": "admin",
             "token": "1|jcsb0sqNVVh0uEBoig5XNaUoqQvkoXGdTErSmjd59221d889",
-            "user_json": "{\"id\":1,\"name\":\"Restaurant Suite Admin\",\"email\":\"admin@restaurant-suite.com\",\"role\":\"admin\",\"roles\":[\"admin\"],\"permissions\":[\"platform.restaurants.manage\",\"platform.branches.manage\",\"platform.users.manage\",\"platform.roles.manage\",\"dashboard.view\",\"branches.view\",\"branches.manage\",\"users.view\",\"users.manage\",\"roles.view\",\"orders.view\",\"orders.manage\",\"cashier.manage\",\"kds.manage\",\"tables.view\",\"tables.manage\",\"menu.view\",\"menu.manage\",\"categories.view\",\"categories.manage\",\"products.view\",\"products.manage\",\"inventory.view\",\"inventory.manage\",\"suppliers.view\",\"suppliers.manage\",\"ingredients.view\",\"ingredients.manage\",\"recipes.view\",\"recipes.manage\",\"employees.view\",\"employees.manage\",\"settings.view\",\"settings.manage\"],\"branch_id\":null,\"branch\":null,\"restaurant_id\":null,\"restaurant\":null,\"types\":[]}"
+            "user_json": "{\"id\":1,\"name\":\"Janova Suite Admin\",\"email\":\"admin@restaurant-suite.com\",\"role\":\"admin\",\"roles\":[\"admin\"],\"permissions\":[\"platform.restaurants.manage\",\"platform.branches.manage\",\"platform.users.manage\",\"platform.roles.manage\",\"dashboard.view\",\"branches.view\",\"branches.manage\",\"users.view\",\"users.manage\",\"roles.view\",\"orders.view\",\"orders.manage\",\"cashier.manage\",\"kds.manage\",\"tables.view\",\"tables.manage\",\"menu.view\",\"menu.manage\",\"categories.view\",\"categories.manage\",\"products.view\",\"products.manage\",\"inventory.view\",\"inventory.manage\",\"suppliers.view\",\"suppliers.manage\",\"ingredients.view\",\"ingredients.manage\",\"recipes.view\",\"recipes.manage\",\"employees.view\",\"employees.manage\",\"settings.view\",\"settings.manage\"],\"branch_id\":null,\"branch\":null,\"restaurant_id\":null,\"restaurant\":null,\"types\":[]}"
         },
         {
             "file": "owner-products.png",

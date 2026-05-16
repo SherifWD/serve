@@ -58,9 +58,37 @@
           </div>
         </div>
 
+        <v-row dense class="mb-4">
+          <v-col cols="12" md="5">
+            <v-text-field
+              v-model="search"
+              label="Search venues..."
+              prepend-inner-icon="mdi-magnify"
+              clearable
+              variant="outlined"
+              density="comfortable"
+            />
+          </v-col>
+          <v-col cols="12" md="3">
+            <v-select
+              v-model="filters.kind"
+              :items="kindFilterItems"
+              label="Type"
+              clearable
+              variant="outlined"
+              density="comfortable"
+            />
+          </v-col>
+          <v-col cols="12" md="4" class="d-flex align-center">
+            <v-btn variant="tonal" color="primary" class="rs-pill" @click="resetFilters">
+              <v-icon start>mdi-filter-remove-outline</v-icon>Reset filters
+            </v-btn>
+          </v-col>
+        </v-row>
+
         <v-data-table
           :headers="headers"
-          :items="restaurants"
+          :items="filteredRestaurants"
           item-value="id"
           class="rs-table"
           hide-default-footer
@@ -155,6 +183,10 @@ const dialog = ref(false)
 const editing = ref(false)
 const saving = ref(false)
 const formError = ref('')
+const search = ref('')
+const filters = ref({
+  kind: null,
+})
 const form = ref({
   id: null,
   name: '',
@@ -170,9 +202,26 @@ const headers = [
   { title: 'Actions', key: 'actions', sortable: false, width: 120 },
 ]
 
+const kindFilterItems = [
+  { title: 'Restaurant', value: 'restaurant' },
+  { title: 'Cafe', value: 'cafe' },
+]
+
 const totalBranches = computed(() =>
   restaurants.value.reduce((sum, restaurant) => sum + Number(restaurant.branches_count || 0), 0),
 )
+
+const filteredRestaurants = computed(() => {
+  const q = search.value.toLowerCase()
+
+  return restaurants.value.filter(restaurant =>
+    (!q ||
+      restaurant.name.toLowerCase().includes(q) ||
+      String(restaurant.id).includes(q) ||
+      (restaurant.kind || '').toLowerCase().includes(q)) &&
+    (!filters.value.kind || restaurant.kind === filters.value.kind)
+  )
+})
 
 const canSaveRestaurant = computed(() =>
   Boolean(form.value.name.trim()) && ['restaurant', 'cafe'].includes(form.value.kind),
@@ -254,6 +303,13 @@ async function removeRestaurant(id) {
     headers: authHeaders(),
   })
   await loadRestaurants()
+}
+
+function resetFilters() {
+  search.value = ''
+  filters.value = {
+    kind: null,
+  }
 }
 
 onMounted(loadRestaurants)

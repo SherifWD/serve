@@ -1,4 +1,4 @@
-# Restaurant Suite Testing Runbook
+# Janova Suite Testing Runbook
 
 Updated: April 1, 2026
 

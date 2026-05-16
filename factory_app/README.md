@@ -1,4 +1,4 @@
-# Restaurant Suite Staff App
+# Janova Suite Staff App
 
 This Flutter project is the staff operations app. It supports a shared staff suite shell and dedicated role entrypoints for branch devices.
 

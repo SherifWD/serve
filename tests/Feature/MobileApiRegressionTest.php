@@ -329,6 +329,40 @@ class MobileApiRegressionTest extends TestCase
         $this->assertFalse(OrderItem::query()->where('product_id', $product->id)->exists());
     }
 
+    public function test_waiter_menu_includes_categories_attached_to_branch_menu(): void
+    {
+        $branch = Branch::query()
+            ->whereHas('users', fn ($query) => $query->where('email', 'like', 'waiter%@example.com'))
+            ->firstOrFail();
+        $category = Category::query()->create([
+            'name' => 'Regression Menu Linked Category',
+            'branch_id' => null,
+        ]);
+        $menu = Menu::query()->create([
+            'name' => 'Regression Linked Branch Menu',
+            'branch_id' => $branch->id,
+        ]);
+        $menu->categories()->sync([$category->id]);
+        $product = Product::query()->create([
+            'name' => 'Regression Linked Menu Product',
+            'category_id' => $category->id,
+            'branch_id' => $branch->id,
+            'price' => 60,
+            'is_available' => true,
+            'stock' => 20,
+            'min_stock' => 1,
+            'sku' => 'REG-LINKED-MENU',
+        ]);
+        $this->ensureProductStockAvailable($product, (int) $branch->id);
+
+        Sanctum::actingAs($this->staffUserForBranch((int) $branch->id, 'waiter'));
+
+        $this->getJson('/api/mobile/products')
+            ->assertOk()
+            ->assertJsonFragment(['name' => 'Regression Menu Linked Category'])
+            ->assertJsonFragment(['name' => 'Regression Linked Menu Product']);
+    }
+
     public function test_cashier_can_pay_selected_item_without_closing_table(): void
     {
         $order = Order::query()

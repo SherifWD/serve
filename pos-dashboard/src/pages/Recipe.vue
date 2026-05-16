@@ -9,6 +9,39 @@
         </v-card-title>
         <v-card-text>
           <v-text-field v-model="search" label="Search recipes..." prepend-inner-icon="mdi-magnify" clearable class="mb-4" />
+          <v-row dense class="mb-4">
+            <v-col cols="12" md="4">
+              <v-select
+                v-model="filters.branch_id"
+                :items="branches"
+                :item-title="branchTitle"
+                item-value="id"
+                label="Branch"
+                clearable
+                variant="outlined"
+                density="comfortable"
+                :menu-props="{ contentClass: 'dashboard-select-menu' }"
+              />
+            </v-col>
+            <v-col cols="12" md="4">
+              <v-select
+                v-model="filters.ingredient_id"
+                :items="allIngredients"
+                item-title="name"
+                item-value="id"
+                label="Ingredient"
+                clearable
+                variant="outlined"
+                density="comfortable"
+                :menu-props="{ contentClass: 'dashboard-select-menu' }"
+              />
+            </v-col>
+            <v-col cols="12" md="4" class="d-flex align-center">
+              <v-btn variant="tonal" color="primary" class="rounded-pill" @click="resetFilters">
+                <v-icon start>mdi-filter-remove-outline</v-icon>Reset filters
+              </v-btn>
+            </v-col>
+          </v-row>
           <v-data-table
             :headers="headers"
             :items="filteredRecipes"
@@ -142,6 +175,10 @@ const drawer = ref(false)
 const isEditing = ref(false)
 const saving = ref(false)
 const formError = ref('')
+const filters = ref({
+  branch_id: null,
+  ingredient_id: null,
+})
 
 const form = ref({
   id: null,
@@ -157,13 +194,15 @@ const headers = [
   { title: 'Actions', value: 'actions', sortable: false, width: '20%' }
 ]
 
-const filteredRecipes = computed(() =>
-  !search.value
-    ? recipes.value
-    : recipes.value.filter(r =>
-        r.description.toLowerCase().includes(search.value.toLowerCase())
-      )
-)
+const filteredRecipes = computed(() => {
+  const q = search.value.toLowerCase()
+
+  return recipes.value.filter(recipe =>
+    matchesRecipeSearch(recipe, q) &&
+    (!filters.value.branch_id || Number(recipe.branch_id) === Number(filters.value.branch_id)) &&
+    (!filters.value.ingredient_id || (recipe.ingredients ?? []).some(ingredient => Number(ingredient.ingredient_id) === Number(filters.value.ingredient_id)))
+  )
+})
 
 const canSaveRecipe = computed(() => {
   const hasDescription = Boolean(form.value.description.trim())
@@ -184,6 +223,22 @@ function branchTitle(branch) {
   return branch.restaurant?.name
     ? `${branch.name} - ${branch.restaurant.name}`
     : branch.name
+}
+
+function matchesRecipeSearch(recipe, query) {
+  if (!query) return true
+
+  return (recipe.description || '').toLowerCase().includes(query) ||
+    (recipe.branch?.name || '').toLowerCase().includes(query) ||
+    (recipe.ingredients ?? []).some(ingredient => ingredient.name.toLowerCase().includes(query))
+}
+
+function resetFilters() {
+  search.value = ''
+  filters.value = {
+    branch_id: null,
+    ingredient_id: null,
+  }
 }
 
 // Format ingredients for table display

@@ -13,7 +13,7 @@
         <div class="brand-block">
           <div class="brand-icon">RS</div>
           <div>
-            <div class="brand-title">Restaurant Suite</div>
+            <div class="brand-title">Janova Suite</div>
             <div class="brand-subtitle">
               {{ auth.isAdmin ? 'Admin Dashboard' : 'Owner Dashboard' }}
             </div>
@@ -190,7 +190,7 @@ const currentSection = computed(() => {
     candidate.items.some((item) => item.to === route.path),
   )
 
-  return section?.title || 'Restaurant Suite'
+  return section?.title || 'Janova Suite'
 })
 
 const initials = computed(() => {

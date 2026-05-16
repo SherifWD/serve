@@ -15,6 +15,45 @@
             <v-card-text>
               <v-text-field v-model="search" label="Search inventory..." class="mb-4" rounded variant="solo"
                             style="max-width:400px;" color="primary" />
+              <v-row dense class="mb-4">
+                <v-col cols="12" sm="6" lg="3">
+                  <v-select
+                    v-model="filters.branch_id"
+                    :items="branches"
+                    item-title="name"
+                    item-value="id"
+                    label="Branch"
+                    clearable
+                    variant="outlined"
+                    density="comfortable"
+                  />
+                </v-col>
+                <v-col cols="12" sm="6" lg="3">
+                  <v-select
+                    v-model="filters.type"
+                    :items="typeFilterItems"
+                    label="Type"
+                    clearable
+                    variant="outlined"
+                    density="comfortable"
+                  />
+                </v-col>
+                <v-col cols="12" sm="6" lg="3">
+                  <v-select
+                    v-model="filters.stock"
+                    :items="stockFilterItems"
+                    label="Stock"
+                    clearable
+                    variant="outlined"
+                    density="comfortable"
+                  />
+                </v-col>
+                <v-col cols="12" sm="6" lg="3" class="d-flex align-center">
+                  <v-btn variant="tonal" color="primary" class="rounded-pill" @click="resetFilters">
+                    <v-icon start>mdi-filter-remove-outline</v-icon>Reset filters
+                  </v-btn>
+                </v-col>
+              </v-row>
               <v-data-table
                 :headers="headers"
                 :items="filteredInventory"
@@ -227,6 +266,11 @@ const ingredients = ref([])
 const products = ref([])
 const viewInventoryItem = ref({})
 const search = ref('')
+const filters = ref({
+  branch_id: null,
+  type: null,
+  stock: null,
+})
 
 const headers = [
   { title: 'Name', value: 'name' },
@@ -238,14 +282,56 @@ const headers = [
   { title: 'Actions', value: 'actions', sortable: false }
 ]
 
+const typeFilterItems = [
+  { title: 'Ingredient', value: 'ingredient' },
+  { title: 'Product', value: 'product' },
+]
+
+const stockFilterItems = [
+  { title: 'Low stock', value: 'low' },
+  { title: 'Healthy stock', value: 'healthy' },
+]
+
 const filteredInventory = computed(() => {
-  if (!search.value) return inventoryItems.value
   const q = search.value.toLowerCase()
   return inventoryItems.value.filter(item =>
-    (item.ingredient ? item.ingredient.name.toLowerCase().includes(q) : false) ||
-    (item.product ? item.product.name.toLowerCase().includes(q) : false)
+    matchesInventorySearch(item, q) &&
+    (!filters.value.branch_id || Number(item.branch_id) === Number(filters.value.branch_id)) &&
+    matchesInventoryType(item) &&
+    matchesStockFilter(item)
   )
 })
+
+function inventoryName(item) {
+  return item.ingredient?.name || item.product?.name || item.name || ''
+}
+
+function matchesInventorySearch(item, query) {
+  if (!query) return true
+  return inventoryName(item).toLowerCase().includes(query) ||
+    branchName(item.branch_id).toLowerCase().includes(query) ||
+    (item.unit || '').toLowerCase().includes(query)
+}
+
+function matchesInventoryType(item) {
+  if (!filters.value.type) return true
+  return filters.value.type === 'ingredient' ? !!item.ingredient : !!item.product
+}
+
+function matchesStockFilter(item) {
+  if (!filters.value.stock) return true
+  const isLow = Number(item.quantity ?? 0) <= Number(item.min_stock ?? 0)
+  return filters.value.stock === 'low' ? isLow : !isLow
+}
+
+function resetFilters() {
+  search.value = ''
+  filters.value = {
+    branch_id: null,
+    type: null,
+    stock: null,
+  }
+}
 
 function branchName(id) {
   return branches.value.find(b => b.id === id)?.name || '—'

@@ -35,6 +35,26 @@
                 color="primary"
                 clearable
               />
+              <v-row dense class="mb-4">
+                <v-col cols="12" md="4">
+                  <v-select
+                    v-model="filters.restaurant_id"
+                    :items="restaurants"
+                    item-title="name"
+                    item-value="id"
+                    label="Restaurant"
+                    clearable
+                    variant="outlined"
+                    density="comfortable"
+                    :menu-props="{ contentClass: 'dashboard-select-menu' }"
+                  />
+                </v-col>
+                <v-col cols="12" md="4" class="d-flex align-center">
+                  <v-btn variant="tonal" color="primary" class="rounded-pill" @click="resetFilters">
+                    <v-icon start>mdi-filter-remove-outline</v-icon>Reset filters
+                  </v-btn>
+                </v-col>
+              </v-row>
               <v-data-table
                 :headers="headers"
                 :items="filteredSuppliers"
@@ -44,6 +64,9 @@
                 item-value="id"
                 :items-per-page="10"
               >
+                <template #item.restaurant="{ item }">
+                  {{ restaurantName(item.restaurant_id) }}
+                </template>
                 <template #item.contact_person="{ item }">
                   <v-chip color="primary" size="small" variant="tonal" class="mr-1">{{ item.contact_person || "—" }}</v-chip>
                 </template>
@@ -127,6 +150,18 @@
                 color="primary"
                 class="mb-4 rounded-xl"
               />
+              <v-select
+                label="Restaurant"
+                :items="restaurants"
+                item-title="name"
+                item-value="id"
+                v-model="drawerForm.restaurant_id"
+                clearable
+                variant="outlined"
+                color="primary"
+                class="mb-4 rounded-xl"
+                :menu-props="{ contentClass: 'dashboard-select-menu' }"
+              />
               <v-btn
                 color="primary"
                 class="rounded-pill"
@@ -201,19 +236,24 @@ import { API_BASE_URL } from '../lib/api'
 import OwnerLayout from '@/layouts/OwnerLayout.vue'
 
 const suppliers = ref([])
+const restaurants = ref([])
 const rightDrawer = ref(false)
 const viewDrawer = ref(false)
 const drawerTitle = ref('Add Supplier')
 const isEditing = ref(false)
 const tab = ref('general')
 const drawerForm = ref({
-  id: null, name: '', contact_person: '', phone: '', email: ''
+  id: null, name: '', contact_person: '', phone: '', email: '', restaurant_id: null
 })
 const viewSupplier = ref({})
 const search = ref('')
+const filters = ref({
+  restaurant_id: null,
+})
 
 const headers = [
   { title: 'Name', value: 'name' },
+  { title: 'Restaurant', value: 'restaurant' },
   { title: 'Contact Person', value: 'contact_person' },
   { title: 'Phone', value: 'phone' },
   { title: 'Email', value: 'email' },
@@ -221,15 +261,21 @@ const headers = [
 ]
 
 const filteredSuppliers = computed(() => {
-  if (!search.value) return suppliers.value
   const q = search.value.toLowerCase()
   return suppliers.value.filter(supplier =>
-    (supplier.name || '').toLowerCase().includes(q) ||
-    (supplier.contact_person || '').toLowerCase().includes(q) ||
-    (supplier.phone || '').toLowerCase().includes(q) ||
-    (supplier.email || '').toLowerCase().includes(q)
+    (!q ||
+      (supplier.name || '').toLowerCase().includes(q) ||
+      restaurantName(supplier.restaurant_id).toLowerCase().includes(q) ||
+      (supplier.contact_person || '').toLowerCase().includes(q) ||
+      (supplier.phone || '').toLowerCase().includes(q) ||
+      (supplier.email || '').toLowerCase().includes(q)) &&
+    (!filters.value.restaurant_id || Number(supplier.restaurant_id) === Number(filters.value.restaurant_id))
   )
 })
+
+function restaurantName(id) {
+  return restaurants.value.find(restaurant => Number(restaurant.id) === Number(id))?.name || 'Not set'
+}
 
 async function loadSuppliers() {
   try {
@@ -243,11 +289,23 @@ async function loadSuppliers() {
   }
 }
 
+async function loadRestaurants() {
+  try {
+    const token = localStorage.getItem('token')
+    const res = await axios.get(`${API_BASE_URL}/restaurants`, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+    restaurants.value = res.data.data || res.data
+  } catch (err) {
+    console.error('Failed to load restaurants', err)
+  }
+}
+
 function openAddDrawer() {
   isEditing.value = false
   drawerTitle.value = 'Add Supplier'
   tab.value = 'general'
-  drawerForm.value = { id: null, name: '', contact_person: '', phone: '', email: '' }
+  drawerForm.value = { id: null, name: '', contact_person: '', phone: '', email: '', restaurant_id: restaurants.value[0]?.id ?? null }
   rightDrawer.value = true
 }
 
@@ -286,7 +344,15 @@ async function deleteSupplier(supplier) {
   loadSuppliers()
 }
 
+function resetFilters() {
+  search.value = ''
+  filters.value = {
+    restaurant_id: null,
+  }
+}
+
 onMounted(() => {
+  loadRestaurants()
   loadSuppliers()
 })
 </script>
