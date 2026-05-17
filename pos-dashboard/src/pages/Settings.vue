@@ -9,7 +9,7 @@
         </div>
         <div class="header-actions">
           <v-chip color="primary" variant="tonal">
-            {{ branchSettings.length }} branches
+            {{ branchCountLabel }}
           </v-chip>
           <v-btn
             color="primary"
@@ -63,12 +63,48 @@
                 No branches are available for this account.
               </div>
 
-              <div v-else class="branch-grid">
-                <section
-                  v-for="branch in branchSettings"
-                  :key="branch.id"
-                  class="branch-panel"
-                >
+              <template v-else-if="branchSettings.length">
+                <div class="target-panel mb-4">
+                  <div class="panel-heading">
+                    <v-icon icon="mdi-tune-variant" color="primary" />
+                    <span>Control target</span>
+                  </div>
+                  <v-row dense>
+                    <v-col v-if="showRestaurantSelector" cols="12" md="6">
+                      <v-select
+                        v-model="selectedRestaurantKey"
+                        :items="restaurantOptions"
+                        item-title="title"
+                        item-value="value"
+                        label="Restaurant"
+                        variant="outlined"
+                        density="comfortable"
+                      />
+                    </v-col>
+                    <v-col cols="12" :md="showRestaurantSelector ? 6 : 12">
+                      <v-select
+                        v-model="selectedBranchId"
+                        :items="branchOptions"
+                        item-title="title"
+                        item-value="value"
+                        label="Branch"
+                        variant="outlined"
+                        density="comfortable"
+                      />
+                    </v-col>
+                  </v-row>
+                  <div v-if="selectedBranch" class="target-summary">
+                    Editing {{ selectedBranch.restaurant?.name || 'Restaurant' }} / {{ selectedBranch.name }}
+                    <span v-if="selectedBranch.location">/ {{ selectedBranch.location }}</span>
+                  </div>
+                </div>
+
+                <div v-if="selectedBranch" class="branch-grid">
+                  <section
+                    v-for="branch in visibleBranches"
+                    :key="branch.id"
+                    class="branch-panel"
+                  >
                   <div class="branch-panel__header">
                     <div>
                       <div class="branch-name">{{ branch.name }}</div>
@@ -239,8 +275,13 @@
                       Save branch settings
                     </v-btn>
                   </div>
-                </section>
-              </div>
+                  </section>
+                </div>
+
+                <div v-else class="empty-state">
+                  Select a branch to edit.
+                </div>
+              </template>
             </v-card-text>
           </v-card>
         </v-col>
@@ -290,7 +331,7 @@
 
 <script setup>
 import axios from 'axios'
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import OwnerLayout from '@/layouts/OwnerLayout.vue'
 import { API_BASE_URL } from '../lib/api'
 import { useAuthStore } from '../store/auth'
@@ -302,6 +343,8 @@ const loadingBranchSettings = ref(false)
 const savingBranchId = ref(null)
 const settingsError = ref('')
 const settingsSaved = ref('')
+const selectedRestaurantKey = ref(null)
+const selectedBranchId = ref(null)
 
 const printerProfiles = [
   { title: 'Epson thermal / ESC-POS', value: 'epson-thermal' },
@@ -316,9 +359,79 @@ const scopeLabel = computed(() => {
   return 'Owners can configure the branches attached to their restaurant.'
 })
 
+const restaurantOptions = computed(() => {
+  const restaurants = new Map()
+
+  branchSettings.value.forEach(branch => {
+    const value = restaurantKey(branch)
+    if (!restaurants.has(value)) {
+      restaurants.set(value, {
+        title: branch.restaurant?.name || 'Unassigned restaurant',
+        value,
+      })
+    }
+  })
+
+  return Array.from(restaurants.values()).sort((a, b) => a.title.localeCompare(b.title))
+})
+
+const showRestaurantSelector = computed(() => (
+  auth.user?.role === 'admin' || restaurantOptions.value.length > 1
+))
+
+const filteredBranches = computed(() => {
+  if (!selectedRestaurantKey.value) return branchSettings.value
+
+  return branchSettings.value.filter(branch => restaurantKey(branch) === selectedRestaurantKey.value)
+})
+
+const branchOptions = computed(() => filteredBranches.value.map(branch => ({
+  title: branch.location ? `${branch.name} / ${branch.location}` : branch.name,
+  value: branch.id,
+})))
+
+const selectedBranch = computed(() => branchSettings.value.find(branch => (
+  Number(branch.id) === Number(selectedBranchId.value)
+)) || null)
+
+const visibleBranches = computed(() => selectedBranch.value ? [selectedBranch.value] : [])
+
+const branchCountLabel = computed(() => {
+  if (!branchSettings.value.length) return '0 branches'
+  if (!selectedBranch.value) return `${branchSettings.value.length} branches`
+
+  return `1 of ${branchSettings.value.length} branches`
+})
+
 function authHeaders() {
   return {
     Authorization: `Bearer ${auth.token || localStorage.getItem('token')}`,
+  }
+}
+
+function restaurantKey(branch) {
+  return branch.restaurant?.id !== undefined && branch.restaurant?.id !== null
+    ? String(branch.restaurant.id)
+    : 'unassigned'
+}
+
+function ensureSelection() {
+  if (!branchSettings.value.length) {
+    selectedRestaurantKey.value = null
+    selectedBranchId.value = null
+    return
+  }
+
+  if (!restaurantOptions.value.some(option => option.value === selectedRestaurantKey.value)) {
+    selectedRestaurantKey.value = restaurantOptions.value[0]?.value ?? null
+  }
+
+  const hasSelectedBranch = filteredBranches.value.some(branch => (
+    Number(branch.id) === Number(selectedBranchId.value)
+  ))
+
+  if (!hasSelectedBranch) {
+    selectedBranchId.value = filteredBranches.value[0]?.id ?? null
   }
 }
 
@@ -370,6 +483,7 @@ async function fetchBranchSettings() {
       headers: authHeaders(),
     })
     branchSettings.value = (data.data || []).map(normalizeBranch)
+    ensureSelection()
   } catch (error) {
     settingsError.value = errorMessage(error)
   } finally {
@@ -410,6 +524,7 @@ async function saveBranch(branch) {
     })
     const updated = normalizeBranch(data.data)
     branchSettings.value = branchSettings.value.map(item => item.id === updated.id ? updated : item)
+    ensureSelection()
     settingsSaved.value = `${updated.name} settings saved.`
   } catch (error) {
     settingsError.value = errorMessage(error)
@@ -417,6 +532,16 @@ async function saveBranch(branch) {
     savingBranchId.value = null
   }
 }
+
+watch(selectedRestaurantKey, () => {
+  const selectedStillVisible = filteredBranches.value.some(branch => (
+    Number(branch.id) === Number(selectedBranchId.value)
+  ))
+
+  if (!selectedStillVisible) {
+    selectedBranchId.value = filteredBranches.value[0]?.id ?? null
+  }
+})
 
 onMounted(fetchBranchSettings)
 </script>
@@ -473,6 +598,19 @@ onMounted(fetchBranchSettings)
 .branch-grid {
   display: grid;
   gap: 1rem;
+}
+
+.target-panel {
+  background: rgba(42, 157, 143, 0.08);
+  border: 1px solid rgba(42, 157, 143, 0.22);
+  border-radius: 8px;
+  padding: 1rem;
+}
+
+.target-summary {
+  color: #b7c4bd;
+  font-size: 0.9rem;
+  margin-top: 0.35rem;
 }
 
 .branch-panel {
