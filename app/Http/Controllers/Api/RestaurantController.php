@@ -35,6 +35,7 @@ class RestaurantController extends Controller
         $data = $request->validate([
             'name' => 'required|string|max:255|unique:restaurants,name',
             'kind' => 'required|in:restaurant,cafe',
+            'logo_url' => 'nullable|string|max:2048',
         ]);
 
         return Restaurant::create($data);
@@ -60,6 +61,7 @@ class RestaurantController extends Controller
         $data = $request->validate([
             'name' => 'required|string|max:255|unique:restaurants,name,'.$restaurant->id,
             'kind' => 'required|in:restaurant,cafe',
+            'logo_url' => 'nullable|string|max:2048',
         ]);
 
         $restaurant->update($data);

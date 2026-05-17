@@ -9,10 +9,10 @@ use App\Models\Category;
 use App\Models\ClientMutation;
 use App\Models\Customer;
 use App\Models\CustomerOtpCode;
-use App\Models\EtaReceiptSubmission;
-use App\Models\Employee;
-use App\Models\FiscalProfile;
 use App\Models\Device;
+use App\Models\Employee;
+use App\Models\EtaReceiptSubmission;
+use App\Models\FiscalProfile;
 use App\Models\Ingredient;
 use App\Models\IngredientBranch;
 use App\Models\InventoryItem;
@@ -29,6 +29,7 @@ use App\Models\Product;
 use App\Models\PurchaseOrder;
 use App\Models\Receipt;
 use App\Models\Recipe;
+use App\Models\Restaurant;
 use App\Models\RestaurantSubscription;
 use App\Models\StockTransfer;
 use App\Models\SubscriptionPlan;
@@ -655,6 +656,75 @@ class MobileApiRegressionTest extends TestCase
                 'broadcast_connection',
                 'environment',
             ]);
+    }
+
+    public function test_owner_can_update_branch_cash_drawer_and_receipt_printer_settings(): void
+    {
+        $owner = User::query()
+            ->where('role', 'owner')
+            ->whereNotNull('restaurant_id')
+            ->firstOrFail();
+        $branch = Branch::query()
+            ->where('restaurant_id', $owner->restaurant_id)
+            ->firstOrFail();
+
+        Sanctum::actingAs($owner);
+
+        $this->getJson('/api/branch-operation-settings')
+            ->assertOk()
+            ->assertJsonCount(
+                Branch::query()->where('restaurant_id', $owner->restaurant_id)->count(),
+                'data',
+            );
+
+        $payload = [
+            'cash_drawer' => [
+                'opening_balance' => 1250,
+                'closing_balance' => null,
+                'is_open' => true,
+                'name' => 'Owner drawer',
+                'uuid' => "owner-drawer-{$branch->id}",
+                'printer_endpoint' => 'usb://owner-drawer',
+                'is_active' => true,
+            ],
+            'receipt_printer' => [
+                'name' => 'Owner receipt printer',
+                'uuid' => "owner-printer-{$branch->id}",
+                'printer_profile' => 'escpos-network',
+                'printer_paper_width_mm' => 80,
+                'printer_endpoint' => 'tcp://192.168.10.20:9100',
+                'is_active' => true,
+            ],
+        ];
+
+        $this->putJson("/api/branch-operation-settings/{$branch->id}", $payload)
+            ->assertOk()
+            ->assertJsonPath('data.cash_drawer.opening_balance', 1250)
+            ->assertJsonPath('data.receipt_printer.printer_profile', 'escpos-network');
+
+        $this->assertDatabaseHas('cash_registers', [
+            'branch_id' => $branch->id,
+            'opening_balance' => 1250,
+            'is_open' => true,
+        ]);
+        $this->assertDatabaseHas('devices', [
+            'branch_id' => $branch->id,
+            'type' => 'Receipt Printer',
+            'uuid' => "owner-printer-{$branch->id}",
+        ]);
+
+        $foreignRestaurant = Restaurant::query()->create([
+            'name' => 'Foreign Branch Test',
+            'kind' => 'restaurant',
+        ]);
+        $foreignBranch = Branch::query()->create([
+            'restaurant_id' => $foreignRestaurant->id,
+            'name' => 'Foreign Branch',
+            'location' => 'Outside scope',
+        ]);
+
+        $this->putJson("/api/branch-operation-settings/{$foreignBranch->id}", $payload)
+            ->assertForbidden();
     }
 
     public function test_platform_admin_can_onboard_restaurant_branch_owner_and_settings(): void
@@ -1438,9 +1508,15 @@ class MobileApiRegressionTest extends TestCase
         $sourceBranch = Branch::query()
             ->where('restaurant_id', $owner->restaurant_id)
             ->firstOrFail();
-        $foreignBranch = Branch::query()
-            ->where('restaurant_id', '!=', $owner->restaurant_id)
-            ->firstOrFail();
+        $foreignRestaurant = Restaurant::query()->create([
+            'name' => 'Inventory Foreign Restaurant',
+            'kind' => 'restaurant',
+        ]);
+        $foreignBranch = Branch::query()->create([
+            'restaurant_id' => $foreignRestaurant->id,
+            'name' => 'Inventory Foreign Branch',
+            'location' => 'Outside tenant',
+        ]);
         $item = InventoryItem::query()
             ->where('branch_id', $sourceBranch->id)
             ->firstOrFail();
@@ -1637,16 +1713,16 @@ class MobileApiRegressionTest extends TestCase
 
         $this->withHeader('X-Client-Mutation-Id', 'phase5-claim-'.$receipt->id)
             ->postJson('/api/mobile/print-jobs/claim', [
-            'device_uuid' => 'phase5-counter-terminal',
-        ])
+                'device_uuid' => 'phase5-counter-terminal',
+            ])
             ->assertOk()
             ->assertJsonPath('data.id', $printJobId)
             ->assertJsonPath('data.status', 'printing');
 
         $this->withHeader('X-Client-Mutation-Id', 'phase5-print-status-'.$receipt->id)
             ->patchJson("/api/mobile/print-jobs/{$printJobId}", [
-            'status' => 'printed',
-        ])
+                'status' => 'printed',
+            ])
             ->assertOk()
             ->assertJsonPath('data.status', 'printed');
 
@@ -1668,13 +1744,28 @@ class MobileApiRegressionTest extends TestCase
             ->whereNotNull('restaurant_id')
             ->firstOrFail();
 
-        $foreignProduct = Product::query()
-            ->whereHas('branch', fn ($query) => $query->where('restaurant_id', '!=', $owner->restaurant_id))
-            ->firstOrFail();
-
-        $foreignCategory = Category::query()
-            ->where('branch_id', $foreignProduct->branch_id)
-            ->firstOrFail();
+        $foreignRestaurant = Restaurant::query()->create([
+            'name' => 'Product Foreign Restaurant',
+            'kind' => 'restaurant',
+        ]);
+        $foreignBranch = Branch::query()->create([
+            'restaurant_id' => $foreignRestaurant->id,
+            'name' => 'Product Foreign Branch',
+            'location' => 'Outside tenant',
+        ]);
+        $foreignCategory = Category::query()->create([
+            'branch_id' => $foreignBranch->id,
+            'name' => 'Foreign Category',
+        ]);
+        $foreignProduct = Product::query()->create([
+            'branch_id' => $foreignBranch->id,
+            'category_id' => $foreignCategory->id,
+            'name' => 'Foreign Product',
+            'price' => 75,
+            'is_available' => true,
+            'stock' => 20,
+            'min_stock' => 1,
+        ]);
 
         Sanctum::actingAs($owner);
 
@@ -1706,10 +1797,15 @@ class MobileApiRegressionTest extends TestCase
             ->whereNotNull('restaurant_id')
             ->firstOrFail();
 
-        $foreignSupplier = Supplier::query()
-            ->whereNotNull('restaurant_id')
-            ->where('restaurant_id', '!=', $owner->restaurant_id)
-            ->firstOrFail();
+        $foreignRestaurant = Restaurant::query()->create([
+            'name' => 'Supplier Foreign Restaurant',
+            'kind' => 'restaurant',
+        ]);
+        $foreignSupplier = Supplier::query()->create([
+            'restaurant_id' => $foreignRestaurant->id,
+            'name' => 'Supplier Foreign Vendor',
+            'email' => 'supplier-foreign@example.com',
+        ]);
 
         Sanctum::actingAs($owner);
 

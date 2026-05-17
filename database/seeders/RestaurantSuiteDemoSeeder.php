@@ -18,8 +18,8 @@ use App\Models\Employee;
 use App\Models\EmployeePerformance;
 use App\Models\Expense;
 use App\Models\Feedback;
-use App\Models\FiscalProfile;
 use App\Models\FinancialSummary;
+use App\Models\FiscalProfile;
 use App\Models\Income;
 use App\Models\Ingredient;
 use App\Models\IngredientBranch;
@@ -48,24 +48,32 @@ use App\Models\RestaurantSubscription;
 use App\Models\Role;
 use App\Models\SalesReport;
 use App\Models\Setting;
-use App\Models\Supplier;
 use App\Models\SubscriptionPlan;
+use App\Models\Supplier;
 use App\Models\Table;
 use App\Models\Transaction;
 use App\Models\Type;
 use App\Models\User;
 use Carbon\CarbonImmutable;
+use Database\Seeders\Concerns\UsesOnlineProductImages;
 use Faker\Generator;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 
 class RestaurantSuiteDemoSeeder extends Seeder
 {
+    use UsesOnlineProductImages;
+
     private const SEED_MARKER_KEY = 'restaurant_suite_demo_seed_version';
+
     private const LEGACY_SEED_MARKER_VALUE = '2026-04-02-full-pos-scenarios';
+
     private const SEED_MARKER_VALUE = '2026-04-03-platform-admin-sync';
+
+    private const JANOVA_LOGO_URL = 'images/janova-logo.svg';
 
     private Generator $faker;
 
@@ -86,26 +94,27 @@ class RestaurantSuiteDemoSeeder extends Seeder
         $this->faker = fake('en_US');
         $this->faker->seed(20260402);
 
-        $currentMarker = Setting::where('key', self::SEED_MARKER_KEY)->value('value');
-
         $this->seedReferenceData();
         $this->seedPlatformAdmin();
         $customers = $this->seedCustomers();
+        $this->pruneNonJanovaRestaurants();
 
-        $hasScenarioData = in_array($currentMarker, [
-            self::LEGACY_SEED_MARKER_VALUE,
-            self::SEED_MARKER_VALUE,
-        ], true);
+        $hasJanovaScenarioData = Restaurant::query()
+            ->where('name', 'Janova Restaurant')
+            ->whereHas('branches.orders')
+            ->exists();
 
-        if (!$hasScenarioData) {
+        if (! $hasJanovaScenarioData) {
             foreach ($this->venueBlueprints() as $venueBlueprint) {
                 $this->seedVenue($venueBlueprint, $customers);
             }
         } else {
-            $this->command?->info('RestaurantSuiteDemoSeeder synced reference data and platform admin. Existing demo scenarios were retained.');
+            $this->command?->info('RestaurantSuiteDemoSeeder synced Janova reference data. Existing Janova demo scenarios were retained.');
         }
 
+        $this->syncSeededProductImages();
         $this->seedSaasSubscriptionsForRestaurants();
+        $this->pruneNonJanovaRestaurants();
 
         Setting::updateOrCreate(
             ['key' => self::SEED_MARKER_KEY],
@@ -357,7 +366,7 @@ class RestaurantSuiteDemoSeeder extends Seeder
     private function seedSaasSubscriptionsForRestaurants(): void
     {
         $plan = SubscriptionPlan::query()->where('slug', 'growth-restaurant')->first();
-        if (!$plan) {
+        if (! $plan) {
             return;
         }
 
@@ -418,6 +427,84 @@ class RestaurantSuiteDemoSeeder extends Seeder
                 ],
             );
         });
+    }
+
+    private function pruneNonJanovaRestaurants(): void
+    {
+        $restaurantIds = Restaurant::query()
+            ->where('name', '!=', 'Janova Restaurant')
+            ->pluck('id');
+
+        if ($restaurantIds->isEmpty()) {
+            return;
+        }
+
+        $branchIds = Branch::query()
+            ->whereIn('restaurant_id', $restaurantIds)
+            ->pluck('id');
+
+        if ($branchIds->isNotEmpty()) {
+            $orderIds = Order::query()
+                ->whereIn('branch_id', $branchIds)
+                ->pluck('id');
+            $orderItemIds = $orderIds->isEmpty()
+                ? collect()
+                : OrderItem::query()->whereIn('order_id', $orderIds)->pluck('id');
+
+            if ($orderItemIds->isNotEmpty()) {
+                foreach ([
+                    'order_item_modifiers',
+                    'category_answers',
+                    'order_item_histories',
+                    'comps',
+                    'refunds',
+                    'issue_reports',
+                ] as $table) {
+                    DB::table($table)->whereIn('order_item_id', $orderItemIds)->delete();
+                }
+
+                DB::table('inventory_adjustments')->whereIn('order_item_id', $orderItemIds)->delete();
+            }
+
+            if ($orderIds->isNotEmpty()) {
+                DB::table('delivery_orders')->whereIn('order_id', $orderIds)->delete();
+                DB::table('feedback')->whereIn('order_id', $orderIds)->update(['order_id' => null]);
+                DB::table('order_status_logs')->whereIn('order_id', $orderIds)->delete();
+                DB::table('payments')->whereIn('order_id', $orderIds)->delete();
+                DB::table('receipts')->whereIn('order_id', $orderIds)->delete();
+                DB::table('transactions')->whereIn('order_id', $orderIds)->delete();
+                DB::table('loyalty_transactions')->whereIn('order_id', $orderIds)->delete();
+            }
+
+            OrderItem::query()->whereIn('order_id', $orderIds)->delete();
+            Order::query()->whereIn('branch_id', $branchIds)->delete();
+
+            $menuIds = Menu::query()->whereIn('branch_id', $branchIds)->pluck('id');
+            if ($menuIds->isNotEmpty()) {
+                DB::table('menu_modifiers')->whereIn('menu_id', $menuIds)->delete();
+                DB::table('category_menu')->whereIn('menu_id', $menuIds)->delete();
+            }
+
+            $inventoryItemIds = InventoryItem::query()->whereIn('branch_id', $branchIds)->pluck('id');
+            if ($inventoryItemIds->isNotEmpty()) {
+                DB::table('stock_alerts')->whereIn('inventory_item_id', $inventoryItemIds)->delete();
+                DB::table('inventory_transactions')->whereIn('inventory_item_id', $inventoryItemIds)->delete();
+            }
+
+            DB::table('purchase_orders')->whereIn('branch_id', $branchIds)->delete();
+            DB::table('financial_summaries')->whereIn('branch_id', $branchIds)->delete();
+            DB::table('sales_reports')->whereIn('branch_id', $branchIds)->delete();
+            DB::table('branch_performances')->whereIn('branch_id', $branchIds)->delete();
+
+            InventoryItem::query()->whereIn('branch_id', $branchIds)->delete();
+            Product::query()->whereIn('branch_id', $branchIds)->delete();
+            Category::query()->whereIn('branch_id', $branchIds)->delete();
+            Menu::query()->whereIn('branch_id', $branchIds)->delete();
+        }
+
+        Modifier::query()->whereIn('restaurant_id', $restaurantIds)->delete();
+        Supplier::query()->whereIn('restaurant_id', $restaurantIds)->delete();
+        Restaurant::query()->whereIn('id', $restaurantIds)->delete();
     }
 
     private function seedPlatformAdmin(): void
@@ -482,7 +569,10 @@ class RestaurantSuiteDemoSeeder extends Seeder
     {
         $restaurant = Restaurant::updateOrCreate(
             ['name' => $venueBlueprint['name']],
-            ['kind' => $venueBlueprint['kind']],
+            [
+                'kind' => $venueBlueprint['kind'],
+                'logo_url' => $venueBlueprint['logo_url'] ?? null,
+            ],
         );
         $restaurantSlug = Str::slug($restaurant->name);
 
@@ -678,6 +768,13 @@ class RestaurantSuiteDemoSeeder extends Seeder
 
     private function branchBlueprintsFor(string $restaurantName): array
     {
+        if ($restaurantName === 'Janova Restaurant') {
+            return [
+                ['name' => 'Alexandria', 'location' => 'Alexandria Corniche', 'slug' => 'alexandria'],
+                ['name' => 'New Cairo', 'location' => 'New Cairo, Cairo', 'slug' => 'new-cairo'],
+            ];
+        }
+
         $areas = [
             ['label' => 'Downtown', 'location' => 'Downtown Cairo'],
             ['label' => 'New Cairo', 'location' => 'New Cairo'],
@@ -790,7 +887,7 @@ class RestaurantSuiteDemoSeeder extends Seeder
             ],
         );
 
-        if (!EmployeePerformance::where('employee_id', $employee->id)->exists()) {
+        if (! EmployeePerformance::where('employee_id', $employee->id)->exists()) {
             EmployeePerformance::create([
                 'employee_id' => $employee->id,
                 'metric' => 'orders_handled',
@@ -903,8 +1000,8 @@ class RestaurantSuiteDemoSeeder extends Seeder
                     ->where('choice', $choiceLabel)
                     ->first();
 
-                if (!$choice) {
-                    $choice = new CategoryChoice();
+                if (! $choice) {
+                    $choice = new CategoryChoice;
                     $choice->question_id = $question->id;
                     $choice->choice = $choiceLabel;
                     $choice->image = null;
@@ -924,7 +1021,7 @@ class RestaurantSuiteDemoSeeder extends Seeder
                         'category_id' => $category->id,
                         'price' => $productDefinition['price'],
                         'is_available' => true,
-                        'image' => null,
+                        'image' => $this->productImageUrl($productDefinition['name']),
                         'sku' => "{$restaurantSlug}-{$branch->id}-".Str::slug($productDefinition['name']),
                         'min_stock' => 8,
                         'stock' => 85,
@@ -934,13 +1031,14 @@ class RestaurantSuiteDemoSeeder extends Seeder
                 $product->category_id = $category->id;
                 $product->price = $productDefinition['price'];
                 $product->is_available = true;
+                $product->image = $this->productImageUrl($productDefinition['name']);
                 $product->save();
 
                 $recipe = Recipe::firstOrCreate(
                     ['product_id' => $product->id],
                     ['branch_id' => $branch->id],
                 );
-                if (!$recipe->branch_id) {
+                if (! $recipe->branch_id) {
                     $recipe->branch_id = $branch->id;
                     $recipe->save();
                 }
@@ -1104,7 +1202,7 @@ class RestaurantSuiteDemoSeeder extends Seeder
             $inventoryItem->unit = $ingredient->unit;
             $inventoryItem->save();
 
-            if (!InventoryTransaction::where('inventory_item_id', $inventoryItem->id)->exists()) {
+            if (! InventoryTransaction::where('inventory_item_id', $inventoryItem->id)->exists()) {
                 InventoryTransaction::create([
                     'inventory_item_id' => $inventoryItem->id,
                     'type' => 'in',
@@ -1120,7 +1218,7 @@ class RestaurantSuiteDemoSeeder extends Seeder
             }
         }
 
-        if (!PurchaseOrder::where('branch_id', $branch->id)->exists()) {
+        if (! PurchaseOrder::where('branch_id', $branch->id)->exists()) {
             foreach ($suppliers as $index => $supplier) {
                 PurchaseOrder::create([
                     'supplier_id' => $supplier->id,
@@ -1451,7 +1549,7 @@ class RestaurantSuiteDemoSeeder extends Seeder
         $subtotal = 0.0;
         foreach ($items as $itemDefinition) {
             $orderItem = $this->createOrderItem($order, $itemDefinition, $orderedAt, $kdsSentAt);
-            if (!in_array($orderItem->status, ['refunded', 'cancelled'], true)) {
+            if (! in_array($orderItem->status, ['refunded', 'cancelled'], true)) {
                 $subtotal += (float) $orderItem->price * (int) $orderItem->quantity;
             }
         }
@@ -1467,7 +1565,7 @@ class RestaurantSuiteDemoSeeder extends Seeder
         $order->total = $total;
         $order->save();
 
-        if (!empty($payments)) {
+        if (! empty($payments)) {
             $remaining = $total;
             foreach ($payments as $index => $paymentDefinition) {
                 $amount = $index === array_key_last($payments)
@@ -1546,7 +1644,7 @@ class RestaurantSuiteDemoSeeder extends Seeder
         ]);
 
         if ($itemDefinition['choice'] instanceof CategoryChoice) {
-            $answer = new CategoryAnswer();
+            $answer = new CategoryAnswer;
             $answer->order_item_id = $orderItem->id;
             $answer->choice_id = $itemDefinition['choice']->id;
             $answer->image = null;
@@ -1599,7 +1697,7 @@ class RestaurantSuiteDemoSeeder extends Seeder
     private function addRefundScenario(Order $order, User $waiterUser): void
     {
         $sourceItem = $order->items()->first();
-        if (!$sourceItem || $sourceItem->quantity < 2) {
+        if (! $sourceItem || $sourceItem->quantity < 2) {
             return;
         }
 
@@ -1719,8 +1817,7 @@ class RestaurantSuiteDemoSeeder extends Seeder
         );
 
         foreach (
-            $paidOrders->flatMap(fn (Order $order) => $order->items)->groupBy('product_id')->take(5)
-            as $productId => $items
+            $paidOrders->flatMap(fn (Order $order) => $order->items)->groupBy('product_id')->take(5) as $productId => $items
         ) {
             ProductPerformance::updateOrCreate(
                 ['product_id' => $productId, 'report_date' => $summaryDate],
@@ -1735,20 +1832,11 @@ class RestaurantSuiteDemoSeeder extends Seeder
     private function venueBlueprints(): array
     {
         return [
-            ['name' => 'Nile Flame Grill', 'kind' => 'restaurant'],
-            ['name' => 'Cedar Route Kitchen', 'kind' => 'restaurant'],
-            ['name' => 'Alexandria Catch House', 'kind' => 'restaurant'],
-            ['name' => 'Cairo Kebab District', 'kind' => 'restaurant'],
-            ['name' => 'Olive Table Bistro', 'kind' => 'restaurant'],
-            ['name' => 'Desert Ember Steakhouse', 'kind' => 'restaurant'],
-            ['name' => 'Saffron Gate Restaurant', 'kind' => 'restaurant'],
-            ['name' => 'Bean Harbor Cafe', 'kind' => 'cafe'],
-            ['name' => 'Lotus Brew Cafe', 'kind' => 'cafe'],
-            ['name' => 'Corniche Roast Lab', 'kind' => 'cafe'],
-            ['name' => 'Palm Lounge Cafe', 'kind' => 'cafe'],
-            ['name' => 'Midnight Mocha Bar', 'kind' => 'cafe'],
-            ['name' => 'Garden Cup Cafe', 'kind' => 'cafe'],
-            ['name' => 'Oat & Honey Bakery Cafe', 'kind' => 'cafe'],
+            [
+                'name' => 'Janova Restaurant',
+                'kind' => 'restaurant',
+                'logo_url' => self::JANOVA_LOGO_URL,
+            ],
         ];
     }
 }

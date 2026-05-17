@@ -137,7 +137,6 @@ class _CustomerWorkspacePageState extends ConsumerState<CustomerWorkspacePage> {
     final isWide = MediaQuery.of(context).size.width > 1080;
     final pages = [
       _CustomerHomeTab(
-        onBrowseRequested: _openBrowse,
         onRewardsRequested: _openRewards,
         onOrdersRequested: _openOrders,
         onRestaurantSelected: _openRestaurant,
@@ -270,8 +269,9 @@ class _CustomerTopChrome extends ConsumerWidget {
     final strings = ref.watch(appStringsProvider);
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 18),
+      padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
           Row(
             children: [
@@ -281,7 +281,7 @@ class _CustomerTopChrome extends ConsumerWidget {
                   children: [
                     Text(
                       strings.t('customer.deliveringTo'),
-                      style: theme.textTheme.labelLarge?.copyWith(
+                      style: theme.textTheme.labelMedium?.copyWith(
                         color: const Color(0xFF8B6B4C),
                         fontWeight: FontWeight.w700,
                       ),
@@ -289,7 +289,9 @@ class _CustomerTopChrome extends ConsumerWidget {
                     const SizedBox(height: 4),
                     Text(
                       session?.name ?? strings.t('customer.guest'),
-                      style: theme.textTheme.titleLarge?.copyWith(
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.w900,
                         color: const Color(0xFF23150E),
                       ),
@@ -324,10 +326,10 @@ class _CustomerTopChrome extends ConsumerWidget {
                 ],
                 child: Container(
                   padding:
-                      const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
                   decoration: BoxDecoration(
                     color: const Color(0xFF20140E),
-                    borderRadius: BorderRadius.circular(22),
+                    borderRadius: BorderRadius.circular(18),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
@@ -347,10 +349,11 @@ class _CustomerTopChrome extends ConsumerWidget {
                           ),
                         ),
                       ),
-                      const SizedBox(width: 8),
+                      const SizedBox(width: 6),
                       const Icon(
                         Icons.keyboard_arrow_down_rounded,
                         color: Colors.white,
+                        size: 20,
                       ),
                     ],
                   ),
@@ -358,37 +361,42 @@ class _CustomerTopChrome extends ConsumerWidget {
               ),
             ],
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 10),
           DecoratedBox(
             decoration: BoxDecoration(
               color: Colors.white,
-              borderRadius: BorderRadius.circular(22),
+              borderRadius: BorderRadius.circular(18),
               boxShadow: const [
                 BoxShadow(
-                  blurRadius: 22,
-                  offset: Offset(0, 14),
+                  blurRadius: 18,
+                  offset: Offset(0, 10),
                   color: Color(0x12000000),
                 ),
               ],
             ),
-            child: TextField(
-              readOnly: true,
-              onTap: onSearchTap,
-              decoration: InputDecoration(
-                prefixIcon: const Icon(Icons.search_rounded),
-                suffixIcon: Icon(
-                  selectedIndex == 0
-                      ? Icons.local_offer_outlined
-                      : Icons.tune_rounded,
+            child: SizedBox(
+              height: 46,
+              child: TextField(
+                readOnly: true,
+                onTap: onSearchTap,
+                decoration: InputDecoration(
+                  isDense: true,
+                  prefixIcon: const Icon(Icons.search_rounded),
+                  suffixIcon: Icon(
+                    selectedIndex == 0
+                        ? Icons.local_offer_outlined
+                        : Icons.tune_rounded,
+                  ),
+                  hintText: selectedIndex == 0
+                      ? strings.t('customer.searchHome')
+                      : strings.t('customer.searchBrowse'),
+                  border: InputBorder.none,
+                  contentPadding: const EdgeInsets.symmetric(vertical: 13),
                 ),
-                hintText: selectedIndex == 0
-                    ? strings.t('customer.searchHome')
-                    : strings.t('customer.searchBrowse'),
-                border: InputBorder.none,
               ),
             ),
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 10),
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             child: Row(
@@ -409,21 +417,6 @@ class _CustomerTopChrome extends ConsumerWidget {
                     filter: _CustomerBrowseFilter.cafes,
                     focusSearch: true,
                   ),
-                ),
-                const SizedBox(width: 10),
-                _QuickServiceChip(
-                  icon: Icons.icecream_rounded,
-                  label: strings.t('quick.desserts'),
-                  onTap: () => onBrowseRequested(
-                    filter: _CustomerBrowseFilter.cafes,
-                    focusSearch: true,
-                  ),
-                ),
-                const SizedBox(width: 10),
-                _QuickServiceChip(
-                  icon: Icons.breakfast_dining_rounded,
-                  label: strings.t('quick.breakfast'),
-                  onTap: () => onBrowseRequested(focusSearch: true),
                 ),
                 const SizedBox(width: 10),
                 _QuickServiceChip(
@@ -491,7 +484,6 @@ class _CustomerRail extends ConsumerWidget {
 
 class _CustomerHomeTab extends ConsumerStatefulWidget {
   const _CustomerHomeTab({
-    required this.onBrowseRequested,
     required this.onRewardsRequested,
     required this.onOrdersRequested,
     required this.onRestaurantSelected,
@@ -499,11 +491,6 @@ class _CustomerHomeTab extends ConsumerStatefulWidget {
     required this.onRewardSelected,
   });
 
-  final void Function({
-    String search,
-    _CustomerBrowseFilter filter,
-    bool focusSearch,
-  }) onBrowseRequested;
   final VoidCallback onRewardsRequested;
   final VoidCallback onOrdersRequested;
   final Future<void> Function(
@@ -574,57 +561,13 @@ class _CustomerHomeTabState extends ConsumerState<_CustomerHomeTab> {
           child: ListView(
             physics: const AlwaysScrollableScrollPhysics(),
             children: [
-              _HeroSlider(
-                slides: const [
-                  _HeroSlideData(
-                    title: 'Your favorite restaurants, remembered by branch.',
-                    subtitle:
-                        'Find recent visits, favorite branches, and rewards without searching through receipts.',
-                    eyebrow: 'Fast reorder',
-                    action: 'See popular brands',
-                  ),
-                  _HeroSlideData(
-                    title:
-                        'Coffee runs, desserts, and brunch spots in one flow.',
-                    subtitle:
-                        'Browse restaurants, cafes, and dishes in one place.',
-                    eyebrow: 'Cafe picks',
-                    action: 'Open cafe section',
-                  ),
-                  _HeroSlideData(
-                    title: 'Rewards stay visible while you browse.',
-                    subtitle:
-                        'Your points, recent orders, and new restaurants stay on the home screen.',
-                    eyebrow: 'Loyalty',
-                    action: 'Use your points',
-                  ),
-                ],
-                onActionTap: (index) {
-                  switch (index) {
-                    case 0:
-                      widget.onBrowseRequested(
-                        filter: _CustomerBrowseFilter.restaurants,
-                      );
-                      break;
-                    case 1:
-                      widget.onBrowseRequested(
-                        filter: _CustomerBrowseFilter.cafes,
-                      );
-                      break;
-                    case 2:
-                      widget.onRewardsRequested();
-                      break;
-                  }
-                },
-              ),
-              const SizedBox(height: 18),
               _WalletSnapshotCard(
                 customerName: data.name,
                 loyaltyPoints: data.loyaltyPoints,
                 ordersCount: data.recentOrders.length,
                 onTap: widget.onRewardsRequested,
               ),
-              const SizedBox(height: 22),
+              const SizedBox(height: 18),
               const _SectionTitle(
                 title: 'Order again',
                 subtitle: 'Previous paid orders with branch and item details.',
@@ -1287,172 +1230,6 @@ class _CustomerRewardsTabState extends ConsumerState<_CustomerRewardsTab> {
   }
 }
 
-class _HeroSlider extends StatefulWidget {
-  const _HeroSlider({
-    required this.slides,
-    required this.onActionTap,
-  });
-
-  final List<_HeroSlideData> slides;
-  final ValueChanged<int> onActionTap;
-
-  @override
-  State<_HeroSlider> createState() => _HeroSliderState();
-}
-
-class _HeroSliderState extends State<_HeroSlider> {
-  late final PageController _controller;
-  int _page = 0;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = PageController(viewportFraction: 0.92);
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        SizedBox(
-          height: 216,
-          child: PageView.builder(
-            controller: _controller,
-            itemCount: widget.slides.length,
-            onPageChanged: (value) => setState(() => _page = value),
-            itemBuilder: (context, index) {
-              final slide = widget.slides[index];
-              return Padding(
-                padding: const EdgeInsets.only(right: 12),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(30),
-                  child: Stack(
-                    fit: StackFit.expand,
-                    children: [
-                      BrandedImage(
-                        label: slide.title,
-                        kind: BrandedImageKind.hero,
-                        overlay: const LinearGradient(
-                          colors: [Color(0x22000000), Color(0xBB160B06)],
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                        ),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.all(20),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 11,
-                                vertical: 7,
-                              ),
-                              decoration: BoxDecoration(
-                                color: Colors.white.withValues(alpha: 0.18),
-                                borderRadius: BorderRadius.circular(999),
-                              ),
-                              child: Text(
-                                slide.eyebrow,
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w800,
-                                ),
-                              ),
-                            ),
-                            const Spacer(),
-                            Text(
-                              slide.title,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .titleLarge
-                                  ?.copyWith(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.w900,
-                                  ),
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              slide.subtitle,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                color: Colors.white70,
-                                height: 1.3,
-                              ),
-                            ),
-                            const SizedBox(height: 10),
-                            FilledButton.tonalIcon(
-                              onPressed: () => widget.onActionTap(index),
-                              style: FilledButton.styleFrom(
-                                foregroundColor: const Color(0xFFFF7B2C),
-                                backgroundColor: Colors.white,
-                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                                visualDensity: VisualDensity.compact,
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 14,
-                                  vertical: 10,
-                                ),
-                              ),
-                              icon: const Icon(Icons.arrow_forward_rounded),
-                              label: Text(slide.action),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            },
-          ),
-        ),
-        const SizedBox(height: 10),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: List.generate(
-            widget.slides.length,
-            (index) => AnimatedContainer(
-              duration: const Duration(milliseconds: 220),
-              margin: const EdgeInsets.symmetric(horizontal: 4),
-              width: _page == index ? 24 : 8,
-              height: 8,
-              decoration: BoxDecoration(
-                color: _page == index
-                    ? const Color(0xFFFF7B2C)
-                    : const Color(0xFFFFD3B3),
-                borderRadius: BorderRadius.circular(999),
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _HeroSlideData {
-  const _HeroSlideData({
-    required this.title,
-    required this.subtitle,
-    required this.eyebrow,
-    required this.action,
-  });
-
-  final String title;
-  final String subtitle;
-  final String eyebrow;
-  final String action;
-}
-
 class _WalletSnapshotCard extends StatelessWidget {
   const _WalletSnapshotCard({
     required this.customerName,
@@ -1476,7 +1253,7 @@ class _WalletSnapshotCard extends StatelessWidget {
         child: ClipRRect(
           borderRadius: BorderRadius.circular(28),
           child: SizedBox(
-            height: 208,
+            height: 148,
             child: Stack(
               fit: StackFit.expand,
               children: [
@@ -1490,23 +1267,41 @@ class _WalletSnapshotCard extends StatelessWidget {
                   ),
                 ),
                 Padding(
-                  padding: const EdgeInsets.all(22),
+                  padding: const EdgeInsets.all(18),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
-                        'Rewards',
-                        style: TextStyle(
-                          color: Colors.white70,
-                          fontWeight: FontWeight.w700,
-                        ),
+                      Row(
+                        children: [
+                          const Icon(
+                            Icons.workspace_premium_rounded,
+                            color: Color(0xFFFFB347),
+                            size: 19,
+                          ),
+                          const SizedBox(width: 8),
+                          const Text(
+                            'Rewards',
+                            style: TextStyle(
+                              color: Colors.white70,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          const Spacer(),
+                          Text(
+                            '$ordersCount orders',
+                            style: const TextStyle(
+                              color: Colors.white70,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ],
                       ),
                       const Spacer(),
                       Text(
                         '$loyaltyPoints points',
                         style: Theme.of(context)
                             .textTheme
-                            .headlineMedium
+                            .headlineSmall
                             ?.copyWith(
                               color: Colors.white,
                               fontWeight: FontWeight.w900,
@@ -1515,25 +1310,10 @@ class _WalletSnapshotCard extends StatelessWidget {
                       const SizedBox(height: 8),
                       Text(
                         '$customerName has $ordersCount recent orders saved.',
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
                         style:
                             const TextStyle(color: Colors.white70, height: 1.4),
-                      ),
-                      const SizedBox(height: 14),
-                      const Wrap(
-                        spacing: 10,
-                        runSpacing: 10,
-                        children: [
-                          _MetricBadge(
-                            label: 'Visible rewards',
-                            icon: Icons.workspace_premium_rounded,
-                            color: Color(0xFFFFB347),
-                          ),
-                          _MetricBadge(
-                            label: 'Reorder ready',
-                            icon: Icons.history_rounded,
-                            color: Color(0xFF5DD39E),
-                          ),
-                        ],
                       ),
                     ],
                   ),
@@ -3102,19 +2882,19 @@ class _QuickServiceChip extends StatelessWidget {
   Widget build(BuildContext context) {
     return Material(
       color: Colors.white,
-      borderRadius: BorderRadius.circular(24),
+      borderRadius: BorderRadius.circular(18),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(18),
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(24),
+            borderRadius: BorderRadius.circular(18),
           ),
           child: Row(
             children: [
-              Icon(icon, size: 18, color: const Color(0xFFFF7B2C)),
-              const SizedBox(width: 8),
+              Icon(icon, size: 17, color: const Color(0xFFFF7B2C)),
+              const SizedBox(width: 7),
               Text(
                 label,
                 style: const TextStyle(fontWeight: FontWeight.w800),
@@ -3122,41 +2902,6 @@ class _QuickServiceChip extends StatelessWidget {
             ],
           ),
         ),
-      ),
-    );
-  }
-}
-
-class _MetricBadge extends StatelessWidget {
-  const _MetricBadge({
-    required this.label,
-    required this.icon,
-    required this.color,
-  });
-
-  final String label;
-  final IconData icon;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, color: color, size: 18),
-          const SizedBox(width: 8),
-          Text(
-            label,
-            style: const TextStyle(
-                color: Colors.white, fontWeight: FontWeight.w800),
-          ),
-        ],
       ),
     );
   }
@@ -3318,13 +3063,13 @@ class _RoundIconButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return Material(
       color: Colors.white,
-      borderRadius: BorderRadius.circular(20),
+      borderRadius: BorderRadius.circular(16),
       child: InkWell(
         onTap: onPressed,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(16),
         child: SizedBox(
-          width: 46,
-          height: 46,
+          width: 42,
+          height: 42,
           child: Icon(icon),
         ),
       ),

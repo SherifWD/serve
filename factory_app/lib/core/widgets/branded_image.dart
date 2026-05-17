@@ -78,16 +78,32 @@ class _FallbackArtwork extends StatelessWidget {
         fit: StackFit.expand,
         children: [
           Positioned(
-            top: -24,
-            right: -10,
-            child: _GlowOrb(
-                color: Colors.white.withValues(alpha: 0.14), size: 110),
+            top: 0,
+            right: 0,
+            child: Container(
+              width: 120,
+              height: 42,
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.12),
+                borderRadius: const BorderRadius.only(
+                  bottomLeft: Radius.circular(42),
+                ),
+              ),
+            ),
           ),
           Positioned(
-            bottom: -28,
-            left: -16,
-            child: _GlowOrb(
-                color: Colors.white.withValues(alpha: 0.10), size: 130),
+            bottom: 0,
+            left: 0,
+            child: Container(
+              width: 150,
+              height: 36,
+              decoration: BoxDecoration(
+                color: Colors.black.withValues(alpha: 0.08),
+                borderRadius: const BorderRadius.only(
+                  topRight: Radius.circular(36),
+                ),
+              ),
+            ),
           ),
           Positioned(
             top: 22,
@@ -174,27 +190,5 @@ class _FallbackArtwork extends StatelessWidget {
     }
 
     return Icons.restaurant_menu_rounded;
-  }
-}
-
-class _GlowOrb extends StatelessWidget {
-  const _GlowOrb({
-    required this.color,
-    required this.size,
-  });
-
-  final Color color;
-  final double size;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        color: color,
-        shape: BoxShape.circle,
-      ),
-    );
   }
 }

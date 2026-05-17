@@ -1,30 +1,31 @@
 <?php
 
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\BillingController;
 use App\Http\Controllers\Api\BranchController;
+use App\Http\Controllers\Api\BranchOperationSettingController;
+use App\Http\Controllers\Api\CategoryController;
 use App\Http\Controllers\Api\Customer\CustomerAuthController;
 use App\Http\Controllers\Api\Customer\CustomerPortalController;
-use App\Http\Controllers\Api\BillingController;
-use App\Http\Controllers\Api\CategoryController;
 use App\Http\Controllers\Api\DeviceController;
 use App\Http\Controllers\Api\EmployeeController;
 use App\Http\Controllers\Api\EtaSubmissionController;
 use App\Http\Controllers\Api\FiscalProfileController;
 use App\Http\Controllers\Api\FiscalReceiptController;
 use App\Http\Controllers\Api\IngredientController;
-use App\Http\Controllers\Api\InventoryOperationController;
 use App\Http\Controllers\Api\InventoryItemController;
+use App\Http\Controllers\Api\InventoryOperationController;
 use App\Http\Controllers\Api\InventoryTransactionController;
 use App\Http\Controllers\Api\MenuController;
 use App\Http\Controllers\Api\Mobile\CouponController;
 use App\Http\Controllers\Api\Mobile\KDSController;
+use App\Http\Controllers\Api\Mobile\MobileProductController;
+use App\Http\Controllers\Api\Mobile\MobileSyncController;
+use App\Http\Controllers\Api\Mobile\ModifierController;
 use App\Http\Controllers\Api\Mobile\OrderMobileController;
 use App\Http\Controllers\Api\Mobile\TableMobileController;
-use App\Http\Controllers\Api\Mobile\MobileProductController;
-use App\Http\Controllers\Api\Mobile\ModifierController;
-use App\Http\Controllers\Api\Mobile\MobileSyncController;
-use App\Http\Controllers\Api\OrderController;
 use App\Http\Controllers\Api\OnboardingController;
+use App\Http\Controllers\Api\OrderController;
 use App\Http\Controllers\Api\OwnerDashboardController;
 use App\Http\Controllers\Api\PaymentAttemptController;
 use App\Http\Controllers\Api\PaymentProviderController;
@@ -33,13 +34,14 @@ use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\RecipeController;
 use App\Http\Controllers\Api\RestaurantController;
 use App\Http\Controllers\Api\RoleController;
-use App\Http\Controllers\Api\SupportController;
 use App\Http\Controllers\Api\SupplierController;
+use App\Http\Controllers\Api\SupportController;
 use App\Http\Controllers\Api\TableController;
 use App\Http\Controllers\Api\UserController;
-use App\Http\Middleware\EnsureClientMutationIdempotency;
 use App\Http\Middleware\EnsureApiPermission;
+use App\Http\Middleware\EnsureClientMutationIdempotency;
 use Illuminate\Support\Facades\Route;
+
 Route::get('/health', [SupportController::class, 'health']);
 Route::middleware(['auth:sanctum', EnsureApiPermission::class])->group(function () {
     Route::apiResource('restaurants', RestaurantController::class);
@@ -60,6 +62,8 @@ Route::middleware(['auth:sanctum', EnsureApiPermission::class])->group(function 
     });
     Route::apiResource('suppliers', SupplierController::class);
     Route::apiResource('devices', DeviceController::class);
+    Route::get('branch-operation-settings', [BranchOperationSettingController::class, 'index']);
+    Route::put('branch-operation-settings/{branch}', [BranchOperationSettingController::class, 'update']);
     Route::get('payment-providers', [PaymentProviderController::class, 'index']);
     Route::post('payment-providers', [PaymentProviderController::class, 'store']);
     Route::get('payment-providers/{paymentProvider}', [PaymentProviderController::class, 'show']);
@@ -119,10 +123,7 @@ Route::prefix('customer')->group(function () {
     });
 });
 
-
-
-
-//Mobile
+// Mobile
 // routes/api.php
 Route::prefix('mobile')->middleware(['auth:sanctum', EnsureClientMutationIdempotency::class])->group(function () {
     Route::get('sync/state', [MobileSyncController::class, 'state']);
@@ -138,23 +139,21 @@ Route::prefix('mobile')->middleware(['auth:sanctum', EnsureClientMutationIdempot
 
     Route::get('orders', [OrderMobileController::class, 'index']);
     Route::get('orders/{id}', [OrderMobileController::class, 'show']);
-Route::get('products', [MobileProductController::class, 'index']);
-Route::post('orders', [OrderMobileController::class, 'store']);
-Route::patch('tables/{fromTable}/move', [TableMobileController::class, 'moveTable']);
-// Route::patch('orders/{order}/send-to-cashier', [TableMobileController::class, 'sendToCashier']);
-Route::put('orders/{order}', [OrderMobileController::class, 'update']);
-Route::patch('orders/{order}/reopen', [TableMobileController::class, 'reopenOrder']);
-Route::post('/coupons/verify', [CouponController::class, 'verify']);
-Route::post('/orders/{id}/pay', [OrderMobileController::class, 'pay']);
-Route::get('/orders/{id}/receipt', [OrderMobileController::class, 'receipt']);
-Route::patch('order-items/{id}/refund-change', [TableMobileController::class, 'refundOrChangeItem']);
-Route::get('order-items/{id}/history', [TableMobileController::class, 'itemHistory']);
-// routes/api.php
-Route::get('/modifiers/available', [ModifierController::class, 'availableForWaiter']);
+    Route::get('products', [MobileProductController::class, 'index']);
+    Route::post('orders', [OrderMobileController::class, 'store']);
+    Route::patch('tables/{fromTable}/move', [TableMobileController::class, 'moveTable']);
+    // Route::patch('orders/{order}/send-to-cashier', [TableMobileController::class, 'sendToCashier']);
+    Route::put('orders/{order}', [OrderMobileController::class, 'update']);
+    Route::patch('orders/{order}/reopen', [TableMobileController::class, 'reopenOrder']);
+    Route::post('/coupons/verify', [CouponController::class, 'verify']);
+    Route::post('/orders/{id}/pay', [OrderMobileController::class, 'pay']);
+    Route::get('/orders/{id}/receipt', [OrderMobileController::class, 'receipt']);
+    Route::patch('order-items/{id}/refund-change', [TableMobileController::class, 'refundOrChangeItem']);
+    Route::get('order-items/{id}/history', [TableMobileController::class, 'itemHistory']);
+    // routes/api.php
+    Route::get('/modifiers/available', [ModifierController::class, 'availableForWaiter']);
 
-
-
-Route::post('orders/{order}/send-to-kds', [OrderMobileController::class, 'sendToKDS']);
+    Route::post('orders/{order}/send-to-kds', [OrderMobileController::class, 'sendToKDS']);
     Route::patch('kds/order-items/{item}', [KDSController::class, 'setOrderItemStatus']); // keep
     Route::get('kds/orders', [KDSController::class, 'getActiveOrders']); // should filter by kds_status
 
@@ -162,10 +161,9 @@ Route::post('orders/{order}/send-to-kds', [OrderMobileController::class, 'sendTo
     Route::post('orders/send-to-cashier', [OrderMobileController::class, 'batchSendToCashier']);
     Route::patch('orders/{order}/send-to-cashier', [OrderMobileController::class, 'sendToCashier']); // single
 
-
-Route::prefix('kds')->group(function () {
-Route::get('/orders', [KDSController::class, 'getActiveOrders']);
-    Route::patch('/orders/{order}', [KDSController::class, 'setOrderStatus']);
-    Route::patch('/order-items/{item}', [KDSController::class, 'setOrderItemStatus']);
-});
+    Route::prefix('kds')->group(function () {
+        Route::get('/orders', [KDSController::class, 'getActiveOrders']);
+        Route::patch('/orders/{order}', [KDSController::class, 'setOrderStatus']);
+        Route::patch('/order-items/{item}', [KDSController::class, 'setOrderItemStatus']);
+    });
 });

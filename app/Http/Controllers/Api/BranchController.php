@@ -14,7 +14,7 @@ class BranchController extends Controller
         $user = $request->user();
 
         $query = Branch::query()
-            ->with('restaurant:id,name,kind')
+            ->with('restaurant:id,name,kind,logo_url')
             ->orderBy('name');
 
         if ($user->isPlatformAdmin()) {
@@ -56,14 +56,14 @@ class BranchController extends Controller
             abort(403, 'You cannot create branches.');
         }
 
-        return Branch::create($data)->load('restaurant:id,name,kind');
+        return Branch::create($data)->load('restaurant:id,name,kind,logo_url');
     }
 
     public function show(Request $request, Branch $branch)
     {
         $this->ensureBranchAccess($request->user(), $branch);
 
-        return $branch->load('restaurant:id,name,kind');
+        return $branch->load('restaurant:id,name,kind,logo_url');
     }
 
     public function update(Request $request, Branch $branch)
@@ -77,13 +77,13 @@ class BranchController extends Controller
             'restaurant_id' => 'nullable|integer|exists:restaurants,id',
         ]);
 
-        if (!$user->isPlatformAdmin()) {
+        if (! $user->isPlatformAdmin()) {
             $data['restaurant_id'] = $branch->restaurant_id;
         }
 
         $branch->update($data);
 
-        return $branch->fresh('restaurant:id,name,kind');
+        return $branch->fresh('restaurant:id,name,kind,logo_url');
     }
 
     public function destroy(Request $request, Branch $branch)

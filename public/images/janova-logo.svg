@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 160" role="img" aria-label="Janova Restaurant">
+  <rect width="160" height="160" rx="36" fill="#111827"/>
+  <path d="M52 48h56v16H86v48c0 24-16 36-38 31l4-17c10 2 16-3 16-15V64H52V48Z" fill="#ffffff"/>
+  <path d="M97 96c0-16 12-28 29-28 5 0 10 1 14 3v19c-4-3-8-5-13-5-8 0-14 5-14 12s6 12 14 12c5 0 10-2 14-5v19c-5 2-10 3-16 3-16 0-28-12-28-30Z" fill="#2a9d8f"/>
+</svg>

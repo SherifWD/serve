@@ -61,6 +61,43 @@
         </v-col>
       </v-row>
 
+      <div class="rs-panel section-panel management-panel mb-4">
+        <div class="panel-header">
+          <div>
+            <div class="panel-title">Owner Control Center</div>
+            <div class="panel-subtitle">
+              Jump straight into the records owners edit most often.
+            </div>
+          </div>
+        </div>
+
+        <div class="management-grid">
+          <div
+            v-for="card in managementCards"
+            :key="card.title"
+            class="management-card"
+            :class="{ 'management-card-alert': card.alert }"
+          >
+            <div class="management-icon">
+              <v-icon :icon="card.icon" />
+            </div>
+            <div class="management-content">
+              <div class="management-title">{{ card.title }}</div>
+              <div class="management-copy">{{ card.copy }}</div>
+              <div class="management-meta">{{ card.meta }}</div>
+            </div>
+            <v-btn
+              :to="card.to"
+              color="primary"
+              variant="tonal"
+              class="rs-pill management-action"
+            >
+              Open
+            </v-btn>
+          </div>
+        </div>
+      </div>
+
       <v-row class="mb-4">
         <v-col
           v-for="card in overviewCards"
@@ -344,6 +381,75 @@ const radarCards = computed(() => [
   },
 ])
 
+const managementCards = computed(() => [
+  {
+    title: 'Products',
+    copy: 'Prices, availability, stock limits, recipes, and images.',
+    meta: `${summary.value.product_count || 0} active items`,
+    to: '/products',
+    icon: 'mdi-hamburger',
+    permission: 'products.view',
+  },
+  {
+    title: 'Ingredients',
+    copy: 'Ingredient catalog with branch stock and recipe usage.',
+    meta: 'Branch stock aware',
+    to: '/ingredients',
+    icon: 'mdi-leaf-circle-outline',
+    permission: 'ingredients.view',
+  },
+  {
+    title: 'Recipes',
+    copy: 'Ingredient quantities behind each sellable product.',
+    meta: 'Cost and prep control',
+    to: '/recipe',
+    icon: 'mdi-silverware-fork-knife',
+    permission: 'recipes.view',
+  },
+  {
+    title: 'Menus',
+    copy: 'Menu/category assignment and available modifiers.',
+    meta: 'Customer and waiter menu flow',
+    to: '/menus',
+    icon: 'mdi-food-outline',
+    permission: 'menu.view',
+  },
+  {
+    title: 'Categories',
+    copy: 'Groups, questions, and options used by menu items.',
+    meta: 'Catalog structure',
+    to: '/categories',
+    icon: 'mdi-shape-outline',
+    permission: 'categories.view',
+  },
+  {
+    title: 'Inventory',
+    copy: 'Counts, stock floors, product inventory, and movements.',
+    meta: `${summary.value.low_stock_items?.length || 0} stock alerts`,
+    to: '/inventory',
+    icon: 'mdi-warehouse',
+    permission: 'inventory.view',
+    alert: (summary.value.low_stock_items?.length || 0) > 0,
+  },
+  {
+    title: 'Employees',
+    copy: 'Staff records, branch assignments, salaries, and performance.',
+    meta: `${summary.value.employee_count || 0} employees`,
+    to: '/employees',
+    icon: 'mdi-badge-account-outline',
+    permission: 'employees.view',
+  },
+  {
+    title: 'Stock Alerts',
+    copy: 'Low-stock ingredients that need purchasing or transfers.',
+    meta: `${summary.value.low_stock_items?.length || 0} below minimum`,
+    to: '/inventory',
+    icon: 'mdi-alert-circle-outline',
+    permission: 'inventory.view',
+    alert: true,
+  },
+].filter((card) => auth.can(card.permission)))
+
 const maxBranchSales = computed(() =>
   Math.max(...(summary.value.branch_performance || []).map((branch) => Number(branch.sales || 0)), 1),
 )
@@ -610,6 +716,67 @@ onMounted(async () => {
   border: 1px solid var(--rs-border);
   border-radius: 18px;
   background: rgba(15, 24, 39, 0.72);
+}
+
+.management-panel {
+  padding: 24px;
+}
+
+.management-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 14px;
+}
+
+.management-card {
+  min-height: 172px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: 14px;
+  padding: 16px;
+  border: 1px solid var(--rs-border);
+  border-radius: 18px;
+  background: rgba(15, 24, 39, 0.72);
+}
+
+.management-card-alert {
+  border-color: rgba(245, 158, 11, 0.36);
+  background: linear-gradient(180deg, rgba(245, 158, 11, 0.09), rgba(15, 24, 39, 0.72));
+}
+
+.management-icon {
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  border-radius: 14px;
+  color: var(--rs-accent);
+  background: var(--rs-accent-soft);
+}
+
+.management-title {
+  color: var(--rs-text);
+  font-weight: 800;
+}
+
+.management-copy {
+  margin-top: 5px;
+  color: var(--rs-text-soft);
+  line-height: 1.45;
+}
+
+.management-meta {
+  margin-top: 10px;
+  color: var(--rs-text-muted);
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.management-action {
+  grid-column: 1 / -1;
+  justify-self: start;
+  align-self: end;
 }
 
 @media (max-width: 1100px) {

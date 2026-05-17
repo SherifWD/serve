@@ -32,6 +32,7 @@ use App\Models\Table;
 use App\Models\Type;
 use App\Models\User;
 use Carbon\CarbonImmutable;
+use Database\Seeders\Concerns\UsesOnlineProductImages;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -40,8 +41,14 @@ use Illuminate\Support\Str;
 
 class JanovaSaasDemoSeeder extends Seeder
 {
+    use UsesOnlineProductImages;
+
+    private const JANOVA_LOGO_URL = 'images/janova-logo.svg';
+
     private array $roleIds = [];
+
     private array $typeIds = [];
+
     private Collection $ingredients;
 
     public function run(): void
@@ -53,19 +60,32 @@ class JanovaSaasDemoSeeder extends Seeder
 
             $restaurant = Restaurant::query()->updateOrCreate(
                 ['name' => 'Janova Restaurant'],
-                ['kind' => 'restaurant'],
+                [
+                    'kind' => 'restaurant',
+                    'logo_url' => self::JANOVA_LOGO_URL,
+                ],
             );
 
-            $branch = Branch::query()->updateOrCreate(
-                ['restaurant_id' => $restaurant->id, 'name' => 'Alexandria'],
-                ['location' => 'Alexandria Corniche'],
-            );
+            $branches = collect($this->branchBlueprints())
+                ->map(function (array $branchData) use ($restaurant): array {
+                    $branch = Branch::query()->updateOrCreate(
+                        ['restaurant_id' => $restaurant->id, 'name' => $branchData['name']],
+                        ['location' => $branchData['location']],
+                    );
 
-            $this->seedSaasState($restaurant, $branch);
-            $this->seedStaff($restaurant, $branch);
-            $this->seedTablesAndDevices($restaurant, $branch);
+                    return ['model' => $branch, 'data' => $branchData];
+                });
+
             $this->seedSuppliers($restaurant);
-            $this->seedCatalog($restaurant, $branch);
+
+            foreach ($branches as $branchContext) {
+                $this->seedSaasState($restaurant, $branchContext['model'], $branchContext['data']);
+                $this->seedStaff($restaurant, $branchContext['model'], $branchContext['data']);
+                $this->seedTablesAndDevices($restaurant, $branchContext['model'], $branchContext['data']);
+                $this->seedCatalog($restaurant, $branchContext['model'], $branchContext['data']);
+            }
+
+            $this->syncSeededProductImages();
         });
     }
 
@@ -124,7 +144,7 @@ class JanovaSaasDemoSeeder extends Seeder
 
         $rolePermissions = [
             'admin' => $permissionNames,
-            'owner' => array_values(array_filter($permissionNames, fn ($name) => !str_starts_with($name, 'platform.'))),
+            'owner' => array_values(array_filter($permissionNames, fn ($name) => ! str_starts_with($name, 'platform.'))),
             'supervisor' => [
                 'dashboard.view',
                 'branches.view',
@@ -170,7 +190,35 @@ class JanovaSaasDemoSeeder extends Seeder
         Setting::query()->updateOrCreate(['key' => 'vat_rate'], ['value' => '0.14']);
     }
 
-    private function seedSaasState(Restaurant $restaurant, Branch $branch): void
+    private function branchBlueprints(): array
+    {
+        return [
+            [
+                'name' => 'Alexandria',
+                'location' => 'Alexandria Corniche',
+                'slug' => 'alexandria',
+                'code' => 'ALX',
+                'governate' => 'Alexandria',
+                'city' => 'Alexandria',
+                'street' => 'Corniche Road',
+                'building' => '12',
+                'opening_balance' => 5000,
+            ],
+            [
+                'name' => 'New Cairo',
+                'location' => 'New Cairo, Cairo',
+                'slug' => 'new-cairo',
+                'code' => 'NCA',
+                'governate' => 'Cairo',
+                'city' => 'New Cairo',
+                'street' => 'Road 90',
+                'building' => '24',
+                'opening_balance' => 4500,
+            ],
+        ];
+    }
+
+    private function seedSaasState(Restaurant $restaurant, Branch $branch, array $branchData): void
     {
         $plan = SubscriptionPlan::query()->updateOrCreate(
             ['slug' => 'janova-growth'],
@@ -234,8 +282,8 @@ class JanovaSaasDemoSeeder extends Seeder
         FiscalProfile::query()->updateOrCreate(
             ['restaurant_id' => $restaurant->id, 'branch_id' => $branch->id],
             [
-                'display_name' => 'Janova Alexandria VAT profile',
-                'is_default' => true,
+                'display_name' => "Janova {$branch->name} VAT profile",
+                'is_default' => $branchData['code'] === 'ALX',
                 'currency_code' => 'EGP',
                 'vat_rate' => 0.14,
                 'price_includes_vat' => true,
@@ -247,14 +295,14 @@ class JanovaSaasDemoSeeder extends Seeder
                 'eta_type_version' => '1.2',
                 'eta_seller_rin' => '200173707',
                 'eta_seller_name' => $restaurant->name,
-                'eta_branch_code' => 'ALX',
-                'eta_device_serial_number' => 'JANOVA-ALX-POS-01',
+                'eta_branch_code' => $branchData['code'],
+                'eta_device_serial_number' => "JANOVA-{$branchData['code']}-POS-01",
                 'eta_activity_code' => '5610',
                 'address_country' => 'EG',
-                'address_governate' => 'Alexandria',
-                'address_region_city' => 'Alexandria',
-                'address_street' => 'Corniche Road',
-                'address_building_number' => '12',
+                'address_governate' => $branchData['governate'],
+                'address_region_city' => $branchData['city'],
+                'address_street' => $branchData['street'],
+                'address_building_number' => $branchData['building'],
             ],
         );
 
@@ -265,14 +313,16 @@ class JanovaSaasDemoSeeder extends Seeder
                 'mode' => 'manual',
                 'is_active' => true,
                 'supported_methods' => ['cash', 'card'],
-                'terminal_config' => ['receipt_printer' => 'JANOVA-ALX-PRINTER'],
+                'terminal_config' => ['receipt_printer' => "JANOVA-{$branchData['code']}-PRINTER"],
                 'metadata' => ['seed' => 'janova-saas-demo'],
             ],
         );
     }
 
-    private function seedStaff(Restaurant $restaurant, Branch $branch): void
+    private function seedStaff(Restaurant $restaurant, Branch $branch, array $branchData): void
     {
+        $slug = $branchData['slug'];
+
         $owner = $this->upsertUser(
             restaurant: $restaurant,
             branch: null,
@@ -285,8 +335,8 @@ class JanovaSaasDemoSeeder extends Seeder
         $this->upsertUser(
             restaurant: $restaurant,
             branch: $branch,
-            email: 'supervisor.alexandria@janova.example.com',
-            name: 'Janova Alexandria Supervisor',
+            email: "supervisor.{$slug}@janova.example.com",
+            name: "Janova {$branch->name} Supervisor",
             role: 'supervisor',
             type: null,
             position: 'Branch Supervisor',
@@ -294,14 +344,14 @@ class JanovaSaasDemoSeeder extends Seeder
         );
 
         foreach ([
-            ['email' => 'waiter1.alexandria@janova.example.com', 'name' => 'Janova Waiter 1'],
-            ['email' => 'waiter2.alexandria@janova.example.com', 'name' => 'Janova Waiter 2'],
-        ] as $staff) {
+            1,
+            2,
+        ] as $index) {
             $this->upsertUser(
                 restaurant: $restaurant,
                 branch: $branch,
-                email: $staff['email'],
-                name: $staff['name'],
+                email: "waiter{$index}.{$slug}@janova.example.com",
+                name: "Janova {$branch->name} Waiter {$index}",
                 role: 'staff',
                 type: 'waiter',
                 position: 'Waiter',
@@ -312,8 +362,8 @@ class JanovaSaasDemoSeeder extends Seeder
         $this->upsertUser(
             restaurant: $restaurant,
             branch: $branch,
-            email: 'cashier.alexandria@janova.example.com',
-            name: 'Janova Cashier',
+            email: "cashier.{$slug}@janova.example.com",
+            name: "Janova {$branch->name} Cashier",
             role: 'staff',
             type: 'cashier',
             position: 'Cashier',
@@ -321,8 +371,8 @@ class JanovaSaasDemoSeeder extends Seeder
         );
 
         foreach ([
-            ['email' => 'kitchen1.alexandria@janova.example.com', 'name' => 'Janova Kitchen Lead', 'position' => 'Kitchen Lead', 'salary' => 11800],
-            ['email' => 'kitchen2.alexandria@janova.example.com', 'name' => 'Janova Line Cook', 'position' => 'Line Cook', 'salary' => 9200],
+            ['email' => "kitchen1.{$slug}@janova.example.com", 'name' => "Janova {$branch->name} Kitchen Lead", 'position' => 'Kitchen Lead', 'salary' => 11800],
+            ['email' => "kitchen2.{$slug}@janova.example.com", 'name' => "Janova {$branch->name} Line Cook", 'position' => 'Line Cook', 'salary' => 9200],
         ] as $staff) {
             $this->upsertUser(
                 restaurant: $restaurant,
@@ -336,7 +386,7 @@ class JanovaSaasDemoSeeder extends Seeder
             );
         }
 
-        Employee::query()->updateOrCreate(
+        Employee::query()->firstOrCreate(
             ['user_id' => $owner->id],
             [
                 'branch_id' => $branch->id,
@@ -396,7 +446,7 @@ class JanovaSaasDemoSeeder extends Seeder
         return $user;
     }
 
-    private function seedTablesAndDevices(Restaurant $restaurant, Branch $branch): void
+    private function seedTablesAndDevices(Restaurant $restaurant, Branch $branch, array $branchData): void
     {
         foreach ([
             ['name' => 'A1 Window', 'seats' => 2],
@@ -414,10 +464,27 @@ class JanovaSaasDemoSeeder extends Seeder
             );
         }
 
+        $code = Str::lower($branchData['code']);
         foreach ([
-            ['uuid' => 'janova-alx-pos-01', 'name' => 'Janova Alexandria POS', 'type' => 'POS'],
-            ['uuid' => 'janova-alx-waiter-01', 'name' => 'Janova Waiter Tablet 1', 'type' => 'Tablet'],
-            ['uuid' => 'janova-alx-kds-01', 'name' => 'Janova Kitchen Display', 'type' => 'KDS'],
+            ['uuid' => "janova-{$code}-pos-01", 'name' => "Janova {$branch->name} POS", 'type' => 'POS'],
+            ['uuid' => "janova-{$code}-waiter-01", 'name' => "Janova {$branch->name} Waiter Tablet 1", 'type' => 'Tablet'],
+            ['uuid' => "janova-{$code}-kds-01", 'name' => "Janova {$branch->name} Kitchen Display", 'type' => 'KDS'],
+            [
+                'uuid' => "janova-{$code}-receipt-printer-01",
+                'name' => "Janova {$branch->name} Receipt Printer",
+                'type' => 'Receipt Printer',
+                'printer_profile' => 'epson-thermal',
+                'printer_paper_width_mm' => 80,
+                'printer_endpoint' => "usb://janova-{$code}-receipt-printer",
+                'capabilities' => ['receipt_printer' => true],
+            ],
+            [
+                'uuid' => "janova-{$code}-cash-drawer-01",
+                'name' => "Janova {$branch->name} Cash Drawer",
+                'type' => 'Cash Drawer',
+                'printer_endpoint' => "usb://janova-{$code}-cash-drawer",
+                'capabilities' => ['cash_drawer' => true],
+            ],
         ] as $device) {
             Device::query()->updateOrCreate(
                 ['uuid' => $device['uuid']],
@@ -425,6 +492,10 @@ class JanovaSaasDemoSeeder extends Seeder
                     'name' => $device['name'],
                     'branch_id' => $branch->id,
                     'type' => $device['type'],
+                    'printer_profile' => $device['printer_profile'] ?? null,
+                    'printer_paper_width_mm' => $device['printer_paper_width_mm'] ?? null,
+                    'printer_endpoint' => $device['printer_endpoint'] ?? null,
+                    'capabilities' => $device['capabilities'] ?? null,
                     'is_active' => true,
                     'last_seen_at' => now(),
                 ],
@@ -433,7 +504,7 @@ class JanovaSaasDemoSeeder extends Seeder
 
         CashRegister::query()->updateOrCreate(
             ['branch_id' => $branch->id],
-            ['opening_balance' => 5000, 'closing_balance' => null, 'is_open' => true],
+            ['opening_balance' => $branchData['opening_balance'], 'closing_balance' => null, 'is_open' => true],
         );
     }
 
@@ -451,10 +522,10 @@ class JanovaSaasDemoSeeder extends Seeder
         }
     }
 
-    private function seedCatalog(Restaurant $restaurant, Branch $branch): void
+    private function seedCatalog(Restaurant $restaurant, Branch $branch, array $branchData): void
     {
         $menu = Menu::query()->updateOrCreate(
-            ['branch_id' => $branch->id, 'name' => 'Janova Alexandria Main Menu'],
+            ['branch_id' => $branch->id, 'name' => "Janova {$branch->name} Main Menu"],
             ['category_id' => null],
         );
 
@@ -478,8 +549,8 @@ class JanovaSaasDemoSeeder extends Seeder
                         'category_id' => $category->id,
                         'price' => $productData['price'],
                         'is_available' => true,
-                        'image' => null,
-                        'sku' => 'JANOVA-ALX-'.Str::upper(Str::slug($productData['name'], '-')),
+                        'image' => $this->productImageUrl($productData['name']),
+                        'sku' => "JANOVA-{$branchData['code']}-".Str::upper(Str::slug($productData['name'], '-')),
                         'min_stock' => 10,
                         'stock' => $productData['stock'] ?? 90,
                     ],
@@ -488,6 +559,7 @@ class JanovaSaasDemoSeeder extends Seeder
                 $product->category_id = $category->id;
                 $product->price = $productData['price'];
                 $product->is_available = true;
+                $product->image = $this->productImageUrl($productData['name']);
                 $product->stock = $productData['stock'] ?? 90;
                 $product->save();
 
@@ -601,7 +673,7 @@ class JanovaSaasDemoSeeder extends Seeder
             ['unit' => $unit, 'stock' => 0, 'min_stock' => 25],
         );
 
-        if (!$ingredient->unit) {
+        if (! $ingredient->unit) {
             $ingredient->unit = $unit;
             $ingredient->save();
         }

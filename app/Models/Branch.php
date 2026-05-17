@@ -7,55 +7,72 @@ use Illuminate\Database\Eloquent\Model;
 
 class Branch extends Model
 {
-    use HasFactory; protected $guarded =[];
+    use HasFactory;
+
+    protected $guarded = [];
 
     public function restaurant()
     {
         return $this->belongsTo(Restaurant::class);
     }
 
-public function users() {
-    return $this->hasMany(User::class);
-}
+    public function users()
+    {
+        return $this->hasMany(User::class);
+    }
 
-public function devices() {
-    return $this->hasMany(Device::class);
-}
+    public function devices()
+    {
+        return $this->hasMany(Device::class);
+    }
 
-public function employees() {
-    return $this->hasMany(Employee::class);
-}
+    public function cashRegister()
+    {
+        return $this->hasOne(CashRegister::class);
+    }
 
-public function products() {
-    return $this->hasMany(Product::class);
-}
+    public function employees()
+    {
+        return $this->hasMany(Employee::class);
+    }
 
-public function tables() {
-    return $this->hasMany(Table::class);
-}
+    public function products()
+    {
+        return $this->hasMany(Product::class);
+    }
 
-public function orders() {
-    return $this->hasMany(Order::class);
-}
+    public function tables()
+    {
+        return $this->hasMany(Table::class);
+    }
 
-public function fiscalProfiles() {
-    return $this->hasMany(FiscalProfile::class);
-}
+    public function orders()
+    {
+        return $this->hasMany(Order::class);
+    }
 
-public function etaReceiptSubmissions() {
-    return $this->hasMany(EtaReceiptSubmission::class);
-}
+    public function fiscalProfiles()
+    {
+        return $this->hasMany(FiscalProfile::class);
+    }
 
-public function paymentProviderConfigs() {
-    return $this->hasMany(PaymentProviderConfig::class);
-}
+    public function etaReceiptSubmissions()
+    {
+        return $this->hasMany(EtaReceiptSubmission::class);
+    }
 
-public function paymentAttempts() {
-    return $this->hasMany(PaymentAttempt::class);
-}
+    public function paymentProviderConfigs()
+    {
+        return $this->hasMany(PaymentProviderConfig::class);
+    }
 
-public function printJobs() {
-    return $this->hasMany(PrintJob::class);
-}
+    public function paymentAttempts()
+    {
+        return $this->hasMany(PaymentAttempt::class);
+    }
 
+    public function printJobs()
+    {
+        return $this->hasMany(PrintJob::class);
+    }
 }

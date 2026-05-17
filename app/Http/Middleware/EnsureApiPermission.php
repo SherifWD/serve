@@ -28,6 +28,7 @@ class EnsureApiPermission
         'ingredients' => ['view' => 'ingredients.view', 'manage' => 'ingredients.manage'],
         'recipes' => ['view' => 'recipes.view', 'manage' => 'recipes.manage'],
         'fiscal-profiles' => ['view' => 'settings.view', 'manage' => 'settings.manage'],
+        'branch-operation-settings' => ['view' => 'settings.view', 'manage' => 'settings.manage'],
         'receipts' => ['view' => 'orders.view', 'manage' => 'orders.manage'],
         'eta-submissions' => ['view' => 'orders.view', 'manage' => 'orders.manage'],
         'billing' => ['view' => 'settings.view', 'manage' => 'settings.manage'],
@@ -39,14 +40,14 @@ class EnsureApiPermission
     public function handle(Request $request, Closure $next): Response
     {
         $user = $request->user();
-        if (!$user instanceof User) {
+        if (! $user instanceof User) {
             return $next($request);
         }
 
         $segment = (string) $request->segment(2);
         $permission = $this->permissionFor($segment, $request->method());
 
-        if ($permission && !$user->hasPermission($permission)) {
+        if ($permission && ! $user->hasPermission($permission)) {
             abort(403, 'You do not have permission to use this endpoint.');
         }
 
@@ -65,7 +66,7 @@ class EnsureApiPermission
                 : 'platform.restaurants.manage';
         }
 
-        if (!isset($this->resourcePermissions[$segment])) {
+        if (! isset($this->resourcePermissions[$segment])) {
             return null;
         }
 
