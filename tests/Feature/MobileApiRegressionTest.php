@@ -481,15 +481,15 @@ class MobileApiRegressionTest extends TestCase
         $this->assertEqualsWithDelta($expectedReceiptTotal, (float) $content['total'], 0.001);
     }
 
-    public function test_waiter_can_return_item_to_kitchen(): void
+    public function test_waiter_can_return_queued_item_to_kitchen(): void
     {
         $item = OrderItem::query()
             ->with('order.table')
             ->whereHas('order.table')
             ->firstOrFail();
         $item->forceFill([
-            'status' => 'ready',
-            'kds_status' => 'ready',
+            'status' => 'queued',
+            'kds_status' => 'queued',
             'kds_sent_at' => now(),
         ])->save();
 
@@ -504,6 +504,32 @@ class MobileApiRegressionTest extends TestCase
 
         $this->assertSame('returned', $item->status);
         $this->assertSame('returned', $item->kds_status);
+    }
+
+    public function test_waiter_can_return_served_item_to_kitchen_with_reason(): void
+    {
+        $item = OrderItem::query()
+            ->with('order.table')
+            ->whereHas('order.table')
+            ->firstOrFail();
+        $item->forceFill([
+            'status' => 'served',
+            'kds_status' => 'served',
+            'kds_sent_at' => now(),
+        ])->save();
+
+        Sanctum::actingAs($this->staffUserForBranch((int) $item->order->branch_id, 'waiter'));
+
+        $this->patchJson("/api/mobile/order-items/{$item->id}/refund-change", [
+            'action' => 'return',
+            'note' => 'Customer asked for remake',
+        ])->assertOk();
+
+        $item->refresh();
+
+        $this->assertSame('returned', $item->status);
+        $this->assertSame('returned', $item->kds_status);
+        $this->assertSame('Customer asked for remake', $item->change_note);
     }
 
     public function test_waiter_cannot_return_item_before_kitchen_finishes_it(): void
@@ -524,12 +550,110 @@ class MobileApiRegressionTest extends TestCase
             'action' => 'return',
             'note' => 'Returned too early',
         ])->assertUnprocessable()
-            ->assertJsonPath('error', 'Only ready or served items can be returned to kitchen.');
+            ->assertJsonPath('error', 'Only queued or served items can be returned to kitchen.');
 
         $item->refresh();
 
         $this->assertSame('pending', $item->status);
         $this->assertSame('pending', $item->kds_status);
+    }
+
+    public function test_waiter_cannot_return_ready_item_to_kitchen(): void
+    {
+        $item = OrderItem::query()
+            ->with('order.table')
+            ->whereHas('order.table')
+            ->firstOrFail();
+        $item->forceFill([
+            'status' => 'ready',
+            'kds_status' => 'ready',
+            'kds_sent_at' => now(),
+        ])->save();
+
+        Sanctum::actingAs($this->staffUserForBranch((int) $item->order->branch_id, 'waiter'));
+
+        $this->patchJson("/api/mobile/order-items/{$item->id}/refund-change", [
+            'action' => 'return',
+            'note' => 'Ready item cannot be returned',
+        ])->assertUnprocessable()
+            ->assertJsonPath('error', 'Only queued or served items can be returned to kitchen.');
+
+        $item->refresh();
+
+        $this->assertSame('ready', $item->status);
+        $this->assertSame('ready', $item->kds_status);
+    }
+
+    public function test_waiter_must_provide_reason_when_returning_item_to_kitchen(): void
+    {
+        $item = OrderItem::query()
+            ->with('order.table')
+            ->whereHas('order.table')
+            ->firstOrFail();
+        $item->forceFill([
+            'status' => 'served',
+            'kds_status' => 'served',
+            'kds_sent_at' => now(),
+        ])->save();
+
+        Sanctum::actingAs($this->staffUserForBranch((int) $item->order->branch_id, 'waiter'));
+
+        $this->patchJson("/api/mobile/order-items/{$item->id}/refund-change", [
+            'action' => 'return',
+            'note' => '',
+        ])->assertUnprocessable()
+            ->assertJsonPath('error', 'Return reason is required.');
+    }
+
+    public function test_waiter_cannot_refund_item_until_it_was_returned_to_kitchen(): void
+    {
+        $item = OrderItem::query()
+            ->with('order.table')
+            ->whereHas('order.table')
+            ->firstOrFail();
+        $item->forceFill([
+            'status' => 'preparing',
+            'kds_status' => 'preparing',
+            'kds_sent_at' => now(),
+        ])->save();
+
+        Sanctum::actingAs($this->staffUserForBranch((int) $item->order->branch_id, 'waiter'));
+
+        $this->patchJson("/api/mobile/order-items/{$item->id}/refund-change", [
+            'action' => 'refund',
+            'note' => 'Refund attempted too early',
+        ])->assertUnprocessable()
+            ->assertJsonPath('error', 'Items must be returned to kitchen before they can be refunded.');
+
+        $item->refresh();
+
+        $this->assertSame('preparing', $item->status);
+        $this->assertSame('preparing', $item->kds_status);
+    }
+
+    public function test_waiter_can_refund_item_after_it_was_returned_to_kitchen(): void
+    {
+        $item = OrderItem::query()
+            ->with('order.table')
+            ->whereHas('order.table')
+            ->firstOrFail();
+        $item->forceFill([
+            'status' => 'returned',
+            'kds_status' => 'returned',
+            'kds_sent_at' => now(),
+        ])->save();
+
+        Sanctum::actingAs($this->staffUserForBranch((int) $item->order->branch_id, 'waiter'));
+
+        $this->patchJson("/api/mobile/order-items/{$item->id}/refund-change", [
+            'action' => 'refund',
+            'note' => 'Refund after returned item',
+        ])->assertOk();
+
+        $item->refresh();
+
+        $this->assertSame('refunded', $item->status);
+        $this->assertSame('refunded', $item->kds_status);
     }
 
     public function test_owner_summary_includes_date_range_and_branch_stock_label(): void
@@ -770,7 +894,7 @@ class MobileApiRegressionTest extends TestCase
                 'password' => 'secret123',
             ],
             'settings' => [
-                'currency' => 'EGP',
+                'currency' => 'USD',
                 'vat_rate' => 0.14,
             ],
         ])
@@ -797,7 +921,7 @@ class MobileApiRegressionTest extends TestCase
         $this->assertTrue($owner->types()->where('name', 'owner')->exists());
         $this->assertDatabaseHas('settings', [
             'key' => "restaurant.{$owner->restaurant_id}.currency",
-            'value' => 'EGP',
+            'value' => 'USD',
         ]);
         $this->assertDatabaseHas('settings', [
             'key' => "restaurant.{$owner->restaurant_id}.vat_rate",
@@ -806,7 +930,7 @@ class MobileApiRegressionTest extends TestCase
         $this->assertDatabaseHas('fiscal_profiles', [
             'restaurant_id' => $owner->restaurant_id,
             'branch_id' => null,
-            'currency_code' => 'EGP',
+            'currency_code' => 'USD',
             'vat_rate' => 0.14,
             'price_includes_vat' => true,
         ]);
@@ -1112,7 +1236,7 @@ class MobileApiRegressionTest extends TestCase
             ],
             [
                 'display_name' => 'Inclusive VAT test profile',
-                'currency_code' => 'EGP',
+                'currency_code' => 'USD',
                 'vat_rate' => 0.14,
                 'price_includes_vat' => true,
                 'eta_seller_rin' => '200173707',
@@ -1157,7 +1281,7 @@ class MobileApiRegressionTest extends TestCase
         $profileId = $this->postJson('/api/fiscal-profiles', [
             'display_name' => 'Owner VAT profile',
             'branch_id' => $branch->id,
-            'currency_code' => 'EGP',
+            'currency_code' => 'USD',
             'vat_rate' => 0.12,
             'price_includes_vat' => false,
             'eta_seller_rin' => '200173707',
@@ -1195,7 +1319,7 @@ class MobileApiRegressionTest extends TestCase
             ],
             [
                 'display_name' => 'ETA ready profile',
-                'currency_code' => 'EGP',
+                'currency_code' => 'USD',
                 'vat_rate' => 0.14,
                 'price_includes_vat' => true,
                 'eta_seller_rin' => '200173707',
@@ -1305,7 +1429,7 @@ class MobileApiRegressionTest extends TestCase
 
         $this->getJson('/api/billing/plans')
             ->assertOk()
-            ->assertJsonPath('data.0.currency', 'EGP');
+            ->assertJsonPath('data.0.currency', 'USD');
 
         $this->postJson('/api/billing/subscription', [
             'plan_id' => $plan->id,
@@ -1362,7 +1486,7 @@ class MobileApiRegressionTest extends TestCase
             ],
             [
                 'display_name' => 'ETA queue ready profile',
-                'currency_code' => 'EGP',
+                'currency_code' => 'USD',
                 'vat_rate' => 0.14,
                 'price_includes_vat' => true,
                 'eta_seller_rin' => '200173707',

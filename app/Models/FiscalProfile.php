@@ -50,7 +50,7 @@ class FiscalProfile extends Model
             'branch_id' => $branchId,
             'display_name' => 'Generated default fiscal profile',
             'is_default' => true,
-            'currency_code' => 'EGP',
+            'currency_code' => 'USD',
             'vat_rate' => 0.14,
             'price_includes_vat' => true,
             'vat_tax_type' => 'T1',

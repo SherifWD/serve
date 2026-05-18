@@ -18,7 +18,8 @@ class TableMobileController extends Controller
 {
     private const ACTIVE_ORDER_STATUSES = ['pending', 'open', 'running', 'cashier'];
     private const NON_ACTIVE_ITEM_STATUSES = ['canceled', 'cancelled', 'refunded'];
-    private const RETURNABLE_KITCHEN_STATUSES = ['ready', 'served'];
+    private const RETURNABLE_KITCHEN_STATUSES = ['queued', 'served'];
+    private const REFUNDABLE_KITCHEN_STATUSES = ['returned'];
 
     private function ensureBranchAccessible(Request $request, int $branchId): ?JsonResponse
     {
@@ -396,6 +397,7 @@ public function batchSendToCashier(Request $request)
     $action = $data['action'];
     $qty = array_key_exists('quantity', $data) ? (int) $data['quantity'] : null;
     $note = $data['note'] ?? null;
+    $note = $note === null ? null : trim($note);
     $restoreStock = $request->boolean('restore_stock', true);
     $userId = $request->user()->id;
 
@@ -412,11 +414,27 @@ public function batchSendToCashier(Request $request)
     }
 
     if ($action === 'return') {
+        if ($note === null || trim($note) === '') {
+            return response()->json([
+                'error' => 'Return reason is required.',
+            ], 422);
+        }
+
         $kitchenStatus = $item->kds_status ?? $item->status;
 
         if (!in_array($kitchenStatus, self::RETURNABLE_KITCHEN_STATUSES, true)) {
             return response()->json([
-                'error' => 'Only ready or served items can be returned to kitchen.',
+                'error' => 'Only queued or served items can be returned to kitchen.',
+            ], 422);
+        }
+    }
+
+    if ($action === 'refund') {
+        $kitchenStatus = $item->kds_status ?? $item->status;
+
+        if (!in_array($kitchenStatus, self::REFUNDABLE_KITCHEN_STATUSES, true)) {
+            return response()->json([
+                'error' => 'Items must be returned to kitchen before they can be refunded.',
             ], 422);
         }
     }

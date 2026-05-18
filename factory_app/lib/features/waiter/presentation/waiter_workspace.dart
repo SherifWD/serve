@@ -91,7 +91,7 @@ class _WaiterHero extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final currency = NumberFormat.currency(symbol: 'EGP ');
+    final currency = NumberFormat.currency(symbol: 'USD ');
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -379,7 +379,7 @@ class _TableTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final currency = NumberFormat.currency(symbol: 'EGP ');
+    final currency = NumberFormat.currency(symbol: 'USD ');
     final statusColor = _tableStatusColor(table.serviceStatus);
 
     return InkWell(

@@ -57,7 +57,7 @@ return new class extends Migration
             $table->string('provider', 100)->default('manual');
             $table->string('method', 30);
             $table->decimal('amount', 12, 2);
-            $table->string('currency', 3)->default('EGP');
+            $table->string('currency', 3)->default('USD');
             $table->string('status', 30)->default('requires_action');
             $table->string('provider_reference')->nullable();
             $table->json('request_payload')->nullable();

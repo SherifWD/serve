@@ -492,7 +492,7 @@ function openCustomer(customer) {
 function money(value) {
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
-    currency: 'EGP',
+    currency: 'USD',
     maximumFractionDigits: 0,
   }).format(Number(value || 0))
 }

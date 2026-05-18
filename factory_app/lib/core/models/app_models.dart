@@ -402,6 +402,11 @@ class OrderItemLine {
   bool get isVoided =>
       status == 'refunded' || status == 'canceled' || status == 'cancelled';
   bool get canReduceQuantity => !isVoided && quantity > 1;
+  bool get canRefund {
+    final kitchenStatus = kdsStatus ?? status;
+    return !isVoided && kitchenStatus == 'returned';
+  }
+
   bool get canSendToKitchen {
     final kitchenStatus = kdsStatus ?? status;
     return !isVoided &&
@@ -412,7 +417,7 @@ class OrderItemLine {
 
   bool get canReturnToKitchen {
     final kitchenStatus = kdsStatus ?? status;
-    return !isVoided && (kitchenStatus == 'ready' || kitchenStatus == 'served');
+    return !isVoided && (kitchenStatus == 'queued' || kitchenStatus == 'served');
   }
 
   String get kitchenStatusLabel {

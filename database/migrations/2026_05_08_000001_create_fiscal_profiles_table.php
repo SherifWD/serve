@@ -14,7 +14,7 @@ return new class extends Migration
             $table->foreignId('branch_id')->nullable()->constrained()->nullOnDelete();
             $table->string('display_name')->default('Default fiscal profile');
             $table->boolean('is_default')->default(false);
-            $table->string('currency_code', 3)->default('EGP');
+            $table->string('currency_code', 3)->default('USD');
             $table->decimal('vat_rate', 6, 4)->default(0.1400);
             $table->boolean('price_includes_vat')->default(true);
             $table->string('vat_tax_type', 30)->default('T1');

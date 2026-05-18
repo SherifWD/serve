@@ -759,7 +759,7 @@ class OrderMobileController extends Controller
         $receiptTotal = round((float) $receiptLines->sum('display_total'), 2);
         $receiptPaid = round((float) ($payment?->amount ?? $order->payments->sum('amount')), 2);
         $receiptBalance = round(max((float) $order->total - $receiptPaid, 0), 2);
-        $currency = Setting::query()->where('key', 'currency')->value('value') ?: 'EGP';
+        $currency = Setting::query()->where('key', 'currency')->value('value') ?: 'USD';
         $receipt = $existingReceipt ?? Receipt::create([
             'order_id' => $order->id,
             'receipt_number' => $this->nextReceiptNumber($order),

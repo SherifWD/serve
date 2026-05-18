@@ -81,7 +81,7 @@ class OnboardingController extends Controller
 
             Setting::query()->updateOrCreate(
                 ['key' => "restaurant.{$restaurant->id}.currency"],
-                ['value' => $data['settings']['currency'] ?? 'EGP'],
+                ['value' => $data['settings']['currency'] ?? 'USD'],
             );
             Setting::query()->updateOrCreate(
                 ['key' => "restaurant.{$restaurant->id}.vat_rate"],
@@ -92,7 +92,7 @@ class OnboardingController extends Controller
                 'branch_id' => null,
                 'display_name' => $restaurant->name.' fiscal profile',
                 'is_default' => true,
-                'currency_code' => strtoupper($data['settings']['currency'] ?? 'EGP'),
+                'currency_code' => strtoupper($data['settings']['currency'] ?? 'USD'),
                 'vat_rate' => $data['settings']['vat_rate'] ?? 0.14,
                 'price_includes_vat' => $data['settings']['price_includes_vat'] ?? true,
                 'eta_seller_rin' => $data['fiscal']['eta_seller_rin'] ?? null,
@@ -218,7 +218,7 @@ class OnboardingController extends Controller
             [
                 'name' => 'Starter POS',
                 'billing_period' => 'monthly',
-                'currency' => 'EGP',
+                'currency' => 'USD',
                 'price' => 1499,
                 'max_branches' => 1,
                 'max_users' => 8,

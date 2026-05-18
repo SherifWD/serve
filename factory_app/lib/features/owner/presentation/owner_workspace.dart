@@ -148,7 +148,7 @@ class _OwnerWorkspacePageState extends ConsumerState<OwnerWorkspacePage> {
 
   @override
   Widget build(BuildContext context) {
-    final currency = NumberFormat.currency(symbol: 'EGP ');
+    final currency = NumberFormat.currency(symbol: 'USD ');
 
     return FutureBuilder<OwnerSummary>(
       future: _future,

@@ -38,7 +38,7 @@ class EtaReceiptMapper
                 'receiptNumber' => $receiptNumber,
                 'uuid' => $this->uuidForReceipt($receipt, $profile),
                 'previousUUID' => '',
-                'currency' => strtoupper((string) ($profile->currency_code ?: 'EGP')),
+                'currency' => strtoupper((string) ($profile->currency_code ?: 'USD')),
                 'orderdeliveryMode' => $this->deliveryMode($order->order_type ?? null),
             ],
             'documentType' => [

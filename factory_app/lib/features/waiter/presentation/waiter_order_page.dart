@@ -62,7 +62,7 @@ class _WaiterOrderPageState extends ConsumerState<WaiterOrderPage> {
 
   @override
   Widget build(BuildContext context) {
-    final currency = NumberFormat.currency(symbol: 'EGP ');
+    final currency = NumberFormat.currency(symbol: 'USD ');
 
     return Scaffold(
       appBar: AppBar(
@@ -304,13 +304,54 @@ class _WaiterOrderPageState extends ConsumerState<WaiterOrderPage> {
   }
 
   Future<void> _handleReturn(OrderItemLine item) async {
+    final reason = await _promptReturnReason(item);
+    if (reason == null || reason.isEmpty) {
+      return;
+    }
+
     await _runAction(
       () => ref.read(suiteRepositoryProvider).returnOrderItemToKitchen(
             orderItemId: item.id,
-            note: 'Returned to kitchen by floor staff',
+            note: reason,
           ),
       '${item.name} returned to kitchen',
     );
+  }
+
+  Future<String?> _promptReturnReason(OrderItemLine item) async {
+    final controller = TextEditingController();
+
+    final reason = await showDialog<String>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text('Return ${item.name}'),
+          content: TextField(
+            controller: controller,
+            autofocus: true,
+            maxLines: 3,
+            textInputAction: TextInputAction.done,
+            decoration: const InputDecoration(
+              labelText: 'Reason',
+              hintText: 'Example: customer requested a remake',
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(context, controller.text.trim()),
+              child: const Text('Return'),
+            ),
+          ],
+        );
+      },
+    );
+
+    controller.dispose();
+    return reason;
   }
 
   Future<void> _showMoveTableDialog(List<TableOverview> tables) async {
@@ -474,7 +515,7 @@ class _AddProductSheetState extends State<_AddProductSheet> {
             ),
             const SizedBox(height: 8),
             Text(
-              'EGP ${product.price.toStringAsFixed(2)}',
+              'USD ${product.price.toStringAsFixed(2)}',
               style: Theme.of(context)
                   .textTheme
                   .titleMedium
@@ -741,7 +782,7 @@ class _OrderItemsCard extends StatelessWidget {
                           IconButton(
                             tooltip: 'Refund item',
                             onPressed:
-                                item.isVoided ? null : () => onRefund(item),
+                                item.canRefund ? () => onRefund(item) : null,
                             icon: const Icon(Icons.restart_alt_outlined),
                           ),
                           IconButton(
@@ -1037,7 +1078,7 @@ class _ProductChooserCard extends StatelessWidget {
                     children: [
                       Expanded(
                         child: Text(
-                          'EGP ${product.price.toStringAsFixed(0)}',
+                          'USD ${product.price.toStringAsFixed(0)}',
                           style: Theme.of(context)
                               .textTheme
                               .titleSmall

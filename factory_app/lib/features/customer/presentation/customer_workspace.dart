@@ -515,7 +515,7 @@ class _CustomerHomeTabState extends ConsumerState<_CustomerHomeTab> {
 
   @override
   Widget build(BuildContext context) {
-    final currency = NumberFormat.currency(symbol: 'EGP ');
+    final currency = NumberFormat.currency(symbol: 'USD ');
 
     return FutureBuilder<CustomerHomeData>(
       future: _future,
@@ -1036,7 +1036,7 @@ class _CustomerOrdersTabState extends ConsumerState<_CustomerOrdersTab> {
 
   @override
   Widget build(BuildContext context) {
-    final currency = NumberFormat.currency(symbol: 'EGP ');
+    final currency = NumberFormat.currency(symbol: 'USD ');
 
     if (_loading && _items.isEmpty) {
       return const LoadingView(label: 'Loading orders...');
@@ -2405,7 +2405,7 @@ class _RestaurantMenuCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final currency = NumberFormat.currency(symbol: 'EGP ');
+    final currency = NumberFormat.currency(symbol: 'USD ');
 
     return Card(
       elevation: 0,
@@ -2495,7 +2495,7 @@ class _CustomerDishDetailSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final currency = NumberFormat.currency(symbol: 'EGP ');
+    final currency = NumberFormat.currency(symbol: 'USD ');
 
     return _CustomerSheet(
       child: Column(
@@ -2592,7 +2592,7 @@ class _CustomerOrderDetailSheetState
 
   @override
   Widget build(BuildContext context) {
-    final currency = NumberFormat.currency(symbol: 'EGP ');
+    final currency = NumberFormat.currency(symbol: 'USD ');
 
     return FutureBuilder<CustomerOrder>(
       future: _future,

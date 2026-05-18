@@ -36,7 +36,7 @@ return new class extends Migration
             $table->string('name');
             $table->string('slug')->unique();
             $table->string('billing_period', 20)->default('monthly');
-            $table->string('currency', 3)->default('EGP');
+            $table->string('currency', 3)->default('USD');
             $table->decimal('price', 12, 2)->default(0);
             $table->unsignedInteger('max_branches')->nullable();
             $table->unsignedInteger('max_users')->nullable();
@@ -70,7 +70,7 @@ return new class extends Migration
             $table->foreignId('restaurant_subscription_id')->nullable()->constrained()->nullOnDelete();
             $table->string('invoice_number')->unique();
             $table->string('status', 30)->default('open');
-            $table->string('currency', 3)->default('EGP');
+            $table->string('currency', 3)->default('USD');
             $table->decimal('subtotal', 12, 2)->default(0);
             $table->decimal('tax', 12, 2)->default(0);
             $table->decimal('total', 12, 2)->default(0);

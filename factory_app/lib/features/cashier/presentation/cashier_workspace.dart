@@ -532,7 +532,7 @@ class _CashierHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final currency = NumberFormat.currency(symbol: 'EGP ');
+    final currency = NumberFormat.currency(symbol: 'USD ');
 
     return Container(
       width: double.infinity,
@@ -581,7 +581,7 @@ class _QueuePanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final currency = NumberFormat.currency(symbol: 'EGP ');
+    final currency = NumberFormat.currency(symbol: 'USD ');
 
     return Card(
       child: Padding(
@@ -695,7 +695,7 @@ class _TicketPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final currency = NumberFormat.currency(symbol: 'EGP ');
+    final currency = NumberFormat.currency(symbol: 'USD ');
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -940,7 +940,7 @@ class _PaymentPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final currency = NumberFormat.currency(symbol: 'EGP ');
+    final currency = NumberFormat.currency(symbol: 'USD ');
     final draftedTotal = drafts.fold<double>(
       0,
       (sum, draft) =>

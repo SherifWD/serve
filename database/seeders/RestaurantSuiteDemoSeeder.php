@@ -134,9 +134,9 @@ class RestaurantSuiteDemoSeeder extends Seeder
             $this->typeIds[$typeName] = $type->id;
         }
 
-        Setting::updateOrCreate(['key' => 'currency'], ['value' => 'EGP']);
+        Setting::updateOrCreate(['key' => 'currency'], ['value' => 'USD']);
         Setting::updateOrCreate(['key' => 'vat_rate'], ['value' => '0.14']);
-        Setting::updateOrCreate(['key' => 'loyalty_rule'], ['value' => '1 point per EGP 10']);
+        Setting::updateOrCreate(['key' => 'loyalty_rule'], ['value' => '1 point per USD 10']);
         $this->seedSubscriptionPlans();
 
         $permissionNames = [
@@ -355,7 +355,7 @@ class RestaurantSuiteDemoSeeder extends Seeder
                 [
                     'name' => $planData['name'],
                     'billing_period' => 'monthly',
-                    'currency' => 'EGP',
+                    'currency' => 'USD',
                     'price' => $planData['price'],
                     'max_branches' => $planData['max_branches'],
                     'max_users' => $planData['max_users'],
@@ -656,7 +656,7 @@ class RestaurantSuiteDemoSeeder extends Seeder
             [
                 'display_name' => $restaurant->name.' default VAT profile',
                 'is_default' => true,
-                'currency_code' => 'EGP',
+                'currency_code' => 'USD',
                 'vat_rate' => 0.14,
                 'price_includes_vat' => true,
                 'vat_tax_type' => 'T1',
@@ -689,7 +689,7 @@ class RestaurantSuiteDemoSeeder extends Seeder
             [
                 'display_name' => $branch->name.' VAT profile',
                 'is_default' => $branchIndex === 0,
-                'currency_code' => 'EGP',
+                'currency_code' => 'USD',
                 'vat_rate' => 0.14,
                 'price_includes_vat' => true,
                 'vat_tax_type' => 'T1',

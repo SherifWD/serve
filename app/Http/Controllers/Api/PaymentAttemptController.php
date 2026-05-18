@@ -44,7 +44,7 @@ class PaymentAttemptController extends Controller
             'provider' => $data['provider'] ?? $device?->payment_provider ?? 'manual',
             'method' => $data['method'],
             'amount' => $data['amount'],
-            'currency' => strtoupper($data['currency'] ?? 'EGP'),
+            'currency' => strtoupper($data['currency'] ?? 'USD'),
             'status' => $status,
             'provider_reference' => $data['provider_reference'] ?? null,
             'request_payload' => $data['request_payload'] ?? null,

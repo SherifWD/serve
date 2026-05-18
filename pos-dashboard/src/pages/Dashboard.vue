@@ -464,18 +464,18 @@ function authHeaders() {
 
 function formatCurrency(value) {
   const amount = Number(value || 0)
-  return new Intl.NumberFormat('en-EG', {
+  return new Intl.NumberFormat('en-US', {
     style: 'currency',
-    currency: 'EGP',
+    currency: 'USD',
     maximumFractionDigits: 0,
   }).format(amount)
 }
 
 function formatCompactCurrency(value) {
   const amount = Number(value || 0)
-  return new Intl.NumberFormat('en-EG', {
+  return new Intl.NumberFormat('en-US', {
     style: 'currency',
-    currency: 'EGP',
+    currency: 'USD',
     notation: 'compact',
     maximumFractionDigits: 1,
   }).format(amount)

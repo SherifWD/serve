@@ -188,7 +188,7 @@ class JanovaSaasDemoSeeder extends Seeder
             Role::query()->find($this->roleIds[$roleName])?->permissions()->sync($permissionIds);
         }
 
-        Setting::query()->updateOrCreate(['key' => 'currency'], ['value' => 'EGP']);
+        Setting::query()->updateOrCreate(['key' => 'currency'], ['value' => 'USD']);
         Setting::query()->updateOrCreate(['key' => 'vat_rate'], ['value' => '0.14']);
     }
 
@@ -227,7 +227,7 @@ class JanovaSaasDemoSeeder extends Seeder
             [
                 'name' => 'Janova Growth Restaurant',
                 'billing_period' => 'monthly',
-                'currency' => 'EGP',
+                'currency' => 'USD',
                 'price' => 2999,
                 'max_branches' => 3,
                 'max_users' => 25,
@@ -263,7 +263,7 @@ class JanovaSaasDemoSeeder extends Seeder
                 'restaurant_id' => $restaurant->id,
                 'restaurant_subscription_id' => $subscription->id,
                 'status' => 'paid',
-                'currency' => 'EGP',
+                'currency' => 'USD',
                 'subtotal' => 2999,
                 'tax' => 419.86,
                 'total' => 3418.86,
@@ -286,7 +286,7 @@ class JanovaSaasDemoSeeder extends Seeder
             [
                 'display_name' => "Janova {$branch->name} VAT profile",
                 'is_default' => $branchData['code'] === 'ALX',
-                'currency_code' => 'EGP',
+                'currency_code' => 'USD',
                 'vat_rate' => 0.14,
                 'price_includes_vat' => true,
                 'vat_tax_type' => 'T1',
