@@ -109,7 +109,11 @@ class RestaurantSuiteDemoSeeder extends Seeder
                 $this->seedVenue($venueBlueprint, $customers);
             }
         } else {
-            $this->command?->info('RestaurantSuiteDemoSeeder synced Janova reference data. Existing Janova demo scenarios were retained.');
+            foreach ($this->venueBlueprints() as $venueBlueprint) {
+                $this->syncVenueReferenceData($venueBlueprint);
+            }
+
+            $this->command?->info('RestaurantSuiteDemoSeeder synced Janova catalog and reference data. Existing Janova demo scenarios were retained.');
         }
 
         $this->syncSeededProductImages();
@@ -264,13 +268,13 @@ class RestaurantSuiteDemoSeeder extends Seeder
 
         foreach ([
             ['name' => 'No Ice', 'price' => 0],
-            ['name' => 'Extra Cheese', 'price' => 18],
-            ['name' => 'Extra Sauce', 'price' => 12],
-            ['name' => 'Oat Milk', 'price' => 20],
-            ['name' => 'Extra Shot', 'price' => 24],
-            ['name' => 'Whipped Cream', 'price' => 15],
+            ['name' => 'Extra Cheese', 'price' => 1.50],
+            ['name' => 'Extra Sauce', 'price' => 0.75],
+            ['name' => 'Oat Milk', 'price' => 1.25],
+            ['name' => 'Extra Shot', 'price' => 1.50],
+            ['name' => 'Whipped Cream', 'price' => 1.00],
             ['name' => 'No Onion', 'price' => 0],
-            ['name' => 'Takeaway Cutlery', 'price' => 4],
+            ['name' => 'Takeaway Cutlery', 'price' => 0.25],
         ] as $modifierData) {
             $modifier = Modifier::firstOrCreate(
                 ['name' => $modifierData['name'], 'restaurant_id' => null],
@@ -325,7 +329,7 @@ class RestaurantSuiteDemoSeeder extends Seeder
             [
                 'name' => 'Starter POS',
                 'slug' => 'starter-pos',
-                'price' => 1499,
+                'price' => 49,
                 'max_branches' => 1,
                 'max_users' => 8,
                 'max_devices' => 4,
@@ -334,7 +338,7 @@ class RestaurantSuiteDemoSeeder extends Seeder
             [
                 'name' => 'Growth Restaurant',
                 'slug' => 'growth-restaurant',
-                'price' => 2999,
+                'price' => 99,
                 'max_branches' => 3,
                 'max_users' => 25,
                 'max_devices' => 12,
@@ -343,7 +347,7 @@ class RestaurantSuiteDemoSeeder extends Seeder
             [
                 'name' => 'Enterprise Chain',
                 'slug' => 'enterprise-chain',
-                'price' => 7999,
+                'price' => 249,
                 'max_branches' => null,
                 'max_users' => null,
                 'max_devices' => null,
@@ -646,6 +650,39 @@ class RestaurantSuiteDemoSeeder extends Seeder
         );
     }
 
+    private function syncVenueReferenceData(array $venueBlueprint): void
+    {
+        $restaurant = Restaurant::updateOrCreate(
+            ['name' => $venueBlueprint['name']],
+            [
+                'kind' => $venueBlueprint['kind'],
+                'logo_url' => $venueBlueprint['logo_url'] ?? null,
+            ],
+        );
+        $restaurantSlug = Str::slug($restaurant->name);
+
+        $restaurantModifiers = $this->seedRestaurantModifiers($restaurant, $venueBlueprint['kind']);
+        $suppliers = $this->seedSuppliersForRestaurant($restaurant, $restaurantSlug);
+        $this->seedRestaurantFiscalProfile($restaurant);
+
+        foreach ($this->branchBlueprintsFor($restaurant->name) as $branchIndex => $branchBlueprint) {
+            $branch = Branch::updateOrCreate(
+                ['restaurant_id' => $restaurant->id, 'name' => $branchBlueprint['name']],
+                ['location' => $branchBlueprint['location']],
+            );
+
+            $this->seedBranchFiscalProfile($restaurant, $branch, $branchIndex);
+            $catalog = $this->seedCatalogForBranch(
+                restaurant: $restaurant,
+                branch: $branch,
+                kind: $venueBlueprint['kind'],
+                restaurantSlug: $restaurantSlug,
+                restaurantModifiers: $restaurantModifiers,
+            );
+            $this->seedInventoryForBranch($branch, $catalog['used_ingredients'], $suppliers, $branchIndex);
+        }
+    }
+
     private function seedRestaurantFiscalProfile(Restaurant $restaurant): void
     {
         FiscalProfile::query()->updateOrCreate(
@@ -732,16 +769,16 @@ class RestaurantSuiteDemoSeeder extends Seeder
     {
         $names = $kind === 'cafe'
             ? [
-                ['name' => 'Caramel Syrup', 'price' => 18],
-                ['name' => 'Hazelnut Syrup', 'price' => 18],
-                ['name' => 'Decaf Shot', 'price' => 12],
-                ['name' => 'Extra Pastry Box', 'price' => 8],
+                ['name' => 'Caramel Syrup', 'price' => 1.00],
+                ['name' => 'Hazelnut Syrup', 'price' => 1.00],
+                ['name' => 'Decaf Shot', 'price' => 0.75],
+                ['name' => 'Extra Pastry Box', 'price' => 0.50],
             ]
             : [
-                ['name' => 'Add Fries', 'price' => 24],
-                ['name' => 'Add Rice', 'price' => 20],
-                ['name' => 'Extra Garlic Dip', 'price' => 10],
-                ['name' => 'Family Bread Basket', 'price' => 22],
+                ['name' => 'Add Fries', 'price' => 3.25],
+                ['name' => 'Add Rice', 'price' => 2.50],
+                ['name' => 'Extra Garlic Dip', 'price' => 1.00],
+                ['name' => 'Family Bread Basket', 'price' => 2.75],
             ];
 
         return collect($names)->map(function (array $modifierData) use ($restaurant) {
@@ -1079,9 +1116,9 @@ class RestaurantSuiteDemoSeeder extends Seeder
                     'question' => 'Choose your milk',
                     'choices' => ['Whole Milk', 'Oat Milk', 'Almond Milk'],
                     'products' => [
-                        ['name' => 'Flat White', 'price' => 88, 'ingredients' => ['Espresso Beans' => 18, 'Milk' => 180]],
-                        ['name' => 'Spanish Latte', 'price' => 96, 'ingredients' => ['Espresso Beans' => 18, 'Milk' => 190, 'Sugar' => 10]],
-                        ['name' => 'Iced Latte', 'price' => 92, 'ingredients' => ['Espresso Beans' => 18, 'Milk' => 180, 'Water' => 60]],
+                        ['name' => 'Flat White', 'price' => 4.75, 'ingredients' => ['Espresso Beans' => 18, 'Milk' => 180]],
+                        ['name' => 'Spanish Latte', 'price' => 5.50, 'ingredients' => ['Espresso Beans' => 18, 'Milk' => 190, 'Sugar' => 10]],
+                        ['name' => 'Iced Latte', 'price' => 5.25, 'ingredients' => ['Espresso Beans' => 18, 'Milk' => 180, 'Water' => 60]],
                     ],
                 ],
                 [
@@ -1089,9 +1126,9 @@ class RestaurantSuiteDemoSeeder extends Seeder
                     'question' => 'Choose your sugar level',
                     'choices' => ['No Sugar', 'Half Sugar', 'Regular'],
                     'products' => [
-                        ['name' => 'English Breakfast', 'price' => 48, 'ingredients' => ['Tea Leaves' => 10, 'Water' => 250, 'Sugar' => 6]],
-                        ['name' => 'Green Tea', 'price' => 52, 'ingredients' => ['Tea Leaves' => 9, 'Water' => 250]],
-                        ['name' => 'Hibiscus Cooler', 'price' => 58, 'ingredients' => ['Tea Leaves' => 8, 'Sugar' => 10, 'Water' => 260]],
+                        ['name' => 'English Breakfast', 'price' => 3.25, 'ingredients' => ['Tea Leaves' => 10, 'Water' => 250, 'Sugar' => 6]],
+                        ['name' => 'Green Tea', 'price' => 3.50, 'ingredients' => ['Tea Leaves' => 9, 'Water' => 250]],
+                        ['name' => 'Hibiscus Cooler', 'price' => 4.25, 'ingredients' => ['Tea Leaves' => 8, 'Sugar' => 10, 'Water' => 260]],
                     ],
                 ],
                 [
@@ -1099,9 +1136,9 @@ class RestaurantSuiteDemoSeeder extends Seeder
                     'question' => 'How should we pack it?',
                     'choices' => ['Serve Warm', 'Standard Pack', 'Gift Box'],
                     'products' => [
-                        ['name' => 'Butter Croissant', 'price' => 44, 'ingredients' => ['Butter' => 22, 'Flour' => 90]],
-                        ['name' => 'Cinnamon Roll', 'price' => 55, 'ingredients' => ['Butter' => 20, 'Flour' => 95, 'Sugar' => 16]],
-                        ['name' => 'Chocolate Muffin', 'price' => 50, 'ingredients' => ['Butter' => 16, 'Flour' => 80, 'Chocolate' => 18]],
+                        ['name' => 'Butter Croissant', 'price' => 3.75, 'ingredients' => ['Butter' => 22, 'Flour' => 90]],
+                        ['name' => 'Cinnamon Roll', 'price' => 4.50, 'ingredients' => ['Butter' => 20, 'Flour' => 95, 'Sugar' => 16]],
+                        ['name' => 'Chocolate Muffin', 'price' => 4.25, 'ingredients' => ['Butter' => 16, 'Flour' => 80, 'Chocolate' => 18]],
                     ],
                 ],
                 [
@@ -1109,9 +1146,9 @@ class RestaurantSuiteDemoSeeder extends Seeder
                     'question' => 'Choose your side',
                     'choices' => ['Fries', 'Salad', 'No Side'],
                     'products' => [
-                        ['name' => 'Turkey Club', 'price' => 118, 'ingredients' => ['Bread' => 2, 'Turkey Slices' => 90, 'Cheddar Cheese' => 24, 'Lettuce' => 15, 'Tomato' => 20]],
-                        ['name' => 'Halloumi Panini', 'price' => 124, 'ingredients' => ['Bread' => 2, 'Halloumi Cheese' => 80, 'Tomato' => 25]],
-                        ['name' => 'Tuna Melt', 'price' => 128, 'ingredients' => ['Bread' => 2, 'Tuna' => 85, 'Cheddar Cheese' => 28]],
+                        ['name' => 'Turkey Club', 'price' => 11.50, 'ingredients' => ['Bread' => 2, 'Turkey Slices' => 90, 'Cheddar Cheese' => 24, 'Lettuce' => 15, 'Tomato' => 20]],
+                        ['name' => 'Halloumi Panini', 'price' => 10.75, 'ingredients' => ['Bread' => 2, 'Halloumi Cheese' => 80, 'Tomato' => 25]],
+                        ['name' => 'Tuna Melt', 'price' => 10.50, 'ingredients' => ['Bread' => 2, 'Tuna' => 85, 'Cheddar Cheese' => 28]],
                     ],
                 ],
                 [
@@ -1119,9 +1156,9 @@ class RestaurantSuiteDemoSeeder extends Seeder
                     'question' => 'Serving style',
                     'choices' => ['Chilled', 'Warm', 'To Go'],
                     'products' => [
-                        ['name' => 'San Sebastian Cheesecake', 'price' => 96, 'ingredients' => ['Butter' => 18, 'Sugar' => 24, 'Cheddar Cheese' => 40]],
-                        ['name' => 'Tiramisu Cup', 'price' => 84, 'ingredients' => ['Milk' => 90, 'Chocolate' => 14, 'Sugar' => 18]],
-                        ['name' => 'Lotus Cake Jar', 'price' => 89, 'ingredients' => ['Butter' => 12, 'Sugar' => 18, 'Chocolate' => 16]],
+                        ['name' => 'San Sebastian Cheesecake', 'price' => 8.75, 'ingredients' => ['Butter' => 18, 'Sugar' => 24, 'Cheddar Cheese' => 40]],
+                        ['name' => 'Tiramisu Cup', 'price' => 8.25, 'ingredients' => ['Milk' => 90, 'Chocolate' => 14, 'Sugar' => 18]],
+                        ['name' => 'Lotus Cake Jar', 'price' => 8.00, 'ingredients' => ['Butter' => 12, 'Sugar' => 18, 'Chocolate' => 16]],
                     ],
                 ],
             ];
@@ -1133,9 +1170,9 @@ class RestaurantSuiteDemoSeeder extends Seeder
                 'question' => 'Choose your dip',
                 'choices' => ['Tahini', 'Garlic Dip', 'Spicy Sauce'],
                 'products' => [
-                    ['name' => 'Halloumi Bites', 'price' => 94, 'ingredients' => ['Halloumi Cheese' => 90, 'Tomato' => 18]],
-                    ['name' => 'Lentil Soup', 'price' => 62, 'ingredients' => ['Water' => 250, 'Lemon' => 12]],
-                    ['name' => 'Mezze Plate', 'price' => 110, 'ingredients' => ['Tomato' => 35, 'Lettuce' => 30, 'Bread' => 1]],
+                    ['name' => 'Halloumi Bites', 'price' => 8.50, 'ingredients' => ['Halloumi Cheese' => 90, 'Tomato' => 18]],
+                    ['name' => 'Lentil Soup', 'price' => 6.00, 'ingredients' => ['Water' => 250, 'Lemon' => 12]],
+                    ['name' => 'Mezze Plate', 'price' => 10.00, 'ingredients' => ['Tomato' => 35, 'Lettuce' => 30, 'Bread' => 1]],
                 ],
             ],
             [
@@ -1143,9 +1180,9 @@ class RestaurantSuiteDemoSeeder extends Seeder
                 'question' => 'Choose your side',
                 'choices' => ['Fries', 'Rice', 'Salad'],
                 'products' => [
-                    ['name' => 'Chicken Shawarma Plate', 'price' => 176, 'ingredients' => ['Chicken' => 160, 'Rice' => 120, 'Tomato' => 20]],
-                    ['name' => 'Mushroom Pasta', 'price' => 168, 'ingredients' => ['Pasta' => 150, 'Milk' => 70, 'Cheddar Cheese' => 22]],
-                    ['name' => 'Baked Kofta', 'price' => 189, 'ingredients' => ['Beef' => 180, 'Tomato' => 25, 'Rice' => 90]],
+                    ['name' => 'Chicken Shawarma Plate', 'price' => 16.50, 'ingredients' => ['Chicken' => 160, 'Rice' => 120, 'Tomato' => 20]],
+                    ['name' => 'Mushroom Pasta', 'price' => 14.50, 'ingredients' => ['Pasta' => 150, 'Milk' => 70, 'Cheddar Cheese' => 22]],
+                    ['name' => 'Baked Kofta', 'price' => 16.75, 'ingredients' => ['Beef' => 180, 'Tomato' => 25, 'Rice' => 90]],
                 ],
             ],
             [
@@ -1153,9 +1190,9 @@ class RestaurantSuiteDemoSeeder extends Seeder
                 'question' => 'Choose your doneness',
                 'choices' => ['Medium Rare', 'Medium', 'Well Done'],
                 'products' => [
-                    ['name' => 'Angus Burger', 'price' => 182, 'ingredients' => ['Beef' => 170, 'Bread' => 1, 'Cheddar Cheese' => 26, 'Tomato' => 18]],
-                    ['name' => 'Mixed Grill', 'price' => 238, 'ingredients' => ['Beef' => 140, 'Chicken' => 140, 'Rice' => 100]],
-                    ['name' => 'BBQ Chicken Skillet', 'price' => 194, 'ingredients' => ['Chicken' => 180, 'Potato' => 130, 'Tomato' => 20]],
+                    ['name' => 'Angus Burger', 'price' => 15.50, 'ingredients' => ['Beef' => 170, 'Bread' => 1, 'Cheddar Cheese' => 26, 'Tomato' => 18]],
+                    ['name' => 'Mixed Grill', 'price' => 24.00, 'ingredients' => ['Beef' => 140, 'Chicken' => 140, 'Rice' => 100]],
+                    ['name' => 'BBQ Chicken Skillet', 'price' => 17.50, 'ingredients' => ['Chicken' => 180, 'Potato' => 130, 'Tomato' => 20]],
                 ],
             ],
             [
@@ -1163,9 +1200,9 @@ class RestaurantSuiteDemoSeeder extends Seeder
                 'question' => 'Choose your ice level',
                 'choices' => ['No Ice', 'Light Ice', 'Regular Ice'],
                 'products' => [
-                    ['name' => 'Fresh Lemon Mint', 'price' => 58, 'ingredients' => ['Lemon' => 20, 'Mint' => 12, 'Water' => 260, 'Sugar' => 10]],
-                    ['name' => 'Sparkling Water', 'price' => 32, 'ingredients' => ['Water' => 330]],
-                    ['name' => 'Berry Mojito', 'price' => 66, 'ingredients' => ['Water' => 280, 'Mint' => 10, 'Sugar' => 12]],
+                    ['name' => 'Fresh Lemon Mint', 'price' => 4.75, 'ingredients' => ['Lemon' => 20, 'Mint' => 12, 'Water' => 260, 'Sugar' => 10]],
+                    ['name' => 'Sparkling Water', 'price' => 3.00, 'ingredients' => ['Water' => 330]],
+                    ['name' => 'Berry Mojito', 'price' => 6.00, 'ingredients' => ['Water' => 280, 'Mint' => 10, 'Sugar' => 12]],
                 ],
             ],
             [
@@ -1173,9 +1210,9 @@ class RestaurantSuiteDemoSeeder extends Seeder
                 'question' => 'Serving style',
                 'choices' => ['Warm', 'Chilled', 'To Go'],
                 'products' => [
-                    ['name' => 'Om Ali', 'price' => 78, 'ingredients' => ['Milk' => 130, 'Sugar' => 18, 'Bread' => 1]],
-                    ['name' => 'Brownie Skillet', 'price' => 88, 'ingredients' => ['Chocolate' => 22, 'Butter' => 18, 'Flour' => 70]],
-                    ['name' => 'Cheesecake Slice', 'price' => 84, 'ingredients' => ['Cheddar Cheese' => 36, 'Sugar' => 20, 'Butter' => 10]],
+                    ['name' => 'Om Ali', 'price' => 7.25, 'ingredients' => ['Milk' => 130, 'Sugar' => 18, 'Bread' => 1]],
+                    ['name' => 'Brownie Skillet', 'price' => 8.00, 'ingredients' => ['Chocolate' => 22, 'Butter' => 18, 'Flour' => 70]],
+                    ['name' => 'Cheesecake Slice', 'price' => 8.25, 'ingredients' => ['Cheddar Cheese' => 36, 'Sugar' => 20, 'Butter' => 10]],
                 ],
             ],
         ];

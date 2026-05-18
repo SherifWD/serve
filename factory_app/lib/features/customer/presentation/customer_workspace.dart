@@ -625,7 +625,7 @@ class _CustomerHomeTabState extends ConsumerState<_CustomerHomeTab> {
                 )
               else
                 SizedBox(
-                  height: 286,
+                  height: 318,
                   child: ListView.separated(
                     scrollDirection: Axis.horizontal,
                     itemCount: restaurants.length,
@@ -677,7 +677,7 @@ class _CustomerHomeTabState extends ConsumerState<_CustomerHomeTab> {
                 )
               else
                 SizedBox(
-                  height: 232,
+                  height: 268,
                   child: ListView.separated(
                     scrollDirection: Axis.horizontal,
                     itemCount: featuredDishes.length,
@@ -1468,7 +1468,7 @@ class _RestaurantShowcaseCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 SizedBox(
-                  height: 152,
+                  height: 144,
                   child: ClipRRect(
                     borderRadius: const BorderRadius.vertical(
                       top: Radius.circular(30),
@@ -1507,7 +1507,7 @@ class _RestaurantShowcaseCard extends StatelessWidget {
                   ),
                 ),
                 Padding(
-                  padding: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.all(14),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -1533,10 +1533,10 @@ class _RestaurantShowcaseCard extends StatelessWidget {
                         style: const TextStyle(color: Color(0xFF8B6B4C)),
                       ),
                       if (featuredText.isNotEmpty) ...[
-                        const SizedBox(height: 12),
+                        const SizedBox(height: 10),
                         Text(
                           featuredText,
-                          maxLines: 2,
+                          maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(fontWeight: FontWeight.w700),
                         ),
@@ -1656,7 +1656,7 @@ class _FeaturedDishCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 SizedBox(
-                  height: 124,
+                  height: 128,
                   child: ClipRRect(
                     borderRadius: const BorderRadius.vertical(
                       top: Radius.circular(26),
@@ -1669,7 +1669,7 @@ class _FeaturedDishCard extends StatelessWidget {
                   ),
                 ),
                 Padding(
-                  padding: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.all(14),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -2125,6 +2125,7 @@ class _RestaurantDetailPageState extends ConsumerState<_RestaurantDetailPage> {
   final List<CustomerMenuItem> _items = [];
   PaginationMeta? _meta;
   RestaurantListing? _restaurant;
+  int? _selectedBranchId;
   bool _loading = true;
   bool _openedInitialItem = false;
   String? _error;
@@ -2160,6 +2161,10 @@ class _RestaurantDetailPageState extends ConsumerState<_RestaurantDetailPage> {
     setState(() {
       _loading = true;
       _error = null;
+      if (reset) {
+        _items.clear();
+        _meta = null;
+      }
     });
 
     try {
@@ -2169,6 +2174,7 @@ class _RestaurantDetailPageState extends ConsumerState<_RestaurantDetailPage> {
                 page: reset ? 1 : (_meta?.currentPage ?? 0) + 1,
                 perPage: 12,
                 search: _searchController.text.trim(),
+                branchId: _selectedBranchId,
               );
 
       setState(() {
@@ -2202,6 +2208,12 @@ class _RestaurantDetailPageState extends ConsumerState<_RestaurantDetailPage> {
         _loading = false;
       });
     }
+  }
+
+  void _selectBranch(int? branchId) {
+    if (_selectedBranchId == branchId) return;
+    setState(() => _selectedBranchId = branchId);
+    _load(reset: true);
   }
 
   void _openItem(CustomerMenuItem item) {
@@ -2271,7 +2283,7 @@ class _RestaurantDetailPageState extends ConsumerState<_RestaurantDetailPage> {
                           child: ListView.separated(
                             controller: _scrollController,
                             padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                            itemCount: _items.length + 2,
+                            itemCount: _items.length + 3,
                             separatorBuilder: (_, __) =>
                                 const SizedBox(height: 14),
                             itemBuilder: (context, index) {
@@ -2280,7 +2292,15 @@ class _RestaurantDetailPageState extends ConsumerState<_RestaurantDetailPage> {
                                     restaurant: restaurant);
                               }
 
-                              if (index == _items.length + 1) {
+                              if (index == 1) {
+                                return _RestaurantBranchSelector(
+                                  restaurant: restaurant,
+                                  selectedBranchId: _selectedBranchId,
+                                  onSelected: _selectBranch,
+                                );
+                              }
+
+                              if (index == _items.length + 2) {
                                 if (!(_meta?.hasMore ?? false)) {
                                   return const SizedBox(height: 12);
                                 }
@@ -2298,7 +2318,7 @@ class _RestaurantDetailPageState extends ConsumerState<_RestaurantDetailPage> {
                                 );
                               }
 
-                              final item = _items[index - 1];
+                              final item = _items[index - 2];
                               return _RestaurantMenuCard(
                                 item: item,
                                 onTap: () => _openItem(item),
@@ -2394,6 +2414,79 @@ class _RestaurantHeroCard extends StatelessWidget {
   }
 }
 
+class _RestaurantBranchSelector extends StatelessWidget {
+  const _RestaurantBranchSelector({
+    required this.restaurant,
+    required this.selectedBranchId,
+    required this.onSelected,
+  });
+
+  final RestaurantListing restaurant;
+  final int? selectedBranchId;
+  final ValueChanged<int?> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    if (restaurant.branches.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(
+                  Icons.storefront_rounded,
+                  color: Color(0xFFFF7B2C),
+                  size: 20,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Choose branch',
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.w900,
+                        ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  _FilterPill(
+                    icon: Icons.auto_awesome_mosaic_rounded,
+                    label: 'All branches',
+                    selected: selectedBranchId == null,
+                    onTap: () => onSelected(null),
+                  ),
+                  for (final branch in restaurant.branches) ...[
+                    const SizedBox(width: 8),
+                    _FilterPill(
+                      icon: Icons.location_on_outlined,
+                      label: branch.name,
+                      selected: selectedBranchId == branch.id,
+                      onTap: () => onSelected(branch.id),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _RestaurantMenuCard extends StatelessWidget {
   const _RestaurantMenuCard({
     required this.item,
@@ -2406,6 +2499,10 @@ class _RestaurantMenuCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final currency = NumberFormat.currency(symbol: 'USD ');
+    final branchSummary = item.branchCount > 1
+        ? '${item.branchCount} branches'
+        : item.branchName;
+    final visibleBranches = item.branches.take(2).toList(growable: false);
 
     return Card(
       elevation: 0,
@@ -2452,12 +2549,19 @@ class _RestaurantMenuCard extends StatelessWidget {
                       spacing: 8,
                       runSpacing: 8,
                       children: [
-                        if (item.branchName != null)
+                        if (branchSummary != null)
                           _InfoPill(
                             icon: Icons.store_mall_directory_outlined,
-                            label: item.branchName!,
+                            label: branchSummary,
                           ),
-                        if (item.branchLocation != null)
+                        if (item.branchCount > 1) ...[
+                          for (final branch in visibleBranches)
+                            _InfoPill(
+                              icon: Icons.location_on_outlined,
+                              label: branch.name,
+                            ),
+                        ],
+                        if (item.branchCount <= 1 && item.branchLocation != null)
                           _InfoPill(
                             icon: Icons.location_on_outlined,
                             label: item.branchLocation!,

@@ -1415,6 +1415,45 @@ class MobileApiRegressionTest extends TestCase
         $this->assertSame(1, $otp->fresh()->attempts);
     }
 
+    public function test_customer_restaurant_menu_dedupes_all_branches_and_supports_branch_filter(): void
+    {
+        $customer = Customer::query()->firstOrFail();
+        $restaurant = Restaurant::query()
+            ->where('name', 'Janova Restaurant')
+            ->with('branches')
+            ->firstOrFail();
+
+        $rawProductCount = Product::query()
+            ->whereHas('branch', fn ($query) => $query->where('restaurant_id', $restaurant->id))
+            ->where('is_available', true)
+            ->count();
+
+        Sanctum::actingAs($customer);
+
+        $allBranchesResponse = $this->getJson("/api/customer/restaurants/{$restaurant->id}?per_page=30")
+            ->assertOk()
+            ->assertJsonPath('restaurant.id', $restaurant->id);
+
+        $allBranchItems = collect($allBranchesResponse->json('data'));
+        $allBranchNames = $allBranchItems->pluck('name')->all();
+
+        $this->assertCount(count(array_unique($allBranchNames)), $allBranchNames);
+        $this->assertLessThan($rawProductCount, $allBranchesResponse->json('meta.total'));
+        $this->assertTrue($allBranchItems->contains(fn ($item) => ($item['branch_count'] ?? 0) > 1));
+
+        $branch = $restaurant->branches->first();
+
+        $branchResponse = $this->getJson("/api/customer/restaurants/{$restaurant->id}?branch_id={$branch->id}&per_page=30")
+            ->assertOk();
+
+        $branchItems = collect($branchResponse->json('data'));
+        $this->assertNotEmpty($branchItems);
+        $this->assertSame(
+            [$branch->id],
+            $branchItems->pluck('branch_id')->unique()->values()->all(),
+        );
+    }
+
     public function test_owner_can_select_subscription_plan_and_view_billing_context(): void
     {
         $owner = User::query()

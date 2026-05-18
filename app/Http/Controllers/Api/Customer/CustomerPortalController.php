@@ -10,6 +10,8 @@ use App\Models\Restaurant;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Str;
 
 class CustomerPortalController extends Controller
 {
@@ -93,11 +95,17 @@ class CustomerPortalController extends Controller
     {
         $search = trim((string) $request->input('search'));
         $perPage = max(6, min((int) $request->input('per_page', 12), 30));
+        $page = max(1, (int) $request->input('page', 1));
+        $branchId = $request->integer('branch_id') ?: null;
 
         $restaurant->loadCount('branches')
             ->load(['branches' => fn ($query) => $query
                 ->select('id', 'restaurant_id', 'name', 'location')
                 ->orderBy('name')]);
+
+        if ($branchId !== null) {
+            abort_unless($restaurant->branches->contains('id', $branchId), 404);
+        }
 
         $products = Product::query()
             ->with([
@@ -106,6 +114,7 @@ class CustomerPortalController extends Controller
             ])
             ->whereHas('branch', fn ($query) => $query->where('restaurant_id', $restaurant->id))
             ->where('is_available', true)
+            ->when($branchId !== null, fn ($query) => $query->where('branch_id', $branchId))
             ->when($search !== '', function ($query) use ($search) {
                 $query->where(function ($nested) use ($search) {
                     $nested->where('name', 'like', "%{$search}%")
@@ -117,18 +126,44 @@ class CustomerPortalController extends Controller
                 });
             })
             ->orderBy('name')
-            ->paginate($perPage);
+            ->orderBy('id');
+
+        if ($branchId !== null) {
+            $paginatedProducts = $products->paginate($perPage);
+
+            return response()->json([
+                'restaurant' => $this->transformRestaurant($restaurant),
+                'data' => collect($paginatedProducts->items())
+                    ->map(fn (Product $product) => $this->transformRestaurantProduct($product))
+                    ->values(),
+                'meta' => [
+                    'current_page' => $paginatedProducts->currentPage(),
+                    'last_page' => $paginatedProducts->lastPage(),
+                    'per_page' => $paginatedProducts->perPage(),
+                    'total' => $paginatedProducts->total(),
+                ],
+            ]);
+        }
+
+        $productGroups = $products
+            ->get()
+            ->groupBy(fn (Product $product) => $this->productDedupeKey($product))
+            ->map(fn (Collection $group) => $group->sortBy('id')->values())
+            ->sortBy(fn (Collection $group) => Str::lower($group->first()->name))
+            ->values();
+
+        $pageGroups = $productGroups->forPage($page, $perPage)->values();
 
         return response()->json([
             'restaurant' => $this->transformRestaurant($restaurant),
-            'data' => collect($products->items())
-                ->map(fn (Product $product) => $this->transformRestaurantProduct($product))
+            'data' => $pageGroups
+                ->map(fn (Collection $group) => $this->transformRestaurantProduct($group->first(), $group))
                 ->values(),
             'meta' => [
-                'current_page' => $products->currentPage(),
-                'last_page' => $products->lastPage(),
-                'per_page' => $products->perPage(),
-                'total' => $products->total(),
+                'current_page' => $page,
+                'last_page' => (int) max(1, ceil($productGroups->count() / $perPage)),
+                'per_page' => $perPage,
+                'total' => $productGroups->count(),
             ],
         ]);
     }
@@ -200,11 +235,13 @@ class CustomerPortalController extends Controller
     private function transformRestaurant(Restaurant $restaurant): array
     {
         $featuredItems = Product::query()
+            ->with('category:id,name')
             ->whereHas('branch', fn ($query) => $query->where('restaurant_id', $restaurant->id))
             ->where('is_available', true)
             ->orderBy('name')
-            ->limit(3)
-            ->get(['id', 'name', 'price', 'image', 'branch_id'])
+            ->get(['id', 'name', 'price', 'image', 'branch_id', 'category_id'])
+            ->unique(fn (Product $product) => $this->productDedupeKey($product))
+            ->take(3)
             ->map(fn (Product $product) => [
                 'id' => $product->id,
                 'name' => $product->name,
@@ -274,8 +311,19 @@ class CustomerPortalController extends Controller
         ];
     }
 
-    private function transformRestaurantProduct(Product $product): array
+    private function transformRestaurantProduct(Product $product, ?Collection $availableProducts = null): array
     {
+        $availableBranches = ($availableProducts ?? collect([$product]))
+            ->map(fn (Product $branchProduct) => $branchProduct->branch)
+            ->filter()
+            ->unique('id')
+            ->map(fn ($branch) => [
+                'id' => $branch->id,
+                'name' => $branch->name,
+                'location' => $branch->location,
+            ])
+            ->values();
+
         return [
             'id' => $product->id,
             'name' => $product->name,
@@ -285,6 +333,13 @@ class CustomerPortalController extends Controller
             'branch_name' => $product->branch?->name,
             'branch_location' => $product->branch?->location,
             'category_name' => $product->category?->name,
+            'branch_count' => $availableBranches->count(),
+            'branches' => $availableBranches,
         ];
+    }
+
+    private function productDedupeKey(Product $product): string
+    {
+        return Str::lower(trim($product->name)).'|'.Str::lower(trim((string) $product->category?->name));
     }
 }

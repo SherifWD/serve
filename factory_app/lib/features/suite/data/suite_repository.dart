@@ -49,6 +49,7 @@ class SuiteRepository {
     int page = 1,
     int perPage = 12,
     String search = '',
+    int? branchId,
   }) async {
     final response = await _dio.get(
       '/customer/restaurants/$restaurantId',
@@ -56,6 +57,7 @@ class SuiteRepository {
         'page': page,
         'per_page': perPage,
         'search': search,
+        if (branchId != null) 'branch_id': branchId,
       },
     );
     _throwIfNeeded(response);

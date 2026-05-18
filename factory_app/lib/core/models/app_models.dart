@@ -298,6 +298,8 @@ class CustomerMenuItem {
     this.branchId,
     this.branchName,
     this.branchLocation,
+    this.branchCount = 1,
+    this.branches = const [],
     this.categoryName,
   });
 
@@ -308,6 +310,8 @@ class CustomerMenuItem {
   final int? branchId;
   final String? branchName;
   final String? branchLocation;
+  final int branchCount;
+  final List<BranchInfo> branches;
   final String? categoryName;
 
   factory CustomerMenuItem.fromJson(Map<String, dynamic> json) {
@@ -319,6 +323,10 @@ class CustomerMenuItem {
       branchId: jsonNullableInt(json['branch_id']),
       branchName: jsonNullableString(json['branch_name']),
       branchLocation: jsonNullableString(json['branch_location']),
+      branchCount: jsonInt(json['branch_count'], fallback: 1),
+      branches: jsonMapList(json['branches'])
+          .map(BranchInfo.fromJson)
+          .toList(growable: false),
       categoryName: jsonNullableString(json['category_name']),
     );
   }
