@@ -171,6 +171,8 @@ class OnboardingController extends Controller
             'roles.view',
             'orders.view',
             'orders.manage',
+            'customers.view',
+            'customers.manage',
             'cashier.manage',
             'kds.manage',
             'tables.view',

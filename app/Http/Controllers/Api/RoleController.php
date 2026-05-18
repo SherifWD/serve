@@ -126,7 +126,7 @@ class RoleController extends Controller
         if (str_starts_with($name, 'branches.')) {
             return 'Branches';
         }
-        if (str_starts_with($name, 'users.') || str_starts_with($name, 'roles.') || str_starts_with($name, 'employees.')) {
+        if (str_starts_with($name, 'users.') || str_starts_with($name, 'roles.') || str_starts_with($name, 'employees.') || str_starts_with($name, 'customers.')) {
             return 'People';
         }
         if (str_starts_with($name, 'orders.') || str_starts_with($name, 'cashier.') || str_starts_with($name, 'kds.')) {

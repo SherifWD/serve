@@ -145,6 +145,7 @@ const navSections = [
     title: 'Operations',
     items: [
       { to: '/orders', title: 'Orders', icon: 'mdi-receipt-text-outline', permission: 'orders.view' },
+      { to: '/customers', title: 'Customers', icon: 'mdi-account-multiple-outline', permission: 'customers.view' },
       { to: '/tables', title: 'Tables', icon: 'mdi-table-furniture', permission: 'tables.view' },
       { to: '/employees', title: 'Employees', icon: 'mdi-badge-account-outline', permission: 'employees.view' },
     ],

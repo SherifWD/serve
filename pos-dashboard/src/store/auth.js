@@ -55,7 +55,12 @@ export const useAuthStore = defineStore('auth', {
       if (!permission) return true
       const isAdmin = state.user?.role === 'admin' || (state.user?.roles ?? []).includes('admin')
       if (isAdmin) return true
-      return (state.user?.permissions ?? []).includes(permission)
+      const isOwner = state.user?.role === 'owner' || (state.user?.roles ?? []).includes('owner')
+      const permissions = state.user?.permissions ?? []
+      if (permission === 'customers.view' && isOwner && permissions.includes('orders.view')) {
+        return true
+      }
+      return permissions.includes(permission)
     },
   },
   actions: {

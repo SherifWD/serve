@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\BillingController;
 use App\Http\Controllers\Api\BranchController;
 use App\Http\Controllers\Api\BranchOperationSettingController;
 use App\Http\Controllers\Api\CategoryController;
+use App\Http\Controllers\Api\CustomerController;
 use App\Http\Controllers\Api\Customer\CustomerAuthController;
 use App\Http\Controllers\Api\Customer\CustomerPortalController;
 use App\Http\Controllers\Api\DeviceController;
@@ -50,6 +51,7 @@ Route::middleware(['auth:sanctum', EnsureApiPermission::class])->group(function 
     Route::apiResource('products', ProductController::class);
     Route::apiResource('menus', MenuController::class);
     Route::apiResource('orders', OrderController::class);
+    Route::apiResource('customers', CustomerController::class)->only(['index', 'show']);
     Route::apiResource('employees', EmployeeController::class);
     Route::apiResource('inventory-items', InventoryItemController::class);
     Route::apiResource('inventory-transactions', InventoryTransactionController::class);

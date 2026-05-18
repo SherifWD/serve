@@ -8,6 +8,7 @@ import Users from '../pages/Users.vue'
 import Roles from '../pages/Roles.vue'
 import Products from '../pages/Products.vue'
 import Orders from '../pages/Orders.vue'
+import Customers from '../pages/Customers.vue'
 import Employees from '../pages/Employees.vue'
 import Categories from '../pages/Categories.vue'
 import Menus from '../pages/Menus.vue'
@@ -64,6 +65,12 @@ const routes = [
     name: 'orders',
     component: Orders,
     meta: { ...authenticatedMeta, title: 'Orders', permission: 'orders.view' },
+  },
+  {
+    path: '/customers',
+    name: 'customers',
+    component: Customers,
+    meta: { ...authenticatedMeta, title: 'Customers', permission: 'customers.view' },
   },
   {
     path: '/tables',

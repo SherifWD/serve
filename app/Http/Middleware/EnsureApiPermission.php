@@ -16,6 +16,7 @@ class EnsureApiPermission
         'products' => ['view' => 'products.view', 'manage' => 'products.manage'],
         'menus' => ['view' => 'menu.view', 'manage' => 'menu.manage'],
         'orders' => ['view' => 'orders.view', 'manage' => 'orders.manage'],
+        'customers' => ['view' => 'customers.view', 'manage' => 'customers.manage'],
         'employees' => ['view' => 'employees.view', 'manage' => 'employees.manage'],
         'inventory-items' => ['view' => 'inventory.view', 'manage' => 'inventory.manage'],
         'inventory-transactions' => ['view' => 'inventory.view', 'manage' => 'inventory.manage'],
@@ -47,7 +48,7 @@ class EnsureApiPermission
         $segment = (string) $request->segment(2);
         $permission = $this->permissionFor($segment, $request->method());
 
-        if ($permission && ! $user->hasPermission($permission)) {
+        if ($permission && ! $user->hasPermission($permission) && ! $this->hasFallbackPermission($user, $permission)) {
             abort(403, 'You do not have permission to use this endpoint.');
         }
 
@@ -73,5 +74,14 @@ class EnsureApiPermission
         return in_array(strtoupper($method), ['GET', 'HEAD'], true)
             ? $this->resourcePermissions[$segment]['view']
             : $this->resourcePermissions[$segment]['manage'];
+    }
+
+    private function hasFallbackPermission(User $user, string $permission): bool
+    {
+        if ($permission === 'customers.view' && $user->isRestaurantOwner()) {
+            return $user->permissionNames()->contains('orders.view');
+        }
+
+        return false;
     }
 }
