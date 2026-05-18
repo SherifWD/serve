@@ -713,6 +713,20 @@ class MobileApiRegressionTest extends TestCase
             'uuid' => "owner-printer-{$branch->id}",
         ]);
 
+        $this->postJson("/api/branch-operation-settings/{$branch->id}/discover-devices", [
+            'mode' => 'network',
+            'network_target' => '127.0.0.1',
+            'ports' => [9],
+        ])
+            ->assertOk()
+            ->assertJsonPath('meta.branch_id', $branch->id)
+            ->assertJsonPath('meta.mode', 'network')
+            ->assertJsonPath('meta.network_target', '127.0.0.1')
+            ->assertJsonStructure([
+                'data',
+                'meta' => ['network_target_required'],
+            ]);
+
         $foreignRestaurant = Restaurant::query()->create([
             'name' => 'Foreign Branch Test',
             'kind' => 'restaurant',
@@ -725,6 +739,12 @@ class MobileApiRegressionTest extends TestCase
 
         $this->putJson("/api/branch-operation-settings/{$foreignBranch->id}", $payload)
             ->assertForbidden();
+
+        $this->postJson("/api/branch-operation-settings/{$foreignBranch->id}/discover-devices", [
+            'mode' => 'network',
+            'network_target' => '127.0.0.1',
+            'ports' => [9],
+        ])->assertForbidden();
     }
 
     public function test_platform_admin_can_onboard_restaurant_branch_owner_and_settings(): void

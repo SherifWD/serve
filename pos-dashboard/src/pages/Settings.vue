@@ -99,182 +99,278 @@
                   </div>
                 </div>
 
+                <div v-if="selectedBranch" class="discovery-panel mb-4">
+                  <div class="panel-heading">
+                    <v-icon icon="mdi-radar" color="primary" />
+                    <span>Device discovery</span>
+                  </div>
+                  <v-row dense align="center">
+                    <v-col cols="12" md="3">
+                      <v-select
+                        v-model="discoveryMode"
+                        :items="discoveryModes"
+                        item-title="title"
+                        item-value="value"
+                        label="Scan mode"
+                        variant="outlined"
+                        density="comfortable"
+                      />
+                    </v-col>
+                    <v-col cols="12" md="4">
+                      <v-text-field
+                        v-model="discoveryNetworkTarget"
+                        label="Network target"
+                        placeholder="192.168.1.50 or 192.168.1.0/26"
+                        :disabled="discoveryMode === 'local'"
+                        variant="outlined"
+                        density="comfortable"
+                      />
+                    </v-col>
+                    <v-col cols="12" md="3">
+                      <v-text-field
+                        v-model="discoveryPorts"
+                        label="Ports"
+                        placeholder="9100,515,631"
+                        :disabled="discoveryMode === 'local'"
+                        variant="outlined"
+                        density="comfortable"
+                      />
+                    </v-col>
+                    <v-col cols="12" md="2" class="discovery-action-col">
+                      <v-btn
+                        color="primary"
+                        prepend-icon="mdi-magnify-scan"
+                        :loading="discoveringDevices"
+                        :disabled="!canRunDiscovery"
+                        block
+                        @click="discoverDevices"
+                      >
+                        Search
+                      </v-btn>
+                    </v-col>
+                  </v-row>
+
+                  <v-alert
+                    v-if="discoveryNotice"
+                    type="info"
+                    variant="tonal"
+                    density="compact"
+                    class="mt-2 mb-0"
+                  >
+                    {{ discoveryNotice }}
+                  </v-alert>
+
+                  <div v-if="discoveredDevices.length" class="discovery-results">
+                    <article
+                      v-for="device in discoveredDevices"
+                      :key="device.uuid"
+                      class="discovery-result"
+                    >
+                      <div>
+                        <div class="device-name">{{ device.name }}</div>
+                        <div class="device-meta">{{ deviceCaption(device) }}</div>
+                      </div>
+                      <div class="result-actions">
+                        <v-btn
+                          size="small"
+                          variant="tonal"
+                          color="primary"
+                          prepend-icon="mdi-printer"
+                          @click="applyDiscoveredDevice(device, 'printer')"
+                        >
+                          Use printer
+                        </v-btn>
+                        <v-btn
+                          size="small"
+                          variant="tonal"
+                          color="success"
+                          prepend-icon="mdi-cash-register"
+                          :disabled="!device.capabilities?.cash_drawer"
+                          @click="applyDiscoveredDevice(device, 'drawer')"
+                        >
+                          Use drawer
+                        </v-btn>
+                      </div>
+                    </article>
+                  </div>
+                </div>
+
                 <div v-if="selectedBranch" class="branch-grid">
                   <section
                     v-for="branch in visibleBranches"
                     :key="branch.id"
                     class="branch-panel"
                   >
-                  <div class="branch-panel__header">
-                    <div>
-                      <div class="branch-name">{{ branch.name }}</div>
-                      <div class="branch-meta">
-                        {{ branch.restaurant?.name || 'Restaurant' }}
-                        <span v-if="branch.location">/ {{ branch.location }}</span>
+                    <div class="branch-panel__header">
+                      <div>
+                        <div class="branch-name">{{ branch.name }}</div>
+                        <div class="branch-meta">
+                          {{ branch.restaurant?.name || 'Restaurant' }}
+                          <span v-if="branch.location">/ {{ branch.location }}</span>
+                        </div>
                       </div>
+                      <v-chip
+                        :color="branch.cash_drawer.is_open ? 'success' : 'warning'"
+                        variant="tonal"
+                        size="small"
+                      >
+                        {{ branch.cash_drawer.is_open ? 'Drawer open' : 'Drawer closed' }}
+                      </v-chip>
                     </div>
-                    <v-chip
-                      :color="branch.cash_drawer.is_open ? 'success' : 'warning'"
-                      variant="tonal"
-                      size="small"
-                    >
-                      {{ branch.cash_drawer.is_open ? 'Drawer open' : 'Drawer closed' }}
-                    </v-chip>
-                  </div>
 
-                  <v-row>
-                    <v-col cols="12" lg="6">
-                      <div class="setting-panel">
-                        <div class="panel-heading">
-                          <v-icon icon="mdi-cash-register" color="success" />
-                          <span>Cash drawer</span>
+                    <v-row>
+                      <v-col cols="12" lg="6">
+                        <div class="setting-panel">
+                          <div class="panel-heading">
+                            <v-icon icon="mdi-cash-register" color="success" />
+                            <span>Cash drawer</span>
+                          </div>
+                          <v-row dense>
+                            <v-col cols="12" sm="6">
+                              <v-text-field
+                                v-model.number="branch.cash_drawer.opening_balance"
+                                label="Opening balance"
+                                type="number"
+                                min="0"
+                                variant="outlined"
+                                density="compact"
+                              />
+                            </v-col>
+                            <v-col cols="12" sm="6">
+                              <v-text-field
+                                v-model.number="branch.cash_drawer.closing_balance"
+                                label="Closing balance"
+                                type="number"
+                                min="0"
+                                variant="outlined"
+                                density="compact"
+                              />
+                            </v-col>
+                            <v-col cols="12">
+                              <v-switch
+                                v-model="branch.cash_drawer.is_open"
+                                color="success"
+                                label="Drawer is open"
+                                inset
+                                density="compact"
+                                hide-details
+                              />
+                            </v-col>
+                            <v-col cols="12" sm="6">
+                              <v-text-field
+                                v-model="branch.cash_drawer.name"
+                                label="Drawer name"
+                                variant="outlined"
+                                density="compact"
+                              />
+                            </v-col>
+                            <v-col cols="12" sm="6">
+                              <v-text-field
+                                v-model="branch.cash_drawer.uuid"
+                                label="Drawer UUID"
+                                variant="outlined"
+                                density="compact"
+                              />
+                            </v-col>
+                            <v-col cols="12">
+                              <v-text-field
+                                v-model="branch.cash_drawer.printer_endpoint"
+                                label="Kick endpoint"
+                                placeholder="usb://drawer-1"
+                                variant="outlined"
+                                density="compact"
+                              />
+                            </v-col>
+                            <v-col cols="12">
+                              <v-switch
+                                v-model="branch.cash_drawer.is_active"
+                                color="primary"
+                                label="Drawer device active"
+                                inset
+                                density="compact"
+                                hide-details
+                              />
+                            </v-col>
+                          </v-row>
                         </div>
-                        <v-row dense>
-                          <v-col cols="12" sm="6">
-                            <v-text-field
-                              v-model.number="branch.cash_drawer.opening_balance"
-                              label="Opening balance"
-                              type="number"
-                              min="0"
-                              variant="outlined"
-                              density="compact"
-                            />
-                          </v-col>
-                          <v-col cols="12" sm="6">
-                            <v-text-field
-                              v-model.number="branch.cash_drawer.closing_balance"
-                              label="Closing balance"
-                              type="number"
-                              min="0"
-                              variant="outlined"
-                              density="compact"
-                            />
-                          </v-col>
-                          <v-col cols="12">
-                            <v-switch
-                              v-model="branch.cash_drawer.is_open"
-                              color="success"
-                              label="Drawer is open"
-                              inset
-                              density="compact"
-                              hide-details
-                            />
-                          </v-col>
-                          <v-col cols="12" sm="6">
-                            <v-text-field
-                              v-model="branch.cash_drawer.name"
-                              label="Drawer name"
-                              variant="outlined"
-                              density="compact"
-                            />
-                          </v-col>
-                          <v-col cols="12" sm="6">
-                            <v-text-field
-                              v-model="branch.cash_drawer.uuid"
-                              label="Drawer UUID"
-                              variant="outlined"
-                              density="compact"
-                            />
-                          </v-col>
-                          <v-col cols="12">
-                            <v-text-field
-                              v-model="branch.cash_drawer.printer_endpoint"
-                              label="Kick endpoint"
-                              placeholder="usb://drawer-1"
-                              variant="outlined"
-                              density="compact"
-                            />
-                          </v-col>
-                          <v-col cols="12">
-                            <v-switch
-                              v-model="branch.cash_drawer.is_active"
-                              color="primary"
-                              label="Drawer device active"
-                              inset
-                              density="compact"
-                              hide-details
-                            />
-                          </v-col>
-                        </v-row>
-                      </div>
-                    </v-col>
+                      </v-col>
 
-                    <v-col cols="12" lg="6">
-                      <div class="setting-panel">
-                        <div class="panel-heading">
-                          <v-icon icon="mdi-printer" color="primary" />
-                          <span>Receipt printer</span>
+                      <v-col cols="12" lg="6">
+                        <div class="setting-panel">
+                          <div class="panel-heading">
+                            <v-icon icon="mdi-printer" color="primary" />
+                            <span>Receipt printer</span>
+                          </div>
+                          <v-row dense>
+                            <v-col cols="12" sm="6">
+                              <v-text-field
+                                v-model="branch.receipt_printer.name"
+                                label="Printer name"
+                                variant="outlined"
+                                density="compact"
+                              />
+                            </v-col>
+                            <v-col cols="12" sm="6">
+                              <v-text-field
+                                v-model="branch.receipt_printer.uuid"
+                                label="Printer UUID"
+                                variant="outlined"
+                                density="compact"
+                              />
+                            </v-col>
+                            <v-col cols="12" sm="6">
+                              <v-select
+                                v-model="branch.receipt_printer.printer_profile"
+                                :items="printerProfiles"
+                                label="Printer profile"
+                                variant="outlined"
+                                density="compact"
+                              />
+                            </v-col>
+                            <v-col cols="12" sm="6">
+                              <v-select
+                                v-model.number="branch.receipt_printer.printer_paper_width_mm"
+                                :items="paperWidths"
+                                label="Paper width"
+                                suffix="mm"
+                                variant="outlined"
+                                density="compact"
+                              />
+                            </v-col>
+                            <v-col cols="12">
+                              <v-text-field
+                                v-model="branch.receipt_printer.printer_endpoint"
+                                label="Printer endpoint"
+                                placeholder="tcp://192.168.1.50:9100"
+                                variant="outlined"
+                                density="compact"
+                              />
+                            </v-col>
+                            <v-col cols="12">
+                              <v-switch
+                                v-model="branch.receipt_printer.is_active"
+                                color="primary"
+                                label="Printer active"
+                                inset
+                                density="compact"
+                                hide-details
+                              />
+                            </v-col>
+                          </v-row>
                         </div>
-                        <v-row dense>
-                          <v-col cols="12" sm="6">
-                            <v-text-field
-                              v-model="branch.receipt_printer.name"
-                              label="Printer name"
-                              variant="outlined"
-                              density="compact"
-                            />
-                          </v-col>
-                          <v-col cols="12" sm="6">
-                            <v-text-field
-                              v-model="branch.receipt_printer.uuid"
-                              label="Printer UUID"
-                              variant="outlined"
-                              density="compact"
-                            />
-                          </v-col>
-                          <v-col cols="12" sm="6">
-                            <v-select
-                              v-model="branch.receipt_printer.printer_profile"
-                              :items="printerProfiles"
-                              label="Printer profile"
-                              variant="outlined"
-                              density="compact"
-                            />
-                          </v-col>
-                          <v-col cols="12" sm="6">
-                            <v-select
-                              v-model.number="branch.receipt_printer.printer_paper_width_mm"
-                              :items="paperWidths"
-                              label="Paper width"
-                              suffix="mm"
-                              variant="outlined"
-                              density="compact"
-                            />
-                          </v-col>
-                          <v-col cols="12">
-                            <v-text-field
-                              v-model="branch.receipt_printer.printer_endpoint"
-                              label="Printer endpoint"
-                              placeholder="tcp://192.168.1.50:9100"
-                              variant="outlined"
-                              density="compact"
-                            />
-                          </v-col>
-                          <v-col cols="12">
-                            <v-switch
-                              v-model="branch.receipt_printer.is_active"
-                              color="primary"
-                              label="Printer active"
-                              inset
-                              density="compact"
-                              hide-details
-                            />
-                          </v-col>
-                        </v-row>
-                      </div>
-                    </v-col>
-                  </v-row>
+                      </v-col>
+                    </v-row>
 
-                  <div class="branch-actions">
-                    <v-btn
-                      color="primary"
-                      prepend-icon="mdi-content-save"
-                      :loading="savingBranchId === branch.id"
-                      @click="saveBranch(branch)"
-                    >
-                      Save branch settings
-                    </v-btn>
-                  </div>
+                    <div class="branch-actions">
+                      <v-btn
+                        color="primary"
+                        prepend-icon="mdi-content-save"
+                        :loading="savingBranchId === branch.id"
+                        @click="saveBranch(branch)"
+                      >
+                        Save branch settings
+                      </v-btn>
+                    </div>
                   </section>
                 </div>
 
@@ -345,13 +441,27 @@ const settingsError = ref('')
 const settingsSaved = ref('')
 const selectedRestaurantKey = ref(null)
 const selectedBranchId = ref(null)
+const discoveringDevices = ref(false)
+const discoveredDevices = ref([])
+const discoveryMode = ref('all')
+const discoveryNetworkTarget = ref('')
+const discoveryPorts = ref('9100,515,631')
+const discoveryNotice = ref('')
 
 const printerProfiles = [
   { title: 'Epson thermal / ESC-POS', value: 'epson-thermal' },
   { title: 'Network ESC/POS', value: 'escpos-network' },
+  { title: 'System printer', value: 'system-printer' },
+  { title: 'IPP printer', value: 'ipp-printer' },
+  { title: 'LPD printer', value: 'lpd-printer' },
   { title: 'Browser print', value: 'browser-print' },
 ]
 const paperWidths = [58, 80]
+const discoveryModes = [
+  { title: 'Local + network', value: 'all' },
+  { title: 'Local only', value: 'local' },
+  { title: 'Network only', value: 'network' },
+]
 
 const scopeLabel = computed(() => {
   if (auth.user?.role === 'admin') return 'Platform admins can configure every Janova branch.'
@@ -395,6 +505,12 @@ const selectedBranch = computed(() => branchSettings.value.find(branch => (
 )) || null)
 
 const visibleBranches = computed(() => selectedBranch.value ? [selectedBranch.value] : [])
+
+const canRunDiscovery = computed(() => (
+  Boolean(selectedBranch.value)
+  && !discoveringDevices.value
+  && (discoveryMode.value !== 'network' || String(discoveryNetworkTarget.value || '').trim().length > 0)
+))
 
 const branchCountLabel = computed(() => {
   if (!branchSettings.value.length) return '0 branches'
@@ -471,7 +587,97 @@ function errorMessage(error) {
 }
 
 function cleanString(value) {
-  return value === '' ? null : value
+  return value === undefined || value === null || value === '' ? null : value
+}
+
+function discoveryPortList() {
+  const ports = String(discoveryPorts.value || '')
+    .split(/[,\s]+/)
+    .map(value => Number(value.trim()))
+    .filter(port => Number.isInteger(port) && port >= 1 && port <= 65535)
+
+  const uniquePorts = [...new Set(ports)].slice(0, 5)
+
+  return uniquePorts.length ? uniquePorts : [9100, 515, 631]
+}
+
+function clearDiscoveryResults() {
+  discoveredDevices.value = []
+  discoveryNotice.value = ''
+}
+
+function deviceCaption(device) {
+  return [
+    device.printer_endpoint,
+    device.printer_profile,
+    device.source,
+  ].filter(Boolean).join(' / ')
+}
+
+async function discoverDevices() {
+  if (!selectedBranch.value) return
+
+  discoveringDevices.value = true
+  settingsError.value = ''
+  settingsSaved.value = ''
+  discoveryNotice.value = ''
+  discoveredDevices.value = []
+
+  const payload = {
+    mode: discoveryMode.value,
+    network_target: discoveryMode.value === 'local'
+      ? null
+      : cleanString(String(discoveryNetworkTarget.value || '').trim()),
+    ports: discoveryPortList(),
+  }
+
+  try {
+    const { data } = await axios.post(
+      `${API_BASE_URL}/branch-operation-settings/${selectedBranch.value.id}/discover-devices`,
+      payload,
+      { headers: authHeaders() },
+    )
+
+    discoveredDevices.value = data.data || []
+    if (discoveredDevices.value.length) {
+      discoveryNotice.value = `Found ${discoveredDevices.value.length} device${discoveredDevices.value.length === 1 ? '' : 's'}.`
+    } else if (data.meta?.network_target_required) {
+      discoveryNotice.value = 'Local scan completed. Add a private LAN target to include network devices.'
+    } else {
+      discoveryNotice.value = 'No matching devices found.'
+    }
+  } catch (error) {
+    settingsError.value = errorMessage(error)
+  } finally {
+    discoveringDevices.value = false
+  }
+}
+
+function applyDiscoveredDevice(device, target) {
+  const branch = selectedBranch.value
+  if (!branch) return
+
+  if (target === 'printer') {
+    branch.receipt_printer = {
+      ...branch.receipt_printer,
+      name: device.name || branch.receipt_printer.name,
+      uuid: device.uuid || branch.receipt_printer.uuid,
+      printer_profile: device.printer_profile || branch.receipt_printer.printer_profile,
+      printer_paper_width_mm: device.printer_paper_width_mm || branch.receipt_printer.printer_paper_width_mm || 80,
+      printer_endpoint: cleanString(device.printer_endpoint) || branch.receipt_printer.printer_endpoint,
+      is_active: true,
+    }
+  } else {
+    branch.cash_drawer = {
+      ...branch.cash_drawer,
+      name: device.name ? `${device.name} drawer` : branch.cash_drawer.name,
+      uuid: device.uuid ? `${device.uuid}-drawer` : branch.cash_drawer.uuid,
+      printer_endpoint: cleanString(device.printer_endpoint) || branch.cash_drawer.printer_endpoint,
+      is_active: true,
+    }
+  }
+
+  settingsSaved.value = `${target === 'printer' ? 'Printer' : 'Drawer'} details filled for ${branch.name}. Save branch settings to apply.`
 }
 
 async function fetchBranchSettings() {
@@ -543,6 +749,8 @@ watch(selectedRestaurantKey, () => {
   }
 })
 
+watch(selectedBranchId, clearDiscoveryResults)
+
 onMounted(fetchBranchSettings)
 </script>
 
@@ -611,6 +819,53 @@ onMounted(fetchBranchSettings)
   color: #b7c4bd;
   font-size: 0.9rem;
   margin-top: 0.35rem;
+}
+
+.discovery-panel {
+  background: rgba(59, 130, 246, 0.08);
+  border: 1px solid rgba(147, 197, 253, 0.2);
+  border-radius: 8px;
+  padding: 1rem;
+}
+
+.discovery-action-col {
+  align-self: flex-start;
+}
+
+.discovery-results {
+  display: grid;
+  gap: 0.7rem;
+  margin-top: 0.8rem;
+}
+
+.discovery-result {
+  align-items: center;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  display: flex;
+  gap: 1rem;
+  justify-content: space-between;
+  padding: 0.8rem;
+}
+
+.device-name {
+  color: #f8fafc;
+  font-weight: 800;
+}
+
+.device-meta {
+  color: #9fb2a8;
+  font-size: 0.82rem;
+  margin-top: 0.18rem;
+  overflow-wrap: anywhere;
+}
+
+.result-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: flex-end;
 }
 
 .branch-panel {
@@ -753,17 +1008,20 @@ onMounted(fetchBranchSettings)
 
 @media (max-width: 720px) {
   .settings-header,
-  .branch-panel__header {
+  .branch-panel__header,
+  .discovery-result {
     display: grid;
   }
 
   .header-actions,
-  .branch-actions {
+  .branch-actions,
+  .result-actions {
     justify-content: stretch;
   }
 
   .header-actions > *,
-  .branch-actions > * {
+  .branch-actions > *,
+  .result-actions > * {
     width: 100%;
   }
 }

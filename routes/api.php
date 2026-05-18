@@ -63,6 +63,7 @@ Route::middleware(['auth:sanctum', EnsureApiPermission::class])->group(function 
     Route::apiResource('suppliers', SupplierController::class);
     Route::apiResource('devices', DeviceController::class);
     Route::get('branch-operation-settings', [BranchOperationSettingController::class, 'index']);
+    Route::post('branch-operation-settings/{branch}/discover-devices', [BranchOperationSettingController::class, 'discover']);
     Route::put('branch-operation-settings/{branch}', [BranchOperationSettingController::class, 'update']);
     Route::get('payment-providers', [PaymentProviderController::class, 'index']);
     Route::post('payment-providers', [PaymentProviderController::class, 'store']);
