@@ -20,6 +20,7 @@ class TableMobileController extends Controller
     private const NON_ACTIVE_ITEM_STATUSES = ['canceled', 'cancelled', 'refunded'];
     private const RETURNABLE_KITCHEN_STATUSES = ['queued', 'served'];
     private const REFUNDABLE_KITCHEN_STATUSES = ['returned'];
+    private const QUANTITY_CHANGE_LOCKED_KITCHEN_STATUSES = ['preparing', 'ready', 'served', 'returned'];
 
     private function ensureBranchAccessible(Request $request, int $branchId): ?JsonResponse
     {
@@ -435,6 +436,16 @@ public function batchSendToCashier(Request $request)
         if (!in_array($kitchenStatus, self::REFUNDABLE_KITCHEN_STATUSES, true)) {
             return response()->json([
                 'error' => 'Items must be returned to kitchen before they can be refunded.',
+            ], 422);
+        }
+    }
+
+    if ($action === 'change') {
+        $kitchenStatus = $item->kds_status ?? $item->status;
+
+        if (in_array($kitchenStatus, self::QUANTITY_CHANGE_LOCKED_KITCHEN_STATUSES, true)) {
+            return response()->json([
+                'error' => 'Items already preparing, ready, served, or returned cannot have quantity changed.',
             ], 422);
         }
     }

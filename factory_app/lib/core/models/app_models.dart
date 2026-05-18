@@ -409,7 +409,15 @@ class OrderItemLine {
   bool get isPaid => paymentStatus == 'paid';
   bool get isVoided =>
       status == 'refunded' || status == 'canceled' || status == 'cancelled';
-  bool get canReduceQuantity => !isVoided && quantity > 1;
+  bool get canReduceQuantity {
+    final kitchenStatus = kdsStatus ?? status;
+    return !isVoided &&
+        quantity > 1 &&
+        kitchenStatus != 'preparing' &&
+        kitchenStatus != 'ready' &&
+        kitchenStatus != 'served' &&
+        kitchenStatus != 'returned';
+  }
   bool get canRefund {
     final kitchenStatus = kdsStatus ?? status;
     return !isVoided && kitchenStatus == 'returned';

@@ -584,6 +584,39 @@ class MobileApiRegressionTest extends TestCase
         $this->assertSame('ready', $item->kds_status);
     }
 
+    public function test_waiter_cannot_change_quantity_after_item_is_in_kitchen_workflow(): void
+    {
+        $item = OrderItem::query()
+            ->with('order.table')
+            ->whereHas('order.table')
+            ->firstOrFail();
+
+        Sanctum::actingAs($this->staffUserForBranch((int) $item->order->branch_id, 'waiter'));
+
+        foreach (['preparing', 'ready', 'served'] as $status) {
+            $item->forceFill([
+                'quantity' => 2,
+                'total' => (float) $item->price * 2,
+                'status' => $status,
+                'kds_status' => $status,
+                'kds_sent_at' => now(),
+            ])->save();
+
+            $this->patchJson("/api/mobile/order-items/{$item->id}/refund-change", [
+                'action' => 'change',
+                'quantity' => 1,
+                'note' => "Reduce {$status} item",
+            ])->assertUnprocessable()
+                ->assertJsonPath('error', 'Items already preparing, ready, served, or returned cannot have quantity changed.');
+
+            $item->refresh();
+
+            $this->assertSame(2, (int) $item->quantity);
+            $this->assertSame($status, $item->status);
+            $this->assertSame($status, $item->kds_status);
+        }
+    }
+
     public function test_waiter_must_provide_reason_when_returning_item_to_kitchen(): void
     {
         $item = OrderItem::query()

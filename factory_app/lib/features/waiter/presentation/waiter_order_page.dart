@@ -319,39 +319,10 @@ class _WaiterOrderPageState extends ConsumerState<WaiterOrderPage> {
   }
 
   Future<String?> _promptReturnReason(OrderItemLine item) async {
-    final controller = TextEditingController();
-
-    final reason = await showDialog<String>(
+    return showDialog<String>(
       context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: Text('Return ${item.name}'),
-          content: TextField(
-            controller: controller,
-            autofocus: true,
-            maxLines: 3,
-            textInputAction: TextInputAction.done,
-            decoration: const InputDecoration(
-              labelText: 'Reason',
-              hintText: 'Example: customer requested a remake',
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel'),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.pop(context, controller.text.trim()),
-              child: const Text('Return'),
-            ),
-          ],
-        );
-      },
+      builder: (_) => _ReturnReasonDialog(itemName: item.name),
     );
-
-    controller.dispose();
-    return reason;
   }
 
   Future<void> _showMoveTableDialog(List<TableOverview> tables) async {
@@ -427,6 +398,69 @@ class _WaiterOrderPageState extends ConsumerState<WaiterOrderPage> {
       ScaffoldMessenger.of(context)
           .showSnackBar(SnackBar(content: Text(e.toString())));
     }
+  }
+}
+
+class _ReturnReasonDialog extends StatefulWidget {
+  const _ReturnReasonDialog({required this.itemName});
+
+  final String itemName;
+
+  @override
+  State<_ReturnReasonDialog> createState() => _ReturnReasonDialogState();
+}
+
+class _ReturnReasonDialogState extends State<_ReturnReasonDialog> {
+  final _formKey = GlobalKey<FormState>();
+  final _controller = TextEditingController();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _submit() {
+    if (!(_formKey.currentState?.validate() ?? false)) {
+      return;
+    }
+
+    Navigator.of(context).pop(_controller.text.trim());
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text('Return ${widget.itemName}'),
+      content: Form(
+        key: _formKey,
+        child: TextFormField(
+          controller: _controller,
+          autofocus: true,
+          maxLines: 3,
+          textInputAction: TextInputAction.done,
+          decoration: const InputDecoration(
+            labelText: 'Reason',
+            hintText: 'Example: customer requested a remake',
+          ),
+          validator: (value) =>
+              (value == null || value.trim().isEmpty)
+                  ? 'Return reason is required'
+                  : null,
+          onFieldSubmitted: (_) => _submit(),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          onPressed: _submit,
+          child: const Text('Return'),
+        ),
+      ],
+    );
   }
 }
 
