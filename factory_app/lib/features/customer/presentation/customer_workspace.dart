@@ -2588,7 +2588,7 @@ class _RestaurantMenuCard extends StatelessWidget {
   }
 }
 
-class _CustomerDishDetailSheet extends StatelessWidget {
+class _CustomerDishDetailSheet extends ConsumerStatefulWidget {
   const _CustomerDishDetailSheet({
     required this.restaurant,
     required this.item,
@@ -2598,8 +2598,79 @@ class _CustomerDishDetailSheet extends StatelessWidget {
   final CustomerMenuItem item;
 
   @override
+  ConsumerState<_CustomerDishDetailSheet> createState() =>
+      _CustomerDishDetailSheetState();
+}
+
+class _CustomerDishDetailSheetState
+    extends ConsumerState<_CustomerDishDetailSheet> {
+  int _quantity = 1;
+  int? _branchId;
+  bool _submitting = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _branchId = widget.item.branchId ??
+        (widget.item.branches.isNotEmpty ? widget.item.branches.first.id : null);
+  }
+
+  List<BranchInfo> get _branches {
+    if (widget.item.branches.isNotEmpty) {
+      return widget.item.branches;
+    }
+    if (widget.item.branchId != null && widget.item.branchName != null) {
+      return [
+        BranchInfo(
+          id: widget.item.branchId!,
+          name: widget.item.branchName!,
+          location: widget.item.branchLocation,
+        ),
+      ];
+    }
+    return const [];
+  }
+
+  Future<void> _checkout() async {
+    final branchId = _branchId;
+    final messenger = ScaffoldMessenger.of(context);
+    final navigator = Navigator.of(context);
+
+    if (branchId == null) {
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Choose a branch before checkout.')),
+      );
+      return;
+    }
+
+    setState(() => _submitting = true);
+    try {
+      final order = await ref.read(suiteRepositoryProvider).createCustomerCheckout(
+        branchId: branchId,
+        items: [
+          {
+            'product_id': widget.item.id,
+            'quantity': _quantity,
+          },
+        ],
+      );
+
+      if (!mounted) return;
+      navigator.pop();
+      messenger.showSnackBar(
+        SnackBar(content: Text('Order #${order.id} sent to the branch.')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      messenger.showSnackBar(SnackBar(content: Text(e.toString())));
+      setState(() => _submitting = false);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     final currency = NumberFormat.currency(symbol: 'USD ');
+    final branches = _branches;
 
     return _CustomerSheet(
       child: Column(
@@ -2611,22 +2682,22 @@ class _CustomerDishDetailSheet extends StatelessWidget {
               height: 220,
               width: double.infinity,
               child: BrandedImage(
-                label: item.name,
-                imageUrl: item.imageUrl,
+                label: widget.item.name,
+                imageUrl: widget.item.imageUrl,
                 kind: BrandedImageKind.dish,
               ),
             ),
           ),
           const SizedBox(height: 18),
           Text(
-            item.name,
+            widget.item.name,
             style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                   fontWeight: FontWeight.w900,
                 ),
           ),
           const SizedBox(height: 8),
           Text(
-            restaurant.name,
+            widget.restaurant.name,
             style: const TextStyle(
               color: Color(0xFF8B6B4C),
               fontWeight: FontWeight.w700,
@@ -2637,34 +2708,99 @@ class _CustomerDishDetailSheet extends StatelessWidget {
             spacing: 8,
             runSpacing: 8,
             children: [
-              if (item.categoryName != null)
+              if (widget.item.categoryName != null)
                 _InfoPill(
                   icon: Icons.category_outlined,
-                  label: item.categoryName!,
+                  label: widget.item.categoryName!,
                 ),
-              if (item.branchName != null)
+              if (widget.item.branchName != null)
                 _InfoPill(
                   icon: Icons.storefront_outlined,
-                  label: item.branchName!,
+                  label: widget.item.branchName!,
                 ),
-              if (item.branchLocation != null)
+              if (widget.item.branchLocation != null)
                 _InfoPill(
                   icon: Icons.location_on_outlined,
-                  label: item.branchLocation!,
+                  label: widget.item.branchLocation!,
                 ),
             ],
           ),
           const SizedBox(height: 18),
           Text(
-            currency.format(item.price),
+            currency.format(widget.item.price),
             style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                   fontWeight: FontWeight.w900,
                 ),
           ),
-          const SizedBox(height: 12),
-          const Text(
-            'Ordering is handled by the restaurant team during the visit.',
-            style: TextStyle(color: Color(0xFF8B6B4C), height: 1.45),
+          const SizedBox(height: 18),
+          if (branches.length > 1)
+            DropdownButtonFormField<int>(
+              value: _branchId,
+              decoration: const InputDecoration(
+                labelText: 'Pickup branch',
+                prefixIcon: Icon(Icons.storefront_outlined),
+              ),
+              items: [
+                for (final branch in branches)
+                  DropdownMenuItem<int>(
+                    value: branch.id,
+                    child: Text(branch.location == null
+                        ? branch.name
+                        : '${branch.name} · ${branch.location}'),
+                  ),
+              ],
+              onChanged: _submitting
+                  ? null
+                  : (value) => setState(() => _branchId = value),
+            )
+          else if (branches.isNotEmpty)
+            _InfoPill(
+              icon: Icons.shopping_bag_outlined,
+              label: 'Pickup from ${branches.first.name}',
+            ),
+          const SizedBox(height: 18),
+          Row(
+            children: [
+              IconButton.filledTonal(
+                onPressed: _submitting || _quantity <= 1
+                    ? null
+                    : () => setState(() => _quantity--),
+                icon: const Icon(Icons.remove_rounded),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 18),
+                child: Text(
+                  '$_quantity',
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.w900,
+                      ),
+                ),
+              ),
+              IconButton.filledTonal(
+                onPressed:
+                    _submitting ? null : () => setState(() => _quantity++),
+                icon: const Icon(Icons.add_rounded),
+              ),
+              const Spacer(),
+              Text(
+                currency.format(widget.item.price * _quantity),
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w900,
+                    ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 18),
+          FilledButton.icon(
+            onPressed: _submitting ? null : _checkout,
+            icon: _submitting
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.shopping_bag_outlined),
+            label: Text(_submitting ? 'Sending order...' : 'Checkout for pickup'),
           ),
         ],
       ),

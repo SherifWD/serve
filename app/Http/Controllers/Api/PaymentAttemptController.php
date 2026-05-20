@@ -8,6 +8,8 @@ use App\Models\Device;
 use App\Models\Order;
 use App\Models\Payment;
 use App\Models\PaymentAttempt;
+use App\Models\PaymentProviderConfig;
+use App\Support\HardwareValidation;
 use Illuminate\Http\Request;
 
 class PaymentAttemptController extends Controller
@@ -31,6 +33,10 @@ class PaymentAttemptController extends Controller
         $order = Order::query()->with('branch')->findOrFail($data['order_id']);
         $this->ensureBranchAccess($request, (int) $order->branch_id);
         $device = $this->resolveDevice($data['device_uuid'] ?? null, (int) $order->branch_id);
+        $providerName = $data['provider'] ?? $device?->payment_provider ?? null;
+        $providerConfig = $this->resolvePaymentProvider($providerName, (int) $order->branch->restaurant_id, (int) $order->branch_id);
+
+        HardwareValidation::validatePaymentProviderForAttempt($providerConfig, $data['method'], $device);
 
         $status = filled($data['provider_reference'] ?? null) || $data['method'] === 'cash'
             ? 'approved'
@@ -41,7 +47,7 @@ class PaymentAttemptController extends Controller
             'restaurant_id' => $order->branch->restaurant_id,
             'branch_id' => $order->branch_id,
             'device_id' => $device?->id,
-            'provider' => $data['provider'] ?? $device?->payment_provider ?? 'manual',
+            'provider' => $providerName ?? 'manual',
             'method' => $data['method'],
             'amount' => $data['amount'],
             'currency' => strtoupper($data['currency'] ?? 'USD'),
@@ -108,6 +114,20 @@ class PaymentAttemptController extends Controller
         return Device::query()
             ->where('uuid', $uuid)
             ->where('branch_id', $branchId)
+            ->first();
+    }
+
+    private function resolvePaymentProvider(?string $provider, int $restaurantId, int $branchId): ?PaymentProviderConfig
+    {
+        if (!$provider) {
+            return null;
+        }
+
+        return PaymentProviderConfig::query()
+            ->where('restaurant_id', $restaurantId)
+            ->where('provider', $provider)
+            ->where(fn ($query) => $query->whereNull('branch_id')->orWhere('branch_id', $branchId))
+            ->orderByRaw('CASE WHEN branch_id = ? THEN 0 ELSE 1 END', [$branchId])
             ->first();
     }
 }

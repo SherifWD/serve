@@ -102,7 +102,7 @@ void main() {
           .widget<IconButton>(
               find.widgetWithIcon(IconButton, Icons.restart_alt_outlined))
           .onPressed,
-      isNotNull,
+      isNull,
     );
     expect(
       _buttonWithText(tester, 'Send to kitchen').onPressed,

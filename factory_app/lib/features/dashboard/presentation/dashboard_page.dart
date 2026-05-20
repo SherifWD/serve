@@ -34,22 +34,6 @@ class DashboardPage extends ConsumerWidget {
       AppRole.owner => const OwnerWorkspacePage(),
     };
 
-    final title = switch (session.activeRole) {
-      AppRole.customer => strings.t('app.customer'),
-      AppRole.waiter => strings.t('app.waiter'),
-      AppRole.cashier => strings.t('app.cashier'),
-      AppRole.kitchen => strings.t('app.kitchen'),
-      AppRole.owner => strings.t('app.owner'),
-    };
-
-    final subtitle = switch (session.activeRole) {
-      AppRole.customer => strings.t('role.customer'),
-      AppRole.waiter => strings.t('role.waiter'),
-      AppRole.cashier => strings.t('role.cashier'),
-      AppRole.kitchen => strings.t('role.kitchen'),
-      AppRole.owner => strings.t('role.owner'),
-    };
-
     final isCustomer = session.activeRole == AppRole.customer;
     final background = switch (session.activeRole) {
       AppRole.customer => const Color(0xFFFFF8F1),
@@ -72,26 +56,6 @@ class DashboardPage extends ConsumerWidget {
               foregroundColor: darkChrome ? Colors.white : null,
               toolbarHeight: compact ? 64 : kToolbarHeight,
               titleSpacing: compact ? 12 : 0,
-              // title: Column(
-              //   crossAxisAlignment: CrossAxisAlignment.start,
-              //   children: [
-              //     Text(
-              //       title,
-              //       maxLines: 1,
-              //       overflow: TextOverflow.ellipsis,
-              //     ),
-              //     Text(
-              //       subtitle,
-              //       maxLines: 1,
-              //       overflow: TextOverflow.ellipsis,
-              //       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              //             color: darkChrome
-              //                 ? Colors.white70
-              //                 : Theme.of(context).colorScheme.onSurfaceVariant,
-              //           ),
-              //     ),
-              //   ],
-              // ),
               actions: [
                 if (fixedRole == null && roles.length > 1)
                   PopupMenuButton<AppRole>(

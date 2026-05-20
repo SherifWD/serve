@@ -8,6 +8,7 @@ use App\Models\Device;
 use App\Models\Order;
 use App\Models\PrintJob;
 use App\Models\Receipt;
+use App\Support\HardwareValidation;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -42,6 +43,9 @@ class PrintJobController extends Controller
             'printer_profile' => 'nullable|string|max:100',
             'printer_endpoint' => 'nullable|string|max:255',
         ]);
+
+        HardwareValidation::validatePrinterProfile($data['printer_profile'] ?? null);
+        HardwareValidation::validatePrinterEndpoint($data['printer_endpoint'] ?? null);
 
         [$branchId, $restaurantId, $order, $receipt, $device] = $this->resolvePrintContext($request, $data);
 

@@ -13,6 +13,7 @@ use App\Models\PrintJob;
 use App\Models\Product;
 use App\Models\Table;
 use App\Services\Inventory\ProductStockService;
+use App\Support\HardwareValidation;
 use Illuminate\Http\Request;
 
 class MobileSyncController extends Controller
@@ -135,6 +136,9 @@ class MobileSyncController extends Controller
             'printer_endpoint' => 'nullable|string|max:255',
             'capabilities' => 'nullable|array',
         ]);
+
+        HardwareValidation::validatePrinterProfile($data['printer_profile'] ?? null);
+        HardwareValidation::validatePrinterEndpoint($data['printer_endpoint'] ?? null);
 
         $branchId = $this->resolveBranchId($request, $data['branch_id'] ?? null);
         $device = Device::query()->updateOrCreate(

@@ -7,6 +7,10 @@
             <v-card-title class="d-flex align-center" style="border-radius: 2rem 2rem 0 0;">
               <span class="text-h5 font-weight-bold" style="color:#2a9d8f;">Inventory</span>
               <v-spacer />
+              <v-btn color="secondary" variant="tonal" class="rounded-pill mr-3" size="large"
+                     style="font-weight:bold;" @click="openOperationsDrawer">
+                <v-icon start>mdi-swap-horizontal-bold</v-icon>Stock Operation
+              </v-btn>
               <v-btn color="primary" variant="elevated" class="rounded-pill" size="large"
                      style="color:#181818;font-weight:bold;" @click="openAddDrawer">
                 <v-icon start>mdi-plus</v-icon>Add Inventory Item
@@ -176,17 +180,164 @@
               </v-btn>
             </v-form>
           </v-window-item>
-          <!-- Stock Adjustment Tab (future feature) -->
           <v-window-item value="stock">
-            <div class="pa-6 text-grey-darken-1">
-              <v-alert type="info" border="start" color="primary" variant="tonal" class="mb-4">
-                Coming soon: Move stock between branches, log movements, and record adjustments here.
+            <v-form class="pa-6" @submit.prevent="submitInventoryOperation">
+              <v-alert v-if="operationMessage" :type="operationMessage.type" border="start" variant="tonal" class="mb-4">
+                {{ operationMessage.text }}
               </v-alert>
-              <div class="text-caption">
-                <v-icon color="primary" size="small" class="mr-1">mdi-information</v-icon>
-                Track stock movements and branch transfers in this section for clearer audits.
-              </div>
-            </div>
+              <v-select
+                v-model="operationForm.type"
+                :items="operationTypes"
+                item-title="title"
+                item-value="value"
+                label="Operation"
+                variant="outlined"
+                color="primary"
+                class="mb-4 rounded-xl"
+              />
+              <v-select
+                v-model="operationForm.branch_id"
+                :items="branches"
+                item-title="name"
+                item-value="id"
+                label="Source branch"
+                required
+                variant="outlined"
+                color="primary"
+                class="mb-4 rounded-xl"
+              />
+              <v-select
+                v-if="operationForm.type === 'transfer'"
+                v-model="operationForm.to_branch_id"
+                :items="targetBranches"
+                item-title="name"
+                item-value="id"
+                label="Target branch"
+                required
+                variant="outlined"
+                color="primary"
+                class="mb-4 rounded-xl"
+              />
+              <v-select
+                v-if="operationForm.type === 'receive'"
+                v-model="operationForm.supplier_id"
+                :items="suppliers"
+                item-title="name"
+                item-value="id"
+                label="Supplier"
+                clearable
+                variant="outlined"
+                color="primary"
+                class="mb-4 rounded-xl"
+              />
+              <v-select
+                v-model="operationForm.inventory_item_id"
+                :items="operationInventoryItems"
+                item-title="label"
+                item-value="id"
+                label="Inventory item"
+                required
+                variant="outlined"
+                color="primary"
+                class="mb-4 rounded-xl"
+              />
+              <v-row dense>
+                <v-col cols="12" sm="6">
+                  <v-text-field
+                    v-if="operationForm.type === 'count'"
+                    v-model="operationForm.counted_quantity"
+                    label="Counted quantity"
+                    type="number"
+                    min="0"
+                    required
+                    variant="outlined"
+                    color="primary"
+                    class="mb-4 rounded-xl"
+                  />
+                  <v-text-field
+                    v-else-if="operationForm.type === 'adjust' && operationForm.adjustment_operation === 'adjustment'"
+                    v-model="operationForm.target_quantity"
+                    label="Target quantity"
+                    type="number"
+                    min="0"
+                    required
+                    variant="outlined"
+                    color="primary"
+                    class="mb-4 rounded-xl"
+                  />
+                  <v-text-field
+                    v-else
+                    v-model="operationForm.quantity"
+                    :label="operationForm.type === 'adjust' ? 'Adjustment quantity' : 'Quantity'"
+                    type="number"
+                    min="0.001"
+                    required
+                    variant="outlined"
+                    color="primary"
+                    class="mb-4 rounded-xl"
+                  />
+                </v-col>
+                <v-col cols="12" sm="6">
+                  <v-text-field
+                    v-if="operationForm.type === 'receive'"
+                    v-model="operationForm.unit_cost"
+                    label="Unit cost"
+                    type="number"
+                    min="0"
+                    variant="outlined"
+                    color="primary"
+                    class="mb-4 rounded-xl"
+                  />
+                  <v-select
+                    v-else-if="operationForm.type === 'adjust'"
+                    v-model="operationForm.adjustment_operation"
+                    :items="adjustmentOperations"
+                    item-title="title"
+                    item-value="value"
+                    label="Adjustment type"
+                    variant="outlined"
+                    color="primary"
+                    class="mb-4 rounded-xl"
+                  />
+                  <v-text-field
+                    v-else
+                    v-model="operationForm.reference_code"
+                    label="Reference"
+                    variant="outlined"
+                    color="primary"
+                    class="mb-4 rounded-xl"
+                  />
+                </v-col>
+              </v-row>
+              <v-text-field
+                v-if="operationForm.type === 'receive' || operationForm.type === 'adjust'"
+                v-model="operationForm.reference_code"
+                label="Reference"
+                variant="outlined"
+                color="primary"
+                class="mb-4 rounded-xl"
+              />
+              <v-textarea
+                v-model="operationForm.reason"
+                :label="operationForm.type === 'receive' || operationForm.type === 'transfer' ? 'Notes' : 'Reason'"
+                rows="2"
+                auto-grow
+                variant="outlined"
+                color="primary"
+                class="mb-4 rounded-xl"
+              />
+              <v-btn
+                color="primary"
+                class="rounded-pill"
+                block
+                size="large"
+                style="color:#181818;font-weight:bold;"
+                type="submit"
+                :loading="operationLoading"
+              >
+                <v-icon start>mdi-check</v-icon>Post Operation
+              </v-btn>
+            </v-form>
           </v-window-item>
         </v-window>
       </v-navigation-drawer>
@@ -264,8 +415,11 @@ const drawerForm = ref({
 const branches = ref([])
 const ingredients = ref([])
 const products = ref([])
+const suppliers = ref([])
 const viewInventoryItem = ref({})
 const search = ref('')
+const operationLoading = ref(false)
+const operationMessage = ref(null)
 const filters = ref({
   branch_id: null,
   type: null,
@@ -292,6 +446,24 @@ const stockFilterItems = [
   { title: 'Healthy stock', value: 'healthy' },
 ]
 
+const operationTypes = [
+  { title: 'Receive purchase', value: 'receive' },
+  { title: 'Transfer between branches', value: 'transfer' },
+  { title: 'Stock count', value: 'count' },
+  { title: 'Manual adjustment', value: 'adjust' },
+  { title: 'Wastage', value: 'waste' },
+]
+
+const adjustmentOperations = [
+  { title: 'Set exact quantity', value: 'adjustment' },
+  { title: 'Restock', value: 'restock' },
+  { title: 'Use', value: 'use' },
+  { title: 'Return to stock', value: 'return' },
+  { title: 'Comp', value: 'comp' },
+]
+
+const operationForm = ref(defaultOperationForm())
+
 const filteredInventory = computed(() => {
   const q = search.value.toLowerCase()
   return inventoryItems.value.filter(item =>
@@ -301,6 +473,40 @@ const filteredInventory = computed(() => {
     matchesStockFilter(item)
   )
 })
+
+const targetBranches = computed(() =>
+  branches.value.filter(branch => {
+    const source = branches.value.find(row => Number(row.id) === Number(operationForm.value.branch_id))
+    return Number(branch.id) !== Number(operationForm.value.branch_id) &&
+      (!source?.restaurant_id || Number(branch.restaurant_id) === Number(source.restaurant_id))
+  })
+)
+
+const operationInventoryItems = computed(() =>
+  inventoryItems.value
+    .filter(item => !operationForm.value.branch_id || Number(item.branch_id) === Number(operationForm.value.branch_id))
+    .map(item => ({
+      id: item.id,
+      label: `${inventoryName(item)} · ${branchName(item.branch_id)} · ${item.quantity} ${item.unit || ''}`.trim(),
+    }))
+)
+
+function defaultOperationForm() {
+  return {
+    type: 'receive',
+    branch_id: null,
+    to_branch_id: null,
+    supplier_id: null,
+    inventory_item_id: null,
+    quantity: '',
+    counted_quantity: '',
+    target_quantity: '',
+    unit_cost: '',
+    adjustment_operation: 'adjustment',
+    reference_code: '',
+    reason: '',
+  }
+}
 
 function inventoryName(item) {
   return item.ingredient?.name || item.product?.name || item.name || ''
@@ -334,7 +540,7 @@ function resetFilters() {
 }
 
 function branchName(id) {
-  return branches.value.find(b => b.id === id)?.name || '—'
+  return branches.value.find(b => Number(b.id) === Number(id))?.name || '—'
 }
 
 async function loadBranches() {
@@ -370,6 +576,17 @@ async function loadProducts() {
     console.error('Failed to load products', err)
   }
 }
+async function loadSuppliers() {
+  try {
+    const token = localStorage.getItem('token')
+    const res = await axios.get(`${API_BASE_URL}/suppliers`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+    suppliers.value = res.data.data || res.data
+  } catch (err) {
+    console.error('Failed to load suppliers', err)
+  }
+}
 async function loadInventoryItems() {
   try {
     const token = localStorage.getItem('token')
@@ -378,6 +595,16 @@ async function loadInventoryItems() {
     })
     inventoryItems.value = res.data.data || res.data
   } catch (err) { console.error('Failed to load inventory items', err) }
+}
+
+function openOperationsDrawer() {
+  isEditing.value = false
+  tab.value = 'stock'
+  drawerTitle.value = 'Stock Operation'
+  operationForm.value = defaultOperationForm()
+  operationForm.value.branch_id = filters.value.branch_id || branches.value[0]?.id || null
+  operationMessage.value = null
+  rightDrawer.value = true
 }
 
 function openAddDrawer() {
@@ -453,6 +680,7 @@ onMounted(() => {
   loadBranches()
   loadIngredients()
   loadProducts()
+  loadSuppliers()
   loadInventoryItems()
 })
 
@@ -464,6 +692,120 @@ watch(inventoryType, (val) => {
     drawerForm.value.ingredient_id = null
   }
 })
+
+watch(() => operationForm.value.branch_id, () => {
+  operationForm.value.inventory_item_id = null
+  operationForm.value.to_branch_id = null
+})
+
+watch(() => operationForm.value.type, () => {
+  operationMessage.value = null
+  operationForm.value.quantity = ''
+  operationForm.value.counted_quantity = ''
+  operationForm.value.target_quantity = ''
+  operationForm.value.unit_cost = ''
+  operationForm.value.adjustment_operation = 'adjustment'
+})
+
+function numericValue(value, fallback = 0) {
+  const parsed = Number(value)
+  return Number.isFinite(parsed) ? parsed : fallback
+}
+
+function operationHeaders() {
+  const token = localStorage.getItem('token')
+  return { Authorization: `Bearer ${token}` }
+}
+
+function operationReference(prefix) {
+  return operationForm.value.reference_code || `${prefix}-${new Date().toISOString().replace(/[-:.TZ]/g, '').slice(0, 14)}`
+}
+
+async function submitInventoryOperation() {
+  operationLoading.value = true
+  operationMessage.value = null
+
+  try {
+    const form = operationForm.value
+    const item = inventoryItems.value.find(row => Number(row.id) === Number(form.inventory_item_id))
+    if (!item) throw new Error('Select an inventory item.')
+
+    let url = ''
+    let payload = {}
+
+    if (form.type === 'receive') {
+      url = `${API_BASE_URL}/inventory-operations/purchase-receipts`
+      payload = {
+        branch_id: form.branch_id,
+        supplier_id: form.supplier_id || null,
+        reference_code: operationReference('PO'),
+        notes: form.reason || null,
+        items: [{
+          inventory_item_id: form.inventory_item_id,
+          quantity: numericValue(form.quantity),
+          unit_cost: numericValue(form.unit_cost),
+        }],
+      }
+    } else if (form.type === 'transfer') {
+      url = `${API_BASE_URL}/inventory-operations/transfers`
+      payload = {
+        from_branch_id: form.branch_id,
+        to_branch_id: form.to_branch_id,
+        reference_code: operationReference('TR'),
+        notes: form.reason || null,
+        items: [{
+          inventory_item_id: form.inventory_item_id,
+          quantity: numericValue(form.quantity),
+        }],
+      }
+    } else if (form.type === 'count') {
+      url = `${API_BASE_URL}/inventory-operations/stock-counts`
+      payload = {
+        branch_id: form.branch_id,
+        reference_code: operationReference('CNT'),
+        notes: form.reason || null,
+        items: [{
+          inventory_item_id: form.inventory_item_id,
+          counted_quantity: numericValue(form.counted_quantity),
+          reason: form.reason || null,
+        }],
+      }
+    } else if (form.type === 'adjust') {
+      url = `${API_BASE_URL}/inventory-operations/adjustments`
+      payload = {
+        branch_id: form.branch_id,
+        inventory_item_id: form.inventory_item_id,
+        operation: form.adjustment_operation,
+        reference_code: operationReference('ADJ'),
+        reason: form.reason || null,
+      }
+      if (form.adjustment_operation === 'adjustment') {
+        payload.target_quantity = numericValue(form.target_quantity)
+      } else {
+        payload.quantity = numericValue(form.quantity)
+      }
+    } else if (form.type === 'waste') {
+      url = `${API_BASE_URL}/inventory-operations/wastage`
+      payload = {
+        branch_id: form.branch_id,
+        inventory_item_id: form.inventory_item_id,
+        quantity: numericValue(form.quantity),
+        reference_code: operationReference('WST'),
+        reason: form.reason || 'Wastage',
+      }
+    }
+
+    await axios.post(url, payload, { headers: operationHeaders() })
+    operationMessage.value = { type: 'success', text: `${operationTypes.find(type => type.value === form.type)?.title || 'Operation'} posted.` }
+    await loadInventoryItems()
+    operationForm.value = { ...defaultOperationForm(), type: form.type, branch_id: form.branch_id }
+  } catch (err) {
+    const text = err.response?.data?.message || err.response?.data?.error || Object.values(err.response?.data?.errors || {})?.flat()?.[0] || err.message || 'Operation failed.'
+    operationMessage.value = { type: 'error', text }
+  } finally {
+    operationLoading.value = false
+  }
+}
 </script>
 
 <style scoped>

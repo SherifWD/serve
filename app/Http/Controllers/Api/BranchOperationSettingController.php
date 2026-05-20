@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Branch;
 use App\Models\CashRegister;
 use App\Models\Device;
+use App\Support\HardwareValidation;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -83,6 +84,10 @@ class BranchOperationSettingController extends Controller
             'receipt_printer.printer_endpoint' => 'nullable|string|max:255',
             'receipt_printer.is_active' => 'nullable|boolean',
         ]);
+
+        HardwareValidation::validatePrinterEndpoint($data['cash_drawer']['printer_endpoint'] ?? null, 'cash_drawer.printer_endpoint');
+        HardwareValidation::validatePrinterProfile($data['receipt_printer']['printer_profile'] ?? null, 'receipt_printer.printer_profile');
+        HardwareValidation::validatePrinterEndpoint($data['receipt_printer']['printer_endpoint'] ?? null, 'receipt_printer.printer_endpoint');
 
         DB::transaction(function () use ($branch, $data, $receiptPrinter, $cashDrawerDevice): void {
             $drawer = $data['cash_drawer'];

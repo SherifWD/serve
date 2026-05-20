@@ -575,6 +575,7 @@ class _FirstDayScenarioRepository extends SuiteRepository {
     int page = 1,
     int perPage = 12,
     String search = '',
+    int? branchId,
   }) async {
     final restaurant = _restaurants.firstWhere(
       (item) => item.id == restaurantId,

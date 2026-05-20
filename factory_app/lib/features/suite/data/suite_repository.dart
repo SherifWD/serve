@@ -85,6 +85,28 @@ class SuiteRepository {
     return CustomerOrder.fromJson(_map(_map(response.data)['data']));
   }
 
+  Future<CustomerOrder> createCustomerCheckout({
+    required int branchId,
+    required List<Map<String, dynamic>> items,
+    String orderType = 'takeaway',
+    String paymentMethod = 'pay_at_counter',
+    String? notes,
+  }) async {
+    final response = await _dio.post(
+      '/customer/orders',
+      data: {
+        'branch_id': branchId,
+        'order_type': orderType,
+        'payment_method': paymentMethod,
+        if (notes != null && notes.isNotEmpty) 'notes': notes,
+        'items': items,
+      },
+      options: _mutationOptions('customer-checkout'),
+    );
+    _throwIfNeeded(response);
+    return CustomerOrder.fromJson(_map(_map(response.data)['data']));
+  }
+
   Future<PagedResponse<LoyaltyEntry>> fetchCustomerLoyalty({
     int page = 1,
     int perPage = 10,

@@ -405,6 +405,7 @@ class _FakeSuiteRepository extends SuiteRepository {
     int page = 1,
     int perPage = 12,
     String search = '',
+    int? branchId,
   }) async {
     final restaurants = await _restaurantsPage();
     final restaurant = restaurants.firstWhere(

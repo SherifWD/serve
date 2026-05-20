@@ -1,6 +1,6 @@
 # Janova Suite Deployment Guide
 
-Updated: April 11, 2026
+Updated: May 20, 2026
 
 This guide covers the Laravel API, owner dashboard, staff Flutter app (`factory_app`), and customer Flutter app (`customer_app`).
 
@@ -513,8 +513,75 @@ Then verify:
 - Cashier can take full payment and selected-item payment.
 - Receipt PDF downloads.
 - Customer app can log in and read paid order history.
+- Customer app can place a pickup/takeaway order and the branch sees it.
+- Inventory purchase receipt, transfer, stock count, manual adjustment, and wastage flows save successfully from the dashboard.
+- Card or wallet payment attempts fail closed when no active provider/terminal is configured.
+- Printer and terminal heartbeats reject unsafe or incomplete endpoints.
 
-## 11. Production Notes
+## 11. Hardware And Payment Validation
+
+The API now rejects unsafe production payment, printer, and terminal configuration before those settings can be used in live operations.
+
+Payment provider rules:
+
+- Supported payment methods are `cash`, `card`, and `wallet`.
+- `card` and `wallet` payment attempts require an active payment provider for the restaurant or branch.
+- Provider-supported methods must include the requested payment method.
+- Terminal-mode providers require an active, registered branch device before a terminal payment attempt is accepted.
+- Gateway and online providers must have credentials configured before production use.
+
+Printer and device endpoint rules:
+
+- Printer profiles must use a known profile such as `browser-print`, `cash-drawer`, `epson-thermal`, `escpos-network`, `escpos-usb`, `pdf`, or `system-printer`.
+- Printer endpoints must use an approved scheme: `tcp`, `socket`, `usb`, `ipp`, `ipps`, `lpd`, or `file`.
+- Network printer endpoints must include a valid host and port. Example: `tcp://192.168.1.20:9100`.
+- Device heartbeats reject unknown printer profiles and unsafe endpoints.
+
+Field validation checklist before installing a restaurant:
+
+- Register each cashier terminal or kitchen screen as a branch device.
+- Confirm each terminal appears active after heartbeat.
+- Test the exact receipt printer model over the production network.
+- Print a receipt, kitchen ticket, refund receipt, and end-of-day settlement.
+- Run one failed card/wallet attempt with the provider disabled and confirm it is rejected.
+- Run one live authorized card/wallet transaction only after the payment provider contract and certification are complete.
+
+## 12. SaaS Hardening Checklist
+
+Complete this checklist before selling beyond controlled pilots:
+
+- Set `APP_ENV=production`, `APP_DEBUG=false`, and a real `APP_URL`.
+- Serve the API and dashboard only over HTTPS.
+- Store production secrets outside git and rotate exposed local/demo credentials.
+- Run `php artisan config:cache`, `route:cache`, `view:cache`, and `event:cache` during deployment.
+- Run queues under Supervisor and restart workers after deploy.
+- Enable daily database backups and uploaded-file backups.
+- Perform a restore drill before onboarding the first paying restaurant.
+- Configure log retention and alerting for HTTP 500s, queue failures, payment failures, and failed print jobs.
+- Create a support process with owner contact, escalation channel, response target, and incident log.
+- Add CI gates for `php artisan test`, dashboard build, Flutter analyze, and Flutter test.
+- Confirm tenant isolation by testing two restaurants with overlapping users, branches, tables, products, and orders.
+- Document rollback steps for code deploys and failed migrations.
+- Keep a seeded demo tenant separate from production customer data.
+- Keep payment terminal certification, acquiring contract, and settlement reconciliation evidence per market.
+
+## 13. Marketing Release Gate
+
+Use this gate before changing positioning from controlled beta/custom solution to public SaaS:
+
+- Backend regression suite passes.
+- Dashboard production build passes.
+- Staff Flutter analyze and tests pass.
+- Customer Flutter analyze and tests pass.
+- One restaurant and one cafe complete on-site UAT with real staff.
+- A real receipt printer, kitchen printer, cashier terminal, and unstable-network scenario have been tested.
+- At least one full day of orders has been reconciled against cash/card/wallet settlement.
+- Backup restore has been tested with current production schema.
+- Support owner, SLA target, and escalation path are documented.
+
+Until all gate items are proven, position Janova as a controlled beta or custom-deployed restaurant/cafe operating suite, not a full Foodics replacement.
+
+## 14. Production Notes
 
 - Keep `.env` out of git.
 - Keep `vendor/`, `node_modules/`, Flutter `build/`, and `.dart_tool/` out of git.

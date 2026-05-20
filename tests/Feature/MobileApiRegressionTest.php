@@ -1487,6 +1487,128 @@ class MobileApiRegressionTest extends TestCase
         );
     }
 
+    public function test_customer_can_checkout_takeaway_order_and_stock_is_consumed(): void
+    {
+        $customer = Customer::query()->firstOrFail();
+        $branch = Branch::query()->whereNotNull('restaurant_id')->firstOrFail();
+        $category = Category::query()->firstOrCreate([
+            'branch_id' => $branch->id,
+            'name' => 'Customer Checkout',
+        ]);
+        $product = Product::query()->create([
+            'name' => 'Customer Checkout Wrap',
+            'category_id' => $category->id,
+            'branch_id' => $branch->id,
+            'price' => 60,
+            'is_available' => true,
+            'stock' => 10,
+            'min_stock' => 1,
+            'sku' => 'CUST-CHECKOUT-WRAP',
+        ]);
+
+        $this->ensureProductStockAvailable($product, (int) $product->branch_id, 10);
+
+        Sanctum::actingAs($customer);
+
+        $this->postJson('/api/customer/orders', [
+            'branch_id' => $product->branch_id,
+            'order_type' => 'takeaway',
+            'payment_method' => 'pay_at_counter',
+            'items' => [
+                [
+                    'product_id' => $product->id,
+                    'quantity' => 2,
+                    'note' => 'Customer pickup checkout',
+                ],
+            ],
+        ])
+            ->assertCreated()
+            ->assertJsonPath('data.branch_id', $product->branch_id)
+            ->assertJsonPath('data.order_type', 'takeaway')
+            ->assertJsonPath('data.payment_status', 'unpaid')
+            ->assertJsonPath('data.items.0.name', $product->name);
+
+        $order = Order::query()
+            ->where('customer_id', $customer->id)
+            ->where('branch_id', $product->branch_id)
+            ->latest('id')
+            ->firstOrFail();
+
+        $this->assertSame('pending', $order->status);
+        $this->assertSame('unpaid', $order->payment_status);
+        $this->assertEqualsWithDelta(round((float) $product->price * 2, 2), (float) $order->items()->sum('total'), 0.001);
+
+        $remainingStock = InventoryItem::query()
+            ->where('branch_id', $product->branch_id)
+            ->where('product_id', $product->id)
+            ->value('quantity');
+        $this->assertEqualsWithDelta(8, (float) $remainingStock, 0.001);
+    }
+
+    public function test_customer_checkout_can_resolve_same_menu_item_for_selected_branch(): void
+    {
+        $customer = Customer::query()->firstOrFail();
+        $restaurant = Restaurant::query()->whereHas('branches', null, '>=', 2)->firstOrFail();
+        $branches = Branch::query()
+            ->where('restaurant_id', $restaurant->id)
+            ->orderBy('id')
+            ->take(2)
+            ->get();
+        $sourceBranch = $branches[0];
+        $targetBranch = $branches[1];
+        $sourceCategory = Category::query()->create([
+            'branch_id' => $sourceBranch->id,
+            'name' => 'Customer Checkout Shared Separate',
+        ]);
+        $targetCategory = Category::query()->create([
+            'branch_id' => $targetBranch->id,
+            'name' => 'Customer Checkout Shared Separate',
+        ]);
+
+        $sourceProduct = Product::query()->create([
+            'name' => 'Customer Branch Latte',
+            'category_id' => $sourceCategory->id,
+            'branch_id' => $sourceBranch->id,
+            'price' => 70,
+            'is_available' => true,
+            'stock' => 10,
+            'min_stock' => 1,
+            'sku' => 'CUST-LATTE-A',
+        ]);
+        $targetProduct = Product::query()->create([
+            'name' => 'Customer Branch Latte',
+            'category_id' => $targetCategory->id,
+            'branch_id' => $targetBranch->id,
+            'price' => 75,
+            'is_available' => true,
+            'stock' => 10,
+            'min_stock' => 1,
+            'sku' => 'CUST-LATTE-B',
+        ]);
+        $this->ensureProductStockAvailable($sourceProduct, (int) $sourceBranch->id, 10);
+        $this->ensureProductStockAvailable($targetProduct, (int) $targetBranch->id, 10);
+
+        Sanctum::actingAs($customer);
+
+        $this->postJson('/api/customer/orders', [
+            'branch_id' => $targetBranch->id,
+            'items' => [
+                [
+                    'product_id' => $sourceProduct->id,
+                    'quantity' => 1,
+                ],
+            ],
+        ])
+            ->assertCreated()
+            ->assertJsonPath('data.branch_id', $targetBranch->id)
+            ->assertJsonPath('data.items.0.name', $targetProduct->name);
+
+        $this->assertDatabaseHas('order_items', [
+            'product_id' => $targetProduct->id,
+            'quantity' => 1,
+        ]);
+    }
+
     public function test_owner_can_select_subscription_plan_and_view_billing_context(): void
     {
         $owner = User::query()
@@ -1951,6 +2073,85 @@ class MobileApiRegressionTest extends TestCase
             ->assertJsonPath('payments.approved', 1)
             ->assertJsonPath('print_jobs.queued', 0);
         $this->assertGreaterThanOrEqual(1, (int) $ops->json('devices.active'));
+    }
+
+    public function test_production_hardware_validation_rejects_unsafe_payment_and_printer_config(): void
+    {
+        $owner = User::query()
+            ->where('role', 'owner')
+            ->whereNotNull('restaurant_id')
+            ->firstOrFail();
+        $branch = Branch::query()
+            ->where('restaurant_id', $owner->restaurant_id)
+            ->whereHas('orders.items')
+            ->firstOrFail();
+        $order = Order::query()
+            ->where('branch_id', $branch->id)
+            ->whereHas('items')
+            ->firstOrFail();
+
+        Sanctum::actingAs($owner);
+
+        $this->postJson('/api/payment-providers', [
+            'restaurant_id' => $owner->restaurant_id,
+            'branch_id' => $branch->id,
+            'provider' => 'unsupported-methods',
+            'display_name' => 'Unsupported methods',
+            'mode' => 'terminal',
+            'supported_methods' => ['crypto'],
+        ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['supported_methods.0']);
+
+        Sanctum::actingAs($this->staffUserForBranch((int) $branch->id, 'cashier'));
+
+        $this->postJson('/api/mobile/device-heartbeat', [
+            'uuid' => 'invalid-printer-endpoint',
+            'name' => 'Invalid endpoint terminal',
+            'type' => 'POS',
+            'printer_profile' => 'escpos-network',
+            'printer_endpoint' => 'http://192.168.1.30/printer',
+        ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['printer_endpoint']);
+
+        $this->postJson('/api/mobile/payment-attempts', [
+            'order_id' => $order->id,
+            'provider' => 'missing-terminal-provider',
+            'method' => 'card',
+            'amount' => 25,
+        ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['provider']);
+
+        PaymentProviderConfig::query()->create([
+            'restaurant_id' => $owner->restaurant_id,
+            'branch_id' => $branch->id,
+            'provider' => 'no-method-list',
+            'display_name' => 'No method list',
+            'mode' => 'manual',
+            'is_active' => true,
+            'supported_methods' => null,
+        ]);
+
+        $this->postJson('/api/mobile/payment-attempts', [
+            'order_id' => $order->id,
+            'provider' => 'no-method-list',
+            'method' => 'card',
+            'amount' => 25,
+        ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['method']);
+
+        $this->postJson('/api/mobile/print-jobs', [
+            'branch_id' => $branch->id,
+            'order_id' => $order->id,
+            'type' => 'receipt',
+            'printer_profile' => 'escpos-network',
+            'printer_endpoint' => 'http://bad-printer.local',
+        ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['printer_endpoint']);
     }
 
     public function test_restaurant_owner_cannot_read_or_write_foreign_products(): void

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\Api\Concerns\EnforcesTenantAccess;
 use App\Models\Device;
+use App\Support\HardwareValidation;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
@@ -42,6 +43,8 @@ class DeviceController extends Controller
             'capabilities' => 'nullable|array',
             'is_active' => 'nullable|boolean',
         ]);
+        HardwareValidation::validatePrinterProfile($data['printer_profile'] ?? null);
+        HardwareValidation::validatePrinterEndpoint($data['printer_endpoint'] ?? null);
         $data['branch_id'] = $this->branchIdForWrite($request, (int) $data['branch_id']);
 
         $device = Device::query()->create($data);
@@ -80,6 +83,8 @@ class DeviceController extends Controller
             'capabilities' => 'nullable|array',
             'is_active' => 'nullable|boolean',
         ]);
+        HardwareValidation::validatePrinterProfile($data['printer_profile'] ?? null);
+        HardwareValidation::validatePrinterEndpoint($data['printer_endpoint'] ?? null);
         if (array_key_exists('branch_id', $data)) {
             $data['branch_id'] = $this->branchIdForWrite($request, (int) $data['branch_id']);
         }

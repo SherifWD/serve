@@ -121,6 +121,7 @@ Route::prefix('customer')->group(function () {
         Route::get('restaurants', [CustomerPortalController::class, 'restaurants']);
         Route::get('restaurants/{restaurant}', [CustomerPortalController::class, 'restaurant']);
         Route::get('orders', [CustomerPortalController::class, 'orders']);
+        Route::post('orders', [CustomerPortalController::class, 'checkout']);
         Route::get('orders/{order}', [CustomerPortalController::class, 'order']);
         Route::get('loyalty', [CustomerPortalController::class, 'loyalty']);
     });

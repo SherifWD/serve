@@ -3,15 +3,20 @@
 namespace App\Http\Controllers\Api\Customer;
 
 use App\Http\Controllers\Controller;
+use App\Models\Branch;
 use App\Models\LoyaltyTransaction;
 use App\Models\Order;
+use App\Models\OrderItem;
 use App\Models\Product;
 use App\Models\Restaurant;
+use App\Services\Inventory\ProductStockService;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 
 class CustomerPortalController extends Controller
 {
@@ -199,6 +204,102 @@ class CustomerPortalController extends Controller
         return response()->json([
             'data' => $this->transformOrder($order),
         ]);
+    }
+
+    public function checkout(Request $request, ProductStockService $stockService): JsonResponse
+    {
+        /** @var \App\Models\Customer $customer */
+        $customer = $request->user();
+
+        $data = $request->validate([
+            'branch_id' => 'required|integer|exists:branches,id',
+            'order_type' => 'nullable|in:takeaway,delivery',
+            'payment_method' => 'nullable|in:cash_on_pickup,pay_at_counter,online_pending',
+            'notes' => 'nullable|string|max:500',
+            'items' => 'required|array|min:1',
+            'items.*.product_id' => 'required|integer|exists:products,id',
+            'items.*.quantity' => 'required|integer|min:1',
+            'items.*.note' => 'nullable|string|max:255',
+        ]);
+
+        $branch = Branch::query()->with('restaurant')->findOrFail($data['branch_id']);
+
+        $order = DB::transaction(function () use ($data, $customer, $branch, $stockService): Order {
+            $order = Order::query()->create([
+                'branch_id' => $branch->id,
+                'table_id' => null,
+                'customer_id' => $customer->id,
+                'order_type' => $data['order_type'] ?? 'takeaway',
+                'status' => 'pending',
+                'payment_status' => 'unpaid',
+                'payment_method' => $data['payment_method'] ?? 'pay_at_counter',
+                'subtotal' => 0,
+                'tax' => 0,
+                'discount' => 0,
+                'total' => 0,
+                'order_date' => now(),
+            ]);
+
+            foreach ($data['items'] as $line) {
+                $requestedProduct = Product::query()
+                    ->with('category:id,name')
+                    ->findOrFail($line['product_id']);
+                $requestedCategoryName = $requestedProduct->category?->name;
+
+                $product = Product::query()
+                    ->with('category:id,name')
+                    ->where('branch_id', $branch->id)
+                    ->where('is_available', true)
+                    ->where(function ($query) use ($requestedProduct, $requestedCategoryName) {
+                        $query->whereKey($requestedProduct->id)
+                            ->orWhere(function ($matchQuery) use ($requestedProduct, $requestedCategoryName) {
+                                $matchQuery->where('name', $requestedProduct->name)
+                                    ->where(function ($categoryQuery) use ($requestedProduct, $requestedCategoryName) {
+                                        if (blank($requestedCategoryName)) {
+                                            $categoryQuery->whereNull('category_id');
+
+                                            return;
+                                        }
+
+                                        $categoryQuery->where('category_id', $requestedProduct->category_id)
+                                            ->orWhereHas('category', fn ($branchCategoryQuery) => $branchCategoryQuery
+                                                ->where('name', $requestedCategoryName));
+                                    });
+                            });
+                    })
+                    ->first();
+
+                if (!$product) {
+                    throw ValidationException::withMessages([
+                        'items' => ['Selected product is not available for this branch.'],
+                    ]);
+                }
+
+                $quantity = (int) $line['quantity'];
+                $stockService->consume($product, (int) $branch->id, $quantity);
+
+                OrderItem::query()->create([
+                    'order_id' => $order->id,
+                    'product_id' => $product->id,
+                    'quantity' => $quantity,
+                    'price' => (float) $product->price,
+                    'total' => round((float) $product->price * $quantity, 2),
+                    'status' => 'pending',
+                    'kds_status' => 'pending',
+                    'item_note' => $line['note'] ?? ($data['notes'] ?? null),
+                    'change_note' => $line['note'] ?? null,
+                ]);
+            }
+
+            return \App\Services\Orders\RecalculateOrder::run($order);
+        });
+
+        $order->load(['branch.restaurant', 'items.product', 'payments']);
+
+        return response()->json([
+            'data' => $this->transformOrder($order),
+            'message' => 'Order placed for branch confirmation.',
+        ], 201);
     }
 
     public function loyalty(Request $request): JsonResponse

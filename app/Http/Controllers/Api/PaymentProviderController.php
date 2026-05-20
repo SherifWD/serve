@@ -6,8 +6,10 @@ use App\Http\Controllers\Api\Concerns\EnforcesTenantAccess;
 use App\Http\Controllers\Controller;
 use App\Models\Branch;
 use App\Models\PaymentProviderConfig;
+use App\Support\HardwareValidation;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class PaymentProviderController extends Controller
 {
@@ -86,7 +88,7 @@ class PaymentProviderController extends Controller
     {
         $required = $partial ? 'sometimes|required' : 'required';
 
-        return $request->validate([
+        $data = $request->validate([
             'restaurant_id' => 'nullable|integer|exists:restaurants,id',
             'branch_id' => 'nullable|integer|exists:branches,id',
             'provider' => [$required, 'string', 'max:100'],
@@ -96,9 +98,24 @@ class PaymentProviderController extends Controller
             'credentials' => 'nullable|array',
             'terminal_config' => 'nullable|array',
             'supported_methods' => 'nullable|array',
-            'supported_methods.*' => 'string|max:30',
+            'supported_methods.*' => ['string', Rule::in(HardwareValidation::PAYMENT_METHODS)],
             'webhook_secret' => 'nullable|string|max:255',
             'metadata' => 'nullable|array',
         ]);
+
+        $mode = $data['mode'] ?? null;
+        if (in_array($mode, ['terminal', 'online', 'gateway'], true) && empty($data['supported_methods'])) {
+            throw ValidationException::withMessages([
+                'supported_methods' => 'Production payment providers must list supported methods.',
+            ]);
+        }
+
+        if (($mode === 'gateway' || $mode === 'online') && empty($data['credentials']) && !$partial) {
+            throw ValidationException::withMessages([
+                'credentials' => 'Gateway and online payment providers require credentials.',
+            ]);
+        }
+
+        return $data;
     }
 }
