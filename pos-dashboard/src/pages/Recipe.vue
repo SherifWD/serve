@@ -107,6 +107,7 @@
         v-model="drawer"
         location="right"
         temporary
+        persistent
         width="480"
         color="surface"
         transition="slide-x-reverse-transition"
@@ -267,8 +268,8 @@ const filteredRecipes = computed(() => {
 })
 
 const canSaveRecipe = computed(() => {
-  const hasName = Boolean(form.value.name.trim())
-  const hasDescription = Boolean(form.value.description.trim())
+  const hasName = Boolean(stringValue(form.value.name).trim())
+  const hasDescription = Boolean(stringValue(form.value.description).trim())
   const hasBranch = form.value.branch_ids.length > 0
   const ingredientIds = form.value.ingredients.map((ingredient) => Number(ingredient.ingredient_id)).filter(Boolean)
   const noDuplicates = ingredientIds.length === new Set(ingredientIds).size
@@ -301,9 +302,9 @@ function branchTitle(branch) {
 function matchesRecipeSearch(recipe, query) {
   if (!query) return true
 
-  return (recipe.name || '').toLowerCase().includes(query) ||
-    (recipe.category || '').toLowerCase().includes(query) ||
-    (recipe.description || '').toLowerCase().includes(query) ||
+  return stringValue(recipe.name).toLowerCase().includes(query) ||
+    stringValue(recipe.category).toLowerCase().includes(query) ||
+    stringValue(recipe.description).toLowerCase().includes(query) ||
     recipeBranches(recipe).some(branch => branch.name.toLowerCase().includes(query)) ||
     (recipe.ingredients ?? []).some(ingredient => ingredient.name.toLowerCase().includes(query))
 }
@@ -374,9 +375,9 @@ function openEditDrawer(item) {
   form.value = {
     id: item.id,
     branch_ids: recipeBranchIds(item),
-    name: item.name ?? '',
-    category: item.category ?? '',
-    description: item.description,
+    name: stringValue(item.name),
+    category: stringValue(item.category),
+    description: stringValue(item.description),
     ingredients: (item.ingredients ?? []).map(ri => ({
       ingredient_id: ri.ingredient_id,
       quantity: ri.quantity,
@@ -419,9 +420,9 @@ async function saveRecipe() {
   const method = isEditing.value ? 'put' : 'post'
 
   const payload = {
-    name: form.value.name.trim(),
-    category: (form.value.category ?? '').trim(),
-    description: form.value.description.trim(),
+    name: stringValue(form.value.name).trim(),
+    category: stringValue(form.value.category).trim(),
+    description: stringValue(form.value.description).trim(),
     branch_id: form.value.branch_ids[0],
     branch_ids: form.value.branch_ids,
     ingredients: form.value.ingredients.map(i => ({
@@ -465,6 +466,11 @@ function errorMessage(error) {
   if (errors) return Object.values(errors).flat().join(' ')
   return error?.response?.data?.message || error?.response?.data?.error || 'Could not save this recipe.'
 }
+
+function stringValue(value) {
+  return value === null || value === undefined ? '' : String(value)
+}
+
 async function deleteRecipe(item) {
   const label = item.name || item.description || `#${item.id}`
   if (!await confirmDelete(`recipe "${label}"`)) return
