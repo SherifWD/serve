@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Janova Suite Switching Import Pack</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="layout">
+    <div class="hero">
+      <h1>Switching Import Pack</h1>
+      <p>Practical migration templates and importer commands for restaurants moving from Toast, Square, Clover, Foodics, Lightspeed, spreadsheets, or ad hoc CSV exports.</p>
+      <div class="pill-row">
+        <span class="pill">Products</span>
+        <span class="pill">Categories</span>
+        <span class="pill">Customers</span>
+        <span class="pill">Inventory</span>
+        <span class="pill">Opening balances</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Importer Command</h2>
+      <p>Use the Laravel console importer to validate first, then write records after the owner approves the preview.</p>
+      <pre><code>php artisan pos:import-switching-csv products docs/import-templates/products.csv --restaurant_id=1 --branch_id=6 --dry-run
+php artisan pos:import-switching-csv products docs/import-templates/products.csv --restaurant_id=1 --branch_id=6</code></pre>
+      <p>The command supports <code>categories</code>, <code>products</code>, <code>customers</code>, <code>inventory-items</code>, and <code>opening-balances</code>.</p>
+    </div>
+
+    <h2 class="section-title">Templates</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Dataset</th>
+          <th>Template</th>
+          <th>Required Columns</th>
+          <th>Typical Source Mapping</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Categories</td>
+          <td><a href="../import-templates/categories.csv">categories.csv</a></td>
+          <td><code>name</code></td>
+          <td>Toast menu group, Square category, Clover item category, Foodics category, spreadsheet section.</td>
+        </tr>
+        <tr>
+          <td>Products</td>
+          <td><a href="../import-templates/products.csv">products.csv</a></td>
+          <td><code>name</code>, <code>price</code></td>
+          <td>Item name, SKU, category, branch/location, price, stock, minimum stock, active flag, image URL/path.</td>
+        </tr>
+        <tr>
+          <td>Customers</td>
+          <td><a href="../import-templates/customers.csv">customers.csv</a></td>
+          <td><code>name</code></td>
+          <td>Customer full name, email, phone, loyalty points from CRM exports or guest spreadsheets.</td>
+        </tr>
+        <tr>
+          <td>Inventory items</td>
+          <td><a href="../import-templates/inventory-items.csv">inventory-items.csv</a></td>
+          <td><code>name</code>, <code>unit</code>, <code>quantity</code></td>
+          <td>Stock item, branch/location, unit, on-hand quantity, reorder level.</td>
+        </tr>
+        <tr>
+          <td>Opening balances</td>
+          <td><a href="../import-templates/opening-balances.csv">opening-balances.csv</a></td>
+          <td><code>name</code>, <code>unit</code>, <code>quantity</code></td>
+          <td>Starting cash float, first stock count, warehouse transfer opening balance.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2 class="section-title">Migration Workflow</h2>
+    <div class="grid two">
+      <div class="card">
+        <h3>1. Export From Old POS</h3>
+        <ul>
+          <li>Ask for products/items, categories, customers, inventory, modifiers, and branch/location exports.</li>
+          <li>Keep original files unchanged in the onboarding folder.</li>
+          <li>Map each source column to a Janova template column.</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>2. Dry Run</h3>
+        <ul>
+          <li>Run <code>--dry-run</code> for every dataset.</li>
+          <li>Resolve missing columns, bad branches, duplicate SKUs, and malformed prices before import.</li>
+          <li>Send the dry-run summary to the owner for approval.</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>3. Import</h3>
+        <ul>
+          <li>Import categories before products.</li>
+          <li>Import products before inventory items if the stock is product-linked.</li>
+          <li>Import customers before live orders if loyalty opening points matter.</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>4. Reconcile</h3>
+        <ul>
+          <li>Owner reviews menu counts, prices, sample customer rows, and low-stock alerts.</li>
+          <li>Cashier and waiter run live browser checks before go-live.</li>
+          <li>Archive source files, imported templates, dry-run summaries, and final import logs.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="note">
+      <strong>Status:</strong> Migration importer support is now implemented in the repo through <code>pos:import-switching-csv</code> and the CSV templates above. Vendor-specific exports still need column mapping during onboarding because Toast, Square, Clover, Foodics, and spreadsheet exports vary by merchant configuration.
+    </div>
+  </div>
+</body>
+</html>

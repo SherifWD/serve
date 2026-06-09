@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 160" role="img" aria-label="Janova Serve POS">
+  <defs>
+    <linearGradient id="mini-mark" x1="30" y1="20" x2="146" y2="124" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#102070"/>
+      <stop offset="0.52" stop-color="#0070E0"/>
+      <stop offset="1" stop-color="#1060A0"/>
+    </linearGradient>
+    <linearGradient id="mini-word" x1="180" y1="54" x2="470" y2="118" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#D0E0F0"/>
+    </linearGradient>
+  </defs>
+  <rect width="600" height="160" rx="26" fill="#081225"/>
+  <g transform="translate(30 14) scale(0.6)">
+    <path d="M60 14c-25-3-42 6-54 26-10 16-13 38-7 59 3 11 10 21 18 27 5 4 11 1 11-6 0-17 11-27 31-27h88c31-14 53-40 69-80 2-6-1-10-8-10H92c-14 0-20 5-32 4Z" fill="url(#mini-mark)"/>
+    <path d="M38 80c-16 0-26 10-26 24 0 15 11 24 28 24h29l-25 36c-13 18-30 31-53 38 26 19 59 27 98 25 66-4 112-37 133-94 8-22 5-42-8-54-9-9-22-13-38-13h-38l-28 40c-7 10-20 4-16-8 3-11 13-25 25-42H38Z" fill="url(#mini-mark)"/>
+    <path d="M21 56h47l8-8h32l8 8h64M34 76h62l9 9h42l9-9h36M35 104h36l14-14" stroke="#D0E0F0" stroke-width="3.8" stroke-linecap="round" fill="none" opacity="0.85"/>
+    <path d="M64 145l42-42v-17l26-26M93 153l38-38h20l31-31" stroke="#D0E0F0" stroke-width="3.8" stroke-linecap="round" fill="none" opacity="0.85"/>
+    <circle cx="88" cy="56" r="5" fill="#D0E0F0"/>
+    <circle cx="142" cy="76" r="5" fill="#D0E0F0"/>
+    <circle cx="106" cy="103" r="5" fill="#D0E0F0"/>
+    <circle cx="132" cy="115" r="5" fill="#D0E0F0"/>
+    <path d="M46 78c21-10 50-11 85-3 26 6 54 6 86 0-3 16-10 25-22 28H60c-15 0-23 5-28 13-5-17 0-31 14-38Z" fill="#FFFFFF" opacity="0.96"/>
+  </g>
+  <text x="220" y="68" fill="url(#mini-word)" font-family="Georgia, 'Times New Roman', serif" font-size="34" font-weight="700" letter-spacing="1">JANOVA SERVE</text>
+  <text x="222" y="104" fill="#70A0C0" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="700" letter-spacing="6">RESTAURANT POS</text>
+  <path d="M222 124h282" stroke="#1060A0" stroke-width="5" stroke-linecap="round"/>
+</svg>

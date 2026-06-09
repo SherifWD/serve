@@ -1,0 +1,83 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1600" role="img" aria-label="Janova Serve POS light">
+  <defs>
+    <linearGradient id="word-light" x1="330" y1="1160" x2="1260" y2="1370" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#1060A0"/>
+      <stop offset="0.48" stop-color="#D0E0F0"/>
+      <stop offset="1" stop-color="#0070E0"/>
+    </linearGradient>
+    <linearGradient id="edge-light" x1="450" y1="240" x2="1120" y2="950" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#0070E0"/>
+      <stop offset="0.55" stop-color="#70A0C0"/>
+      <stop offset="1" stop-color="#D0E0F0"/>
+    </linearGradient>
+    <filter id="light-glow" x="-45%" y="-45%" width="190%" height="190%">
+      <feGaussianBlur stdDeviation="30" result="blur"/>
+      <feColorMatrix in="blur" type="matrix" values="0 0 0 0 0.50 0 0 0 0 0.74 0 0 0 0 1 0 0 0 0.9 0"/>
+      <feMerge>
+        <feMergeNode/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <path id="serve-light-top" d="M638 236c-70-10-121 15-157 72-31 49-42 116-24 181 10 36 31 66 55 86 14 12 32 2 32-17 0-43 27-72 77-76h475c91-37 156-112 202-229 7-17-2-28-22-28H729c-38 0-56 17-91 11Z"/>
+    <path id="serve-light-bottom" d="M563 540c-44 1-74 28-74 71 0 46 33 71 84 71h92l-90 136c-50 75-111 121-191 145-23 7-28 31-8 44 58 38 132 58 219 58 183 0 323-82 392-230 38-82 34-165-7-213-26-30-62-45-108-45H749l-93 139c-15 22-49 13-49-14 0-31 29-75 55-113l32-49H563Z"/>
+    <clipPath id="light-top-clip"><use href="#serve-light-top"/></clipPath>
+    <clipPath id="light-bottom-clip"><use href="#serve-light-bottom"/></clipPath>
+  </defs>
+
+  <g transform="translate(0 8)">
+    <use href="#serve-light-top" fill="#020713" stroke="url(#edge-light)" stroke-width="14"/>
+    <g clip-path="url(#light-top-clip)" stroke="#70A0C0" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.95">
+      <path d="M470 302h210l24-22h120l27 24h150l28-28h179"/>
+      <path d="M456 356h205l25 26h114l22-24h270l31-28h136"/>
+      <path d="M452 410h325l28-28h118l30 27h214l22-23h71"/>
+      <path d="M463 465h247l27 25h169l25-24h302"/>
+      <path d="M498 520h195l38-39h86l25 26h245"/>
+      <circle cx="620" cy="302" r="14" fill="#70A0C0"/>
+      <circle cx="812" cy="302" r="14" fill="#70A0C0"/>
+      <circle cx="974" cy="302" r="14" fill="#70A0C0"/>
+      <circle cx="1188" cy="302" r="14" fill="#70A0C0"/>
+      <circle cx="702" cy="356" r="14" fill="#D0E0F0"/>
+      <circle cx="924" cy="356" r="14" fill="#D0E0F0"/>
+      <circle cx="1108" cy="356" r="14" fill="#70A0C0"/>
+      <circle cx="560" cy="410" r="14" fill="#70A0C0"/>
+      <circle cx="853" cy="410" r="14" fill="#D0E0F0"/>
+      <circle cx="1000" cy="410" r="14" fill="#70A0C0"/>
+      <circle cx="1138" cy="465" r="14" fill="#70A0C0"/>
+      <circle cx="666" cy="520" r="14" fill="#D0E0F0"/>
+    </g>
+
+    <use href="#serve-light-bottom" fill="#020713" stroke="url(#edge-light)" stroke-width="14"/>
+    <g clip-path="url(#light-bottom-clip)" stroke="#D0E0F0" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.95">
+      <path d="M445 963l135-135v-61l70-70"/>
+      <path d="M505 1011l163-163v-68l86-86"/>
+      <path d="M570 1043l142-142v-74l100-100"/>
+      <path d="M636 1052l126-126h64l94-94"/>
+      <path d="M710 1033l101-101v-64l118-118"/>
+      <path d="M808 980l83-83h62l83-83"/>
+      <path d="M523 735l63-63"/>
+      <path d="M615 745l90-90"/>
+      <path d="M738 777l88-88"/>
+      <path d="M856 618l86 86"/>
+      <circle cx="580" cy="828" r="15" fill="#D0E0F0"/>
+      <circle cx="668" cy="848" r="15" fill="#D0E0F0"/>
+      <circle cx="712" cy="901" r="15" fill="#D0E0F0"/>
+      <circle cx="762" cy="926" r="15" fill="#D0E0F0"/>
+      <circle cx="811" cy="932" r="15" fill="#D0E0F0"/>
+      <circle cx="891" cy="897" r="15" fill="#D0E0F0"/>
+      <circle cx="953" cy="814" r="15" fill="#D0E0F0"/>
+      <circle cx="630" cy="696" r="15" fill="#D0E0F0"/>
+      <circle cx="745" cy="653" r="15" fill="#D0E0F0"/>
+    </g>
+
+    <path d="M535 500c62-26 139-29 230-9 91 20 198 19 319 0 1 43-11 74-37 91H593c-50 0-73 16-89 38-17-48-4-91 31-120Z" fill="#FFFFFF" opacity="0.98"/>
+    <circle cx="770" cy="536" r="75" fill="#FFFFFF" filter="url(#light-glow)"/>
+    <g transform="translate(735 495)" opacity="0.9">
+      <rect x="0" y="0" width="92" height="72" rx="14" fill="#FFFFFF"/>
+      <path d="M22 19h48M22 36h34M22 53h48" stroke="#1060A0" stroke-width="7" stroke-linecap="round"/>
+    </g>
+  </g>
+
+  <text x="800" y="1224" text-anchor="middle" fill="url(#word-light)" font-family="Georgia, 'Times New Roman', serif" font-size="218" font-weight="700" letter-spacing="-2">JANOVA</text>
+  <text x="800" y="1378" text-anchor="middle" fill="url(#word-light)" font-family="Georgia, 'Times New Roman', serif" font-size="96" font-weight="700" letter-spacing="14">SERVE POS</text>
+  <path d="M260 1327h120M1220 1327h120" stroke="#1060A0" stroke-width="18" stroke-linecap="square"/>
+</svg>

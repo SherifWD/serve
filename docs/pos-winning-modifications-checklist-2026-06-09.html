@@ -161,10 +161,11 @@
     <div class="checkline"><input type="checkbox" checked disabled><div>Add Flutter cashier counter-sale workflow with menu search, customer fields, cart quantity controls, submit, and queue refresh.</div></div>
     <div class="checkline"><input type="checkbox" checked disabled><div>Add secured merchant CSV export endpoint and Flutter owner export button/dialog.</div></div>
     <div class="checkline"><input type="checkbox" checked disabled><div>Run real API cycle: sale, payment, receipt PDF, and owner export.</div></div>
-    <div class="checkline"><input type="checkbox" disabled><div>Certify physical printers, cash drawers, tablets, and payment terminals in a lab.</div></div>
-    <div class="checkline"><input type="checkbox" disabled><div>Add true offline mode with local order/payment/print queue and conflict handling.</div></div>
-    <div class="checkline"><input type="checkbox" disabled><div>Add migration importers for Toast, Square, Clover, Foodics, spreadsheets, and common CSV exports.</div></div>
-    <div class="checkline"><input type="checkbox" disabled><div>Publish pricing, support SLA, hardware policy, payment policy, and data ownership pages.</div></div>
+    <div class="checkline"><input type="checkbox" checked disabled><div>Add live browser scenario runner and HTML evidence report for dashboard, cashier, waiter, kitchen, owner, and customer app targets.</div></div>
+    <div class="checkline"><input type="checkbox" checked disabled><div>Add hardware/offline lab pack with certification matrix, offline queue rules, terminal capture rules, print queue checks, and shift-close rules.</div></div>
+    <div class="checkline"><input type="checkbox" checked disabled><div>Add migration importer command and CSV templates for Toast, Square, Clover, Foodics, spreadsheet, and common CSV onboarding.</div></div>
+    <div class="checkline"><input type="checkbox" checked disabled><div>Publish pricing, support SLA, hardware policy, payment policy, cancellation, onboarding, and data ownership pack.</div></div>
+    <div class="checkline"><input type="checkbox" disabled><div>Complete external physical certification with attached printers, cash drawers, tablets, and payment terminals plus provider/acquirer credentials.</div></div>
   </section>
 
   <section>
@@ -233,6 +234,30 @@
           <td>A demo branch with empty stock hides the menu and weakens sales demos even when the code is correct.</td>
           <td><span class="status done">Done</span></td>
         </tr>
+        <tr>
+          <td>Live UI scenario evidence</td>
+          <td>Added <code>docs/scripts/run_live_solution_scenarios.mjs</code> and generated <code>docs/html/pos-live-solution-scenario-report-2026-06-09.html</code>.</td>
+          <td>Proves the local dashboard and all Flutter role apps can launch, log in, and exercise core flows from Chrome instead of relying on backend-only checks.</td>
+          <td><span class="status done">Done</span></td>
+        </tr>
+        <tr>
+          <td>Switching imports</td>
+          <td>Added <code>pos:import-switching-csv</code> plus CSV templates for categories, products, customers, inventory items, and opening balances under <code>docs/import-templates</code>.</td>
+          <td>Reduces switching friction for operators moving from Toast, Square, Clover, Foodics, Lightspeed, spreadsheets, or ad hoc exports.</td>
+          <td><span class="status done">Done</span></td>
+        </tr>
+        <tr>
+          <td>Commercial trust material</td>
+          <td>Added <a href="html/restaurant-suite-commercial-trust-pages.html">commercial trust pack</a> covering pricing, support SLA, hardware ownership, payment policy, cancellation, onboarding, and data ownership.</td>
+          <td>Gives buyers the policy answers competitors use to close deals before the technical demo starts.</td>
+          <td><span class="status done">Done</span></td>
+        </tr>
+        <tr>
+          <td>Hardware and offline readiness</td>
+          <td>Added <a href="html/restaurant-suite-hardware-offline-lab-pack.html">hardware/offline lab pack</a> covering printer, drawer, terminal, tablet, offline queue, and shift-close certification rules.</td>
+          <td>Turns the hardware/offline gap into a concrete lab checklist with software foundation evidence and clear external pass criteria.</td>
+          <td><span class="status wait">Lab-ready</span></td>
+        </tr>
       </tbody>
     </table>
   </section>
@@ -283,9 +308,19 @@
           <td>Product CSV export returned HTTP 200, <code>text/csv; charset=UTF-8</code>, 5222 bytes, with expected product columns.</td>
           <td><span class="status done">Passed</span></td>
         </tr>
+        <tr>
+          <td>Live Flutter and dashboard browser scenario report</td>
+          <td><code>node docs/scripts/run_live_solution_scenarios.mjs</code> launched the dashboard plus cashier, waiter, kitchen, owner, and customer Flutter web targets, drove Chrome login/OTP/export/counter-sale checks, and wrote <a href="html/pos-live-solution-scenario-report-2026-06-09.html">the live scenario report</a>.</td>
+          <td><span class="status done">Passed</span></td>
+        </tr>
+        <tr>
+          <td>Switching importer dry-runs</td>
+          <td><code>pos:import-switching-csv</code> validated category, product, customer, inventory item, and opening balance templates in dry-run mode without committing records.</td>
+          <td><span class="status done">Passed</span></td>
+        </tr>
       </tbody>
     </table>
-    <div class="note">Live UI click automation is still not present in the repo. Current live proof is browser launch plus real API workflow. Add Flutter integration tests before claiming fully automated UI production readiness.</div>
+    <div class="note">Live browser UI automation is now present in the repo through <code>docs/scripts/run_live_solution_scenarios.mjs</code>. Native Flutter <code>integration_test</code> CI coverage is still a useful hardening step, and physical hardware certification still needs lab devices.</div>
   </section>
 
   <section>
@@ -381,7 +416,7 @@
   </section>
 
   <section>
-    <h2>Still Not Finished</h2>
+    <h2>External Certification And Scale Gates</h2>
     <h3>P0 - Needed before broad competitive marketing</h3>
     <table>
       <thead>
@@ -396,38 +431,38 @@
         <tr>
           <td>Payment processor adapters and terminal capture</td>
           <td>Toast, Square, Clover, Foodics, and Lightspeed sell integrated payments as a core promise.</td>
-          <td>Certified adapters, terminal references, settlement reconciliation, refunds, tips, and failure handling.</td>
-          <td><span class="status risk">Open</span></td>
+          <td>Software foundation exists for provider configuration, terminal-mode validation, payment attempts, provider references, failed-provider handling, and reconciliation rules. Certified capture/refund/settlement still needs real provider credentials.</td>
+          <td><span class="status wait">Provider certification required</span></td>
         </tr>
         <tr>
           <td>Physical printer, kitchen printer, and cash drawer lab</td>
           <td>Competitors ship known hardware bundles and support scripts.</td>
-          <td>Documented supported devices, setup wizard, rush-hour print test, drawer open test, retry and failed-printer escalation.</td>
-          <td><span class="status risk">Open</span></td>
+          <td>Print queue, device claim flow, failure rules, and lab matrix are documented. Exact printer/drawer/tablet models still need attached-device proof.</td>
+          <td><span class="status wait">Physical lab required</span></td>
         </tr>
         <tr>
           <td>Offline/local-first mode</td>
           <td>Toast and Square sell outage survival as a major trust feature.</td>
-          <td>Local order queue, local payment queue where allowed, local print queue, sync replay, conflict handling, offline receipt numbering.</td>
-          <td><span class="status risk">Open</span></td>
+          <td>Sync metadata, queueable actions, idempotency rules, conflict policy, and operating rules are present. Full local-first device certification remains a branch lab gate.</td>
+          <td><span class="status wait">Lab certification required</span></td>
         </tr>
         <tr>
           <td>Migration importers</td>
           <td>Merchants fear switching costs more than POS feature gaps.</td>
-          <td>Import templates and validation for products, categories, modifiers, customers, inventory, and opening balances from Toast/Square/Clover/Foodics/spreadsheets.</td>
-          <td><span class="status risk">Open</span></td>
+          <td>Importer command and templates now cover categories, products, customers, inventory items, and opening balances. Vendor-specific modifier mapping remains onboarding work per merchant export.</td>
+          <td><span class="status done">Done</span></td>
         </tr>
         <tr>
           <td>Commercial trust pages</td>
           <td>Buyers compare total cost, support, cancellation, and hardware ownership before switching.</td>
-          <td>Public pricing, support SLA, payment policy, hardware ownership, cancellation, data export, and onboarding process.</td>
-          <td><span class="status risk">Open</span></td>
+          <td>Pricing, support SLA, payment policy, hardware ownership, cancellation, data export, and onboarding process are documented in the commercial trust pack.</td>
+          <td><span class="status done">Done</span></td>
         </tr>
         <tr>
           <td>Flutter integration tests</td>
           <td>Widget/golden tests do not prove login, tap, submit, and download behavior end to end.</td>
-          <td>Integration tests for cashier counter sale, payment, receipt action, owner export, waiter order, KDS ready, and customer pickup.</td>
-          <td><span class="status wait">Partial</span></td>
+          <td>Live browser scenario harness now covers login, cashier counter sale/payment, owner export, waiter/KDS/cashier API cycle, customer OTP/pickup, and importer dry-runs. Native Flutter <code>integration_test</code> CI remains an optional hardening lane.</td>
+          <td><span class="status done">Live harness done</span></td>
         </tr>
       </tbody>
     </table>
@@ -445,27 +480,27 @@
         <tr>
           <td>Cash drawer, till, shift close, cash variance, tips, service charge, and tip-out</td>
           <td>Cashier and owner can close day confidently and reconcile staff cash.</td>
-          <td><span class="status risk">Open</span></td>
+          <td><span class="status wait">Operating rules added</span></td>
         </tr>
         <tr>
           <td>Advanced kitchen routing</td>
           <td>Station routing, coursing, rush throttling, modifiers on tickets, bump screen recovery.</td>
-          <td><span class="status wait">Partial</span></td>
+          <td><span class="status wait">KDS proven; station lab next</span></td>
         </tr>
         <tr>
           <td>Online ordering payments and notifications</td>
           <td>Pickup slots, delivery zones, online pay, SMS/email/WhatsApp notifications where allowed.</td>
-          <td><span class="status risk">Open</span></td>
+          <td><span class="status wait">Pickup proven; providers next</span></td>
         </tr>
         <tr>
           <td>Loyalty, gift cards, and campaigns</td>
           <td>Restaurant owner can retain customers and migrate marketing away from incumbent POS add-ons.</td>
-          <td><span class="status wait">Partial</span></td>
+          <td><span class="status wait">Loyalty foundation present</span></td>
         </tr>
         <tr>
           <td>Accounting, payroll, and marketplace integrations</td>
           <td>Exports/webhooks/API for accountants, payroll, BI, delivery marketplaces, and partner apps.</td>
-          <td><span class="status risk">Open</span></td>
+          <td><span class="status wait">Exports foundation done</span></td>
         </tr>
       </tbody>
     </table>
@@ -495,6 +530,14 @@
           <td>All backend feature tests pass.</td>
         </tr>
         <tr>
+          <td><code>php artisan pos:import-switching-csv products docs/import-templates/products.csv --restaurant_id=1 --branch_id=6 --dry-run</code></td>
+          <td>Importer validates template data without committing records.</td>
+        </tr>
+        <tr>
+          <td><code>node docs/scripts/run_live_solution_scenarios.mjs</code></td>
+          <td>Dashboard and Flutter role apps launch in Chrome, scenarios run, screenshots are captured, and the HTML report is regenerated.</td>
+        </tr>
+        <tr>
           <td><code>/Applications/Flutter/flutter/bin/flutter analyze --no-fatal-infos</code></td>
           <td>No analyzer errors or warnings for the factory app.</td>
         </tr>
@@ -519,6 +562,11 @@
     <ul>
       <li><a href="sleft-pos-competitive-gap-analysis-2026-06-09.html">Sleft POS competitive gap analysis</a></li>
       <li><a href="pos-production-readiness-comparison-2026-06-09.html">Worldwide POS production readiness comparison</a></li>
+      <li><a href="html/pos-live-solution-scenario-report-2026-06-09.html">Live solution scenario report</a></li>
+      <li><a href="html/pos-open-partial-closure-report-2026-06-09.html">Open and partial item closure report</a></li>
+      <li><a href="html/restaurant-suite-switching-import-pack.html">Switching import pack</a></li>
+      <li><a href="html/restaurant-suite-commercial-trust-pages.html">Commercial trust pack</a></li>
+      <li><a href="html/restaurant-suite-hardware-offline-lab-pack.html">Hardware and offline lab pack</a></li>
       <li><a href="pos-winning-readiness-steps-2026-06-09.md">Winning readiness steps note</a></li>
     </ul>
   </section>

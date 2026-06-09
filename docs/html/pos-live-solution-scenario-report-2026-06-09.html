@@ -1,0 +1,250 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Janova POS Live Solution Scenario Report - 2026-06-09</title>
+  <style>
+    :root { --ink:#172033; --muted:#667085; --line:#d9e0ea; --panel:#fff; --soft:#f5f7fb; --done:#0f766e; --wait:#9a3412; --risk:#b91c1c; --brand:#1d4ed8; }
+    * { box-sizing: border-box; }
+    body { margin:0; font-family: Arial, Helvetica, sans-serif; color:var(--ink); background:#eef2f7; line-height:1.5; }
+    main { max-width:1280px; margin:0 auto; padding:28px 18px 60px; }
+    header { background:#0f172a; color:#fff; border-radius:8px; padding:28px; }
+    h1,h2,h3 { margin:0; }
+    h1 { font-size:30px; line-height:1.15; }
+    h2 { font-size:22px; margin:26px 0 12px; }
+    p { margin:8px 0; }
+    a { color:var(--brand); }
+    .subtitle { color:#cbd5e1; max-width:980px; }
+    .grid { display:grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap:12px; margin:16px 0; }
+    .card, section { background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:16px; }
+    section { margin-top:16px; }
+    .metric { font-size:28px; font-weight:800; }
+    .label { color:var(--muted); font-size:13px; text-transform:uppercase; letter-spacing:.04em; }
+    table { width:100%; border-collapse:collapse; background:#fff; }
+    th,td { border:1px solid var(--line); padding:9px 10px; vertical-align:top; text-align:left; font-size:14px; }
+    th { background:#e9eef8; font-weight:700; }
+    .status { display:inline-block; min-width:82px; text-align:center; border-radius:999px; padding:3px 8px; font-size:12px; font-weight:700; text-transform:capitalize; }
+    .done { background:#d1fae5; color:var(--done); }
+    .wait { background:#ffedd5; color:var(--wait); }
+    .risk { background:#fee2e2; color:var(--risk); }
+    .muted { color:var(--muted); }
+    .note { background:var(--soft); border-left:4px solid var(--brand); padding:8px 10px; margin-top:8px; }
+    .shots { display:grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap:12px; }
+    .shot { display:block; text-decoration:none; color:var(--ink); border:1px solid var(--line); background:#fff; border-radius:8px; overflow:hidden; }
+    .shot img { width:100%; height:190px; object-fit:cover; display:block; border-bottom:1px solid var(--line); background:#f8fafc; }
+    .shot span { display:block; padding:8px 10px; font-size:13px; }
+    ul { margin:8px 0 0 20px; padding:0; }
+    li { margin:5px 0; }
+    code { background:#edf2f7; border:1px solid #d7dee9; padding:1px 4px; border-radius:4px; font-size:13px; }
+    @media (max-width: 920px) { .grid,.shots { grid-template-columns:1fr; } table { display:block; overflow-x:auto; } main { padding:14px 10px 40px; } header { padding:20px; } }
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Janova POS Live Solution Scenario Report</h1>
+    <p class="subtitle">Generated 2026-06-09T16:34:18.108Z by <code>docs/scripts/run_live_solution_scenarios.mjs</code>. This run checks the existing winning checklist against live local Flutter web apps, the Vue dashboard, and the Laravel API. Hardware certification remains blocked unless real devices are attached.</p>
+  </header>
+
+  <div class="grid">
+    <div class="card"><div class="label">Passed</div><div class="metric">15</div></div>
+    <div class="card"><div class="label">Partial</div><div class="metric">0</div></div>
+    <div class="card"><div class="label">Failed</div><div class="metric">0</div></div>
+    <div class="card"><div class="label">Blocked</div><div class="metric">1</div></div>
+  </div>
+
+  <section>
+    <h2>Checklist Outcome</h2>
+    <ul>
+      <li>Live Flutter app automation is now present for cashier, waiter, kitchen, owner, and customer web targets.</li>
+      <li>The cashier app was driven through a real UI counter sale and settlement flow.</li>
+      <li>The owner app export control was opened and submitted through the live Flutter UI; every CSV dataset was also fetched and checked.</li>
+      <li>The Vue dashboard was logged into and all major feature routes were loaded in Chrome.</li>
+      <li>Payment terminal certification, physical printer certification, cash drawer lab work, and true external offline/terminal capture remain blocked by missing physical hardware and acquirer credentials in this local run.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>Scenario Results</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Area</th>
+          <th>Scenario</th>
+          <th>Actions Run</th>
+          <th>Evidence</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+
+        <tr>
+          <td>Environment</td>
+          <td><strong>Laravel API health</strong><br><span class="muted">API</span></td>
+          <td>GET http://127.0.0.1:8000/api/health</td>
+          <td>HTTP 200; database=ok; queue=database; broadcast=reverb; env=local</td>
+          <td><span class="status done">passed</span></td>
+        </tr>
+
+        <tr>
+          <td>Commercial readiness</td>
+          <td><strong>Commercial, support, hardware, offline, and checklist documents</strong><br><span class="muted">Docs HTML/Markdown</span></td>
+          <td>Checked published documentation artifacts needed by the open checklist items.</td>
+          <td>pricing and hardware page: present (restaurant-suite-pricing-hardware-egypt.html); deployment/support guide: present (../deployment-guide.md); offline/realtime operations note: present (../offline-realtime-operations.md); winning modifications checklist: present (../pos-winning-modifications-checklist-2026-06-09.html); switching import pack: present (restaurant-suite-switching-import-pack.html); commercial trust pack: present (restaurant-suite-commercial-trust-pages.html); hardware and offline lab pack: present (restaurant-suite-hardware-offline-lab-pack.html); open and partial closure report: present (pos-open-partial-closure-report-2026-06-09.html)</td>
+          <td><span class="status done">passed</span></td>
+        </tr>
+
+        <tr>
+          <td>Migration</td>
+          <td><strong>Switching CSV importer dry-runs</strong><br><span class="muted">Laravel Artisan</span></td>
+          <td>Validated categories, products, customers, inventory items, and opening balances through the real importer command in dry-run mode.</td>
+          <td>categories: exit=0; Dry-run validated for categories. +---------+---------+---------+--------+ | created | updated | skipped | errors | +---------+---------+---------+--------+ | 1 | 1 | 0 | 0 | +---------+---------+---------+--------+; products: exit=0; Dry-run validated for products. +---------+---------+---------+--------+ | created | updated | skipped | errors | +---------+---------+---------+--------+ | 2 | 0 | 0 | 0 | +---------+---------+---------+--------+; customers: exit=0; Dry-run validated for customers. +---------+---------+---------+--------+ | created | updated | skipped | errors | +---------+---------+---------+--------+ | 1 | 0 | 0 | 0 | +---------+---------+---------+--------+; inventory-items: exit=0; Dry-run validated for inventory-items. +---------+---------+---------+--------+ | created | updated | skipped | errors | +---------+---------+---------+--------+ | 2 | 0 | 0 | 0 | +---------+---------+---------+--------+; opening-balances: exit=0; Dry-run validated for opening-balances. +---------+---------+---------+--------+ | created | updated | skipped | errors | +---------+---------+---------+--------+ | 2 | 0 | 0 | 0 | +---------+---------+---------+--------<div class="note">Templates are stored under docs/import-templates and documented in the Switching Import Pack.</div></td>
+          <td><span class="status done">passed</span></td>
+        </tr>
+
+        <tr>
+          <td>Dashboard</td>
+          <td><strong>Admin dashboard login</strong><br><span class="muted">Vue dashboard</span></td>
+          <td>Opened the dashboard, filled Email and Password fields, submitted the sign-in form.</td>
+          <td>Dashboard accepted seeded admin credentials and routed to the authenticated dashboard.<div><a href="../generated/live-solution-tests/dashboard-admin-login.png">Open screenshot</a></div></td>
+          <td><span class="status done">passed</span></td>
+        </tr>
+
+        <tr>
+          <td>Dashboard</td>
+          <td><strong>Dashboard feature routes</strong><br><span class="muted">Vue dashboard</span></td>
+          <td>Visited authenticated dashboard routes for restaurants, branches, users, roles, products, orders, customers, employees, categories, menus, inventory, suppliers, tables, ingredients, recipes, settings, and marketing inquiries.</td>
+          <td>/dashboard: loaded; /restaurants: loaded; /branches: loaded; /users: loaded; /roles: loaded; /products: loaded; /orders: loaded; /customers: loaded; /employees: loaded; /categories: loaded; /menus: loaded; /inventory: loaded; /suppliers: loaded; /tables: loaded; /ingredients: loaded; /recipe: loaded; /settings: loaded; /marketing-inquiries: loaded</td>
+          <td><span class="status done">passed</span></td>
+        </tr>
+
+        <tr>
+          <td>Flutter apps</td>
+          <td><strong>Cashier app live login and workspace</strong><br><span class="muted">Flutter web cashier</span></td>
+          <td>Launched lib/main_cashier.dart with API_BASE_URL=http://127.0.0.1:8000/api, logged in through real Flutter text fields, and inspected the role workspace.</td>
+          <td>Workspace text matched /Counter sale|Settle order|Cashier queue|No cashier queue/i.<div><a href="../generated/live-solution-tests/flutter-cashier.png">Open screenshot</a></div></td>
+          <td><span class="status done">passed</span></td>
+        </tr>
+
+        <tr>
+          <td>Flutter apps</td>
+          <td><strong>Waiter app live login and workspace</strong><br><span class="muted">Flutter web waiter</span></td>
+          <td>Launched lib/main_waiter.dart with API_BASE_URL=http://127.0.0.1:8000/api, logged in through real Flutter text fields, and inspected the role workspace.</td>
+          <td>Workspace text matched /Tables|Open orders|Open table|Send to kitchen|T\d/i.<div><a href="../generated/live-solution-tests/flutter-waiter.png">Open screenshot</a></div></td>
+          <td><span class="status done">passed</span></td>
+        </tr>
+
+        <tr>
+          <td>Flutter apps</td>
+          <td><strong>Kitchen app live login and workspace</strong><br><span class="muted">Flutter web kitchen</span></td>
+          <td>Launched lib/main_kitchen.dart with API_BASE_URL=http://127.0.0.1:8000/api, logged in through real Flutter text fields, and inspected the role workspace.</td>
+          <td>Workspace text matched /Queued|Preparing|Ready|Kitchen is clear|No tickets/i.<div><a href="../generated/live-solution-tests/flutter-kitchen.png">Open screenshot</a></div></td>
+          <td><span class="status done">passed</span></td>
+        </tr>
+
+        <tr>
+          <td>Flutter apps</td>
+          <td><strong>Owner app live login and workspace</strong><br><span class="muted">Flutter web owner</span></td>
+          <td>Launched lib/main_owner.dart with API_BASE_URL=http://127.0.0.1:8000/api, logged in through real Flutter text fields, and inspected the role workspace.</td>
+          <td>Workspace text matched /Owner dashboard|Revenue|Export CSV|Branch leaderboard/i.<div><a href="../generated/live-solution-tests/flutter-owner.png">Open screenshot</a></div></td>
+          <td><span class="status done">passed</span></td>
+        </tr>
+
+        <tr>
+          <td>Flutter apps</td>
+          <td><strong>Customer app OTP login and home</strong><br><span class="muted">Flutter web customer</span></td>
+          <td>Launched customer Flutter app, entered name and phone, requested local debug OTP, submitted the OTP, and inspected the customer home.</td>
+          <td>OTP flow passed for 01022852627; customer home showed browse/order/rewards content.<div><a href="../generated/live-solution-tests/flutter-customer.png">Open screenshot</a></div></td>
+          <td><span class="status done">passed</span></td>
+        </tr>
+
+        <tr>
+          <td>Operations</td>
+          <td><strong>Cashier no-table counter sale</strong><br><span class="muted">Flutter cashier + mobile API</span></td>
+          <td>Created a branch-level takeaway order with send_to_cashier, paid it in cash, then generated a paid PDF receipt.</td>
+          <td>Order #44; product=Brownie Skillet; status=cashier; table_id=null; total=8.00; receipt_http=200; bytes=249696.</td>
+          <td><span class="status done">passed</span></td>
+        </tr>
+
+        <tr>
+          <td>Operations</td>
+          <td><strong>Waiter to KDS to cashier dine-in cycle</strong><br><span class="muted">Flutter waiter/kitchen/cashier + mobile API</span></td>
+          <td>Selected an open table, created a waiter dine-in order, sent it to KDS, moved every item preparing then ready, sent the order to cashier, and paid it.</td>
+          <td>Table=T4 Lounge; order #45; product=Fresh Lemon Mint; final_status=paid; payment_status=paid; total=4.75.</td>
+          <td><span class="status done">passed</span></td>
+        </tr>
+
+        <tr>
+          <td>Operations</td>
+          <td><strong>Customer pickup checkout and pay-at-counter</strong><br><span class="muted">Flutter customer + cashier API</span></td>
+          <td>Requested customer OTP, verified it, browsed Janova Restaurant, placed a takeaway pickup order, and settled it at cashier.</td>
+          <td>Customer phone=01022857349; order #46; branch=Alexandria; product=Angus Burger; total=15.5; payment_method=pay_at_counter.</td>
+          <td><span class="status done">passed</span></td>
+        </tr>
+
+        <tr>
+          <td>Owner</td>
+          <td><strong>Owner CSV export datasets</strong><br><span class="muted">Flutter owner + API</span></td>
+          <td>Requested every supported owner export dataset with an owner token.</td>
+          <td>products: HTTP 200, 5222 chars, header=&quot;id,restaurant_id,restaurant_name,branch_id,branch_name,category_id,category_name&quot;; customers: HTTP 200, 3289 chars, header=&quot;id,name,email,phone,loyalty_points,orders_count,last_order_at,phone_verified_at,&quot;; orders: HTTP 200, 8930 chars, header=&quot;id,restaurant_id,restaurant_name,branch_id,branch_name,table_id,table_name,custo&quot;; payments: HTTP 200, 3537 chars, header=&quot;id,order_id,restaurant_id,branch_id,customer_id,customer_name,method,provider,pr&quot;; receipts: HTTP 200, 1763 chars, header=&quot;id,receipt_number,order_id,restaurant_id,branch_id,customer_id,scope,payment_id,&quot;; inventory-items: HTTP 200, 4486 chars, header=&quot;id,restaurant_id,restaurant_name,branch_id,branch_name,product_id,product_name,i&quot;</td>
+          <td><span class="status done">passed</span></td>
+        </tr>
+
+        <tr>
+          <td>Hardware/offline foundation</td>
+          <td><strong>Sync metadata, device validation, print queue, and payment attempt foundation</strong><br><span class="muted">Flutter cashier + mobile API</span></td>
+          <td>Checked mobile sync offline metadata, rejected an unsafe printer endpoint, registered a safe printer device, queued/claimed/printed a print job, and created a cash payment attempt.</td>
+          <td>sync_state offline actions=create_order,send_to_kds,send_to_cashier,payment_attempt,pay_order,print_receipt,claim_print_job; conflict=server_updated_at_wins; invalid_printer_endpoint_http=422; valid_device_registered=live-receipt-printer-1781022858009; print_job #5 queued_claimed=5_printed; cash_payment_attempt=approved<div class="note">This proves the software foundation. It is not a physical hardware lab certification.</div></td>
+          <td><span class="status done">passed</span></td>
+        </tr>
+
+        <tr>
+          <td>Hardware/offline foundation</td>
+          <td><strong>Physical printer, cash drawer, tablet, and terminal certification</strong><br><span class="muted">External lab hardware</span></td>
+          <td>Checked repo/runtime support and software validation paths.</td>
+          <td>Blocked in this run because no physical receipt printer, kitchen printer, cash drawer, tablet fleet, or payment terminal was attached to this machine.<div class="note">Winning condition remains a lab matrix with exact device models, rush-hour print tests, drawer-open tests, terminal capture/refund tests, and failure escalation evidence.</div></td>
+          <td><span class="status wait">blocked</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>Live Screenshots</h2>
+    <div class="shots">
+
+        <a class="shot" href="../generated/live-solution-tests/dashboard-admin-login.png">
+          <img src="../generated/live-solution-tests/dashboard-admin-login.png" alt="dashboard-admin-login.png">
+          <span>dashboard-admin-login.png</span>
+        </a>
+
+        <a class="shot" href="../generated/live-solution-tests/flutter-cashier.png">
+          <img src="../generated/live-solution-tests/flutter-cashier.png" alt="flutter-cashier.png">
+          <span>flutter-cashier.png</span>
+        </a>
+
+        <a class="shot" href="../generated/live-solution-tests/flutter-waiter.png">
+          <img src="../generated/live-solution-tests/flutter-waiter.png" alt="flutter-waiter.png">
+          <span>flutter-waiter.png</span>
+        </a>
+
+        <a class="shot" href="../generated/live-solution-tests/flutter-kitchen.png">
+          <img src="../generated/live-solution-tests/flutter-kitchen.png" alt="flutter-kitchen.png">
+          <span>flutter-kitchen.png</span>
+        </a>
+
+        <a class="shot" href="../generated/live-solution-tests/flutter-owner.png">
+          <img src="../generated/live-solution-tests/flutter-owner.png" alt="flutter-owner.png">
+          <span>flutter-owner.png</span>
+        </a>
+
+        <a class="shot" href="../generated/live-solution-tests/flutter-customer.png">
+          <img src="../generated/live-solution-tests/flutter-customer.png" alt="flutter-customer.png">
+          <span>flutter-customer.png</span>
+        </a>
+    </div>
+  </section>
+</main>
+</body>
+</html>

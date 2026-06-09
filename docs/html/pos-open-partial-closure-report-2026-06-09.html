@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Janova POS Open And Partial Item Closure Report</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="layout">
+    <div class="hero">
+      <h1>Open And Partial Item Closure Report</h1>
+      <p>Status of the remaining checklist items after adding migration imports, commercial trust content, hardware/offline operating packs, and live browser scenario evidence.</p>
+      <div class="pill-row">
+        <span class="pill">Repo items closed</span>
+        <span class="pill">Live dry-runs added</span>
+        <span class="pill">External gates separated</span>
+      </div>
+    </div>
+
+    <h2 class="section-title">Closure Summary</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Previous Item</th>
+          <th>What Was Done</th>
+          <th>Evidence</th>
+          <th>Current Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Migration importers</td>
+          <td>Added the real Laravel command <code>pos:import-switching-csv</code> for categories, products, customers, inventory items, and opening balances.</td>
+          <td><a href="restaurant-suite-switching-import-pack.html">Switching Import Pack</a> and <a href="../import-templates/products.csv">CSV templates</a>.</td>
+          <td><span class="status good">Done</span></td>
+        </tr>
+        <tr>
+          <td>Commercial trust pages</td>
+          <td>Added buyer-facing pricing, support SLA, hardware ownership, payment policy, cancellation, onboarding, and data ownership content.</td>
+          <td><a href="restaurant-suite-commercial-trust-pages.html">Commercial Trust Pack</a> and <a href="restaurant-suite-pricing-hardware-egypt.html">pricing/hardware page</a>.</td>
+          <td><span class="status good">Done</span></td>
+        </tr>
+        <tr>
+          <td>Hardware certification prep</td>
+          <td>Added exact certification matrix, printer/drawer/terminal/tablet tests, offline rules, and shift-close rules.</td>
+          <td><a href="restaurant-suite-hardware-offline-lab-pack.html">Hardware And Offline Lab Pack</a>.</td>
+          <td><span class="status warn">Lab-ready</span></td>
+        </tr>
+        <tr>
+          <td>Offline/local-first mode</td>
+          <td>Documented queueable actions, client mutation IDs, sync replay policy, conflict rules, offline receipt numbering, and payment limits.</td>
+          <td><a href="restaurant-suite-hardware-offline-lab-pack.html">offline rules</a> and live report hardware/offline foundation checks.</td>
+          <td><span class="status warn">Certification gate</span></td>
+        </tr>
+        <tr>
+          <td>Payment terminal capture</td>
+          <td>Captured software readiness around provider configuration, terminal-mode validation, payment attempts, provider references, failure handling, refunds, and settlement rules.</td>
+          <td><a href="restaurant-suite-hardware-offline-lab-pack.html">terminal lab matrix</a> and backend payment tests.</td>
+          <td><span class="status warn">Provider certification gate</span></td>
+        </tr>
+        <tr>
+          <td>Flutter integration tests</td>
+          <td>Live Chrome runner launches the dashboard plus cashier, waiter, kitchen, owner, and customer Flutter web targets, then records screenshots and scenario results.</td>
+          <td><a href="pos-live-solution-scenario-report-2026-06-09.html">Live Solution Scenario Report</a>.</td>
+          <td><span class="status good">Done</span></td>
+        </tr>
+        <tr>
+          <td>Cash drawer, shift close, tips, service charge, and tip-out</td>
+          <td>Added operating rules to the hardware/offline lab pack so pilots have clear day-close acceptance criteria.</td>
+          <td><a href="restaurant-suite-hardware-offline-lab-pack.html">shift close rules</a>.</td>
+          <td><span class="status warn">Pilot hardening</span></td>
+        </tr>
+        <tr>
+          <td>Advanced kitchen routing</td>
+          <td>KDS is live-tested; station routing and rush printer recovery are now explicit lab acceptance criteria.</td>
+          <td><a href="restaurant-suite-hardware-offline-lab-pack.html">kitchen printer/KDS matrix</a>.</td>
+          <td><span class="status warn">Station lab next</span></td>
+        </tr>
+        <tr>
+          <td>Online ordering payments and notifications</td>
+          <td>Customer pickup is live-tested; online payment and SMS/email/WhatsApp notifications are now provider-dependent gates, not untracked checklist gaps.</td>
+          <td><a href="pos-live-solution-scenario-report-2026-06-09.html">customer app OTP/pickup scenario</a>.</td>
+          <td><span class="status warn">Provider setup next</span></td>
+        </tr>
+        <tr>
+          <td>Loyalty, gift cards, and campaigns</td>
+          <td>Loyalty foundation is present in customer import and customer data. Gift card and campaign packaging remains a post-pilot expansion.</td>
+          <td><a href="restaurant-suite-switching-import-pack.html">customer import template</a>.</td>
+          <td><span class="status warn">Post-pilot expansion</span></td>
+        </tr>
+        <tr>
+          <td>Accounting, payroll, and marketplace integrations</td>
+          <td>Owner CSV export foundation exists for accountants, BI, and offboarding; partner-specific APIs/webhooks remain future integration work.</td>
+          <td><a href="pos-live-solution-scenario-report-2026-06-09.html">owner export scenario</a>.</td>
+          <td><span class="status warn">Partner certification next</span></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2 class="section-title">Commands Rechecked</h2>
+    <div class="card">
+      <pre><code>php artisan pos:import-switching-csv categories docs/import-templates/categories.csv --restaurant_id=1 --branch_id=6 --dry-run
+php artisan pos:import-switching-csv products docs/import-templates/products.csv --restaurant_id=1 --branch_id=6 --dry-run
+php artisan pos:import-switching-csv customers docs/import-templates/customers.csv --restaurant_id=1 --dry-run
+php artisan pos:import-switching-csv inventory-items docs/import-templates/inventory-items.csv --restaurant_id=1 --branch_id=6 --dry-run
+php artisan pos:import-switching-csv opening-balances docs/import-templates/opening-balances.csv --restaurant_id=1 --branch_id=6 --dry-run
+node docs/scripts/run_live_solution_scenarios.mjs
+php artisan test</code></pre>
+    </div>
+
+    <div class="note">
+      <strong>Remaining dependency:</strong> No local code change can honestly complete physical printer, drawer, terminal, tablet fleet, or acquirer certification without the actual devices and credentials. Those are now tracked as external gates with acceptance criteria instead of open product work.
+    </div>
+  </div>
+</body>
+</html>

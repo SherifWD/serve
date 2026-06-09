@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Janova Suite Hardware And Offline Lab Pack</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="layout">
+    <div class="hero">
+      <h1>Hardware And Offline Lab Pack</h1>
+      <p>Certification matrix, offline rules, payment terminal capture rules, print queue tests, and day-close operating checks.</p>
+      <div class="pill-row">
+        <span class="pill">Printers</span>
+        <span class="pill">Cash drawers</span>
+        <span class="pill">Terminals</span>
+        <span class="pill">Offline queue</span>
+        <span class="pill">Shift close</span>
+      </div>
+    </div>
+
+    <h2 class="section-title">Software Foundation Already Proven</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Foundation</th>
+          <th>Evidence In Repo</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Payment provider configuration</td>
+          <td>Provider configs, terminal-mode validation, payment attempts, provider reference capture, and failed-provider validation tests.</td>
+          <td><span class="status good">Done</span></td>
+        </tr>
+        <tr>
+          <td>Print queue</td>
+          <td>Server print jobs can be queued, claimed by a branch device, moved to printed, and rejected for unsafe endpoints.</td>
+          <td><span class="status good">Done</span></td>
+        </tr>
+        <tr>
+          <td>Offline metadata</td>
+          <td><code>/api/mobile/sync/state</code> exposes queueable actions, conflict policy, mutation id header, polling intervals, and realtime fallback config.</td>
+          <td><span class="status good">Done</span></td>
+        </tr>
+        <tr>
+          <td>Idempotency</td>
+          <td>Mobile client mutation IDs prevent duplicate payment replay in tests.</td>
+          <td><span class="status good">Done</span></td>
+        </tr>
+        <tr>
+          <td>Cash drawer and branch settings</td>
+          <td>Branch operation settings include cash drawer and receipt printer validation paths.</td>
+          <td><span class="status good">Done</span></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2 class="section-title">Certification Matrix</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Device Class</th>
+          <th>Required Lab Test</th>
+          <th>Pass Criteria</th>
+          <th>Local Repo Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Receipt printer</td>
+          <td>100 receipt jobs, reprint last receipt, failed endpoint retry, PDF fallback.</td>
+          <td>99 percent printed within target time, failed job visible in support ops, no duplicate receipt numbers.</td>
+          <td>Software queue passed. Physical model test required.</td>
+        </tr>
+        <tr>
+          <td>Kitchen printer/KDS</td>
+          <td>Rush-hour ticket stream, modifiers/notes, returned item, station queue recovery.</td>
+          <td>Ticket data is complete, lane state recovers after refresh, staff can bump ready/served.</td>
+          <td>KDS live browser and API passed. Station/device lab required.</td>
+        </tr>
+        <tr>
+          <td>Cash drawer</td>
+          <td>Drawer-open command through printer profile, manual no-sale open, close shift cash count.</td>
+          <td>Every drawer action is tied to user, shift, device, and variance note.</td>
+          <td>Settings and software model present. Physical drawer test required.</td>
+        </tr>
+        <tr>
+          <td>Payment terminal</td>
+          <td>Approved, declined, cancelled, timeout, duplicate capture, refund, settlement export.</td>
+          <td>Terminal reference recorded, failed attempts are visible, settlement reconciles to payments.</td>
+          <td>Payment attempt foundation passed. Acquirer/provider certification required.</td>
+        </tr>
+        <tr>
+          <td>Tablet fleet</td>
+          <td>Login, role pinning, refresh, battery/network loss, kiosk reset, browser compatibility.</td>
+          <td>Each role app can run a full shift without stale sessions or layout breakage.</td>
+          <td>Chrome Flutter web passed. Device fleet test required.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2 class="section-title">Offline And Day-Close Rules</h2>
+    <div class="grid two">
+      <div class="card">
+        <h3>Offline Rules</h3>
+        <ul>
+          <li>Queue order creation, KDS handoff, cashier handoff, payment attempts, pay order, print receipt, and print-job claim actions with client mutation IDs.</li>
+          <li>Use server <code>updated_at</code> as conflict winner unless the cashier explicitly resolves a difference.</li>
+          <li>Do not queue card captures unless the active provider explicitly permits offline authorization.</li>
+          <li>Use local receipt preview numbers until server receipt number is confirmed.</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>Shift Close Rules</h3>
+        <ul>
+          <li>Open shift with user, branch, device, opening cash, and note.</li>
+          <li>Close shift with expected cash, counted cash, variance, tips, service charge, and manager approval note.</li>
+          <li>Export payments, receipts, and cash drawer events with the end-of-day pack.</li>
+          <li>Escalate any failed print jobs, uncaptured attempts, or offline mutations before final close.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="note">
+      <strong>Status:</strong> The software foundation is done and live-tested. Full certification is complete only after physical devices and provider credentials are tested in a branch/lab matrix.
+    </div>
+  </div>
+</body>
+</html>

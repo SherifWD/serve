@@ -27,10 +27,10 @@
         }
         .solution-logo {
             display: block;
-            height: 32px;
+            height: 34px;
             margin: 0 auto;
             object-fit: contain;
-            width: 98px;
+            width: 128px;
         }
         .merchant-mark,
         .solution-mark {
@@ -137,7 +137,7 @@
         ? ($logoIsExternal ? $logoUrl : public_path(ltrim($logoUrl, '/')))
         : null;
     $logoAvailable = $logoSource && ($logoIsExternal || file_exists($logoSource));
-    $solutionLogoSource = public_path('images/janova-suite-logo.svg');
+    $solutionLogoSource = public_path('images/janova-serve-pos-logo.svg');
     $initials = collect(explode(' ', $restaurantName))
         ->map(fn ($part) => mb_substr($part, 0, 1))
         ->filter()
@@ -265,9 +265,9 @@
         <div class="copy">Approved<br>Thank You<br>Customer Copy</div>
         <div class="rule"></div>
         @if(file_exists($solutionLogoSource))
-            <img class="solution-logo" src="{{ $solutionLogoSource }}" alt="Janova Suite">
+            <img class="solution-logo" src="{{ $solutionLogoSource }}" alt="Janova Serve POS">
         @else
-            <div class="solution-mark">Janova Suite</div>
+            <div class="solution-mark">Janova Serve POS</div>
         @endif
     </div>
 </div>
