@@ -60,6 +60,19 @@
             density="comfortable"
             style="border-radius:1.5rem;overflow:hidden;"
           >
+            <template #item.branches="{ item }">
+              <div class="d-flex flex-wrap ga-1">
+                <v-chip
+                  v-for="stock in item.ingredient_branches ?? []"
+                  :key="stock.branch_id"
+                  color="primary"
+                  size="small"
+                  text-color="white"
+                >
+                  {{ branchName(stock.branch_id) }}: {{ stock.stock }} {{ item.unit }}
+                </v-chip>
+              </div>
+            </template>
             <template #item.actions="{ item }">
               <v-btn icon color="accent" class="rounded-xl" @click="openEditDrawer(item)"><v-icon>mdi-pencil</v-icon></v-btn>
               <v-btn icon color="red" class="rounded-xl" @click="deleteIngredient(item)"><v-icon>mdi-delete</v-icon></v-btn>
@@ -97,19 +110,38 @@
           <v-window-item value="general">
             <v-form class="pa-6">
               <v-text-field label="Name" v-model="form.name" required variant="outlined" color="primary" class="mb-4" />
-              <v-text-field label="Unit" v-model="form.unit" required variant="outlined" color="primary" class="mb-4" />
-              <v-text-field
-                label="Global Stock"
-                v-model="form.stock"
-                type="number"
-                min="0"
-                variant="outlined"
+              <v-select label="Minimum Unit" v-model="form.unit" :items="minimumUnitItems" required variant="outlined" color="primary" class="mb-4" @update:model-value="onBaseUnitChange" />
+              <div class="stock-row">
+                <v-text-field
+                  label="Global Stock"
+                  v-model="form.stock"
+                  type="number"
+                  min="0"
+                  variant="outlined"
+                  color="primary"
+                  class="mb-4"
+                  :error="!!globalStockError"
+                  :error-messages="globalStockError"
+                  @blur="onGlobalStockChange"
+                  @input="onGlobalStockChange"
+                />
+                <v-select
+                  label="Unit"
+                  v-model="form.stock_unit"
+                  :items="quantityUnitItems(form.unit)"
+                  variant="outlined"
+                  color="primary"
+                  class="mb-4 stock-unit"
+                  @update:model-value="onGlobalStockChange"
+                />
+              </div>
+              <v-switch
+                v-model="form.distribute_equally"
+                label="Equal distribution across selected branches"
                 color="primary"
+                inset
                 class="mb-4"
-                :error="!!globalStockError"
-                :error-messages="globalStockError"
-                @blur="validateGlobalStock"
-                @input="validateGlobalStock"
+                @update:model-value="applyEqualDistribution"
               />
               <v-alert v-if="globalStockError" type="error" variant="outlined" class="mb-2">
                 {{ globalStockError }}
@@ -131,10 +163,25 @@
             <v-form class="pa-6">
               <div v-if="form.stock">
                 <span class="text-caption" style="color:#d32f2f;">
-                  Total branch stock: <b>{{ branchStockSum }}</b> / <b>{{ Number(form.stock) || 0 }}</b>
+                  Total branch stock: <b>{{ branchStockSum }}</b> / <b>{{ globalStockBase }}</b> {{ form.unit }}
                   <span v-if="branchStockError" style="color:#d32f2f; margin-left: 1em;">{{ branchStockError }}</span>
                 </span>
               </div>
+              <v-select
+                label="Branches"
+                v-model="form.branch_ids"
+                :items="branches"
+                item-title="name"
+                item-value="id"
+                multiple
+                chips
+                closable-chips
+                clearable
+                variant="outlined"
+                color="primary"
+                class="mb-4"
+                @update:model-value="onSelectedBranchesChange"
+              />
               <v-select
                 label="Add to Branch"
                 v-model="branchIngredient.branch_id"
@@ -156,14 +203,23 @@
                 class="mb-2"
                 :disabled="!branchIngredient.branch_id"
               />
+              <v-select
+                label="Unit"
+                v-model="branchIngredient.unit"
+                :items="quantityUnitItems(form.unit)"
+                variant="outlined"
+                color="primary"
+                class="mb-2"
+                :disabled="!branchIngredient.branch_id"
+              />
               <v-alert v-if="branchStockError" type="error" variant="outlined" class="mb-2">
                 {{ branchStockError }}
               </v-alert>
-              <v-btn color="primary" type="button" class="mb-3" :disabled="!branchIngredient.branch_id" @click="addBranchStock">Add/Update Branch Stock</v-btn>
+              <v-btn color="primary" type="button" class="mb-3" :disabled="!branchIngredient.branch_id" @click="addBranchStock">Add Branch Stock</v-btn>
               <v-list two-line>
                 <v-list-item v-for="ib in form.ingredient_branches ?? []" :key="ib.branch_id">
                   <v-list-item-title>{{ branchName(ib.branch_id) }}</v-list-item-title>
-                  <v-list-item-subtitle>Stock: {{ ib.stock }}</v-list-item-subtitle>
+                  <v-list-item-subtitle>Stock: {{ ib.stock }} {{ form.unit }}</v-list-item-subtitle>
                   <template #append>
                     <v-btn icon color="red" @click="removeBranchStock(ib.branch_id)">
                       <v-icon>mdi-delete</v-icon>
@@ -179,7 +235,7 @@
             <v-form class="pa-6">
               <div v-if="form.stock">
                 <span class="text-caption" style="color:#d32f2f;">
-                  Assigned to recipes: <b>{{ recipeQtySum }}</b> / <b>{{ Number(form.stock) || 0 }}</b>
+                  Assigned to recipes: <b>{{ recipeQtySum }}</b> / <b>{{ globalStockBase }}</b> {{ form.unit }}
                   <span v-if="recipeQtyError" style="color:#d32f2f; margin-left: 1em;">{{ recipeQtyError }}</span>
                 </span>
               </div>
@@ -218,6 +274,15 @@
                 v-model="recipeIngredient.quantity"
                 type="number"
                 min="0"
+                variant="outlined"
+                color="primary"
+                class="mb-2"
+                :disabled="!recipeIngredient.recipe_id"
+              />
+              <v-select
+                label="Unit"
+                v-model="recipeIngredient.unit"
+                :items="quantityUnitItems(form.unit)"
                 variant="outlined"
                 color="primary"
                 class="mb-2"
@@ -275,21 +340,27 @@ const form = ref({
   id: null,
   name: '',
   unit: '',
+  stock_unit: '',
   stock: 0,
+  branch_ids: [],
+  distribute_equally: false,
   ingredient_branches: [],
   recipe_ingredients: [],
 })
 
-const branchIngredient = ref({ branch_id: null, stock: 0 })
-const recipeIngredient = ref({ recipe_id: null, quantity: '' })
+const branchIngredient = ref({ branch_id: null, stock: 0, unit: '' })
+const recipeIngredient = ref({ recipe_id: null, quantity: '', unit: '' })
 
 const headers = [
   { title: 'Name', value: 'name' },
   { title: 'Unit', value: 'unit' },
   { title: 'Global Stock', value: 'stock' },
+  { title: 'Branches', value: 'branches', sortable: false },
   { title: 'Minimum Stock', value: 'min_stock' },
   { title: 'Actions', value: 'actions', sortable: false }
 ]
+
+const minimumUnitItems = ['g', 'ml', 'pc']
 
 const unitItems = computed(() =>
   [...new Set(ingredients.value.map(ingredient => ingredient.unit).filter(Boolean))].sort()
@@ -383,6 +454,9 @@ function recipeIngredientSummary(recipe) {
 }
 
 // --- Sums for validation ---
+const globalStockBase = computed(() =>
+  convertQuantity(Number(form.value.stock || 0), form.value.stock_unit || form.value.unit, form.value.unit)
+)
 const branchStockSum = computed(() =>
   (form.value.ingredient_branches ?? []).reduce((sum, ib) => sum + Number(ib.stock), 0)
 )
@@ -398,15 +472,85 @@ function validateGlobalStock() {
     globalStockError.value = 'Global stock must be a non-negative number'
     return false
   }
-  if (branchStockSum.value > stock) {
-    globalStockError.value = `Cannot set global stock (${stock}) less than sum of branch stocks (${branchStockSum.value})`
+  if (branchStockSum.value > globalStockBase.value) {
+    globalStockError.value = `Cannot set global stock (${globalStockBase.value}) less than sum of branch stocks (${branchStockSum.value})`
     return false
   }
-  if (recipeQtySum.value > stock) {
-    globalStockError.value = `Cannot set global stock (${stock}) less than sum of assigned to recipes (${recipeQtySum.value})`
+  if (recipeQtySum.value > globalStockBase.value) {
+    globalStockError.value = `Cannot set global stock (${globalStockBase.value}) less than sum of assigned to recipes (${recipeQtySum.value})`
     return false
   }
   return true
+}
+
+function quantityUnitItems(baseUnit) {
+  if (baseUnit === 'g') return ['g', 'kg']
+  if (baseUnit === 'ml') return ['ml', 'l']
+  if (baseUnit === 'pc') return ['pc']
+  return baseUnit ? [baseUnit] : []
+}
+
+function convertQuantity(quantity, fromUnit, toUnit) {
+  if (!quantity || !fromUnit || !toUnit || fromUnit === toUnit) return Number(quantity || 0)
+
+  const factors = {
+    mg: { dimension: 'weight', factor: 0.001 },
+    g: { dimension: 'weight', factor: 1 },
+    kg: { dimension: 'weight', factor: 1000 },
+    ml: { dimension: 'volume', factor: 1 },
+    l: { dimension: 'volume', factor: 1000 },
+    pc: { dimension: 'count', factor: 1 },
+  }
+  const from = factors[fromUnit]
+  const to = factors[toUnit]
+  if (!from || !to || from.dimension !== to.dimension) return Number(quantity || 0)
+  return Math.round(((Number(quantity) * from.factor) / to.factor) * 1000) / 1000
+}
+
+function onGlobalStockChange() {
+  if (form.value.distribute_equally) applyEqualDistribution()
+  validateGlobalStock()
+}
+
+function onBaseUnitChange() {
+  form.value.stock_unit = form.value.unit
+  branchIngredient.value.unit = form.value.unit
+  recipeIngredient.value.unit = form.value.unit
+  validateGlobalStock()
+}
+
+function onSelectedBranchesChange() {
+  form.value.ingredient_branches = (form.value.ingredient_branches ?? [])
+    .filter(stock => form.value.branch_ids.map(Number).includes(Number(stock.branch_id)))
+
+  form.value.branch_ids.forEach((branchId) => {
+    const exists = form.value.ingredient_branches.some(stock => Number(stock.branch_id) === Number(branchId))
+    if (!exists) {
+      form.value.ingredient_branches.push({ branch_id: branchId, stock: 0 })
+    }
+  })
+
+  if (form.value.distribute_equally) applyEqualDistribution()
+  validateGlobalStock()
+}
+
+function applyEqualDistribution() {
+  if (!form.value.distribute_equally || !form.value.branch_ids.length) return
+
+  const total = globalStockBase.value
+  const branchIds = form.value.branch_ids.map(Number)
+  const perBranch = Math.floor((total / branchIds.length) * 100) / 100
+  let assigned = 0
+
+  form.value.ingredient_branches = branchIds.map((branchId, index) => {
+    const amount = index === branchIds.length - 1
+      ? Math.round((total - assigned) * 100) / 100
+      : Math.round(perBranch * 100) / 100
+    assigned += amount
+    return { branch_id: branchId, stock: amount }
+  })
+
+  validateGlobalStock()
 }
 
 // --- Data fetch ---
@@ -439,13 +583,16 @@ function openAddDrawer() {
   form.value = {
     id: null,
     name: '',
-    unit: '',
+    unit: 'g',
+    stock_unit: 'g',
     stock: 0,
+    branch_ids: branches.value.length === 1 ? [branches.value[0].id] : [],
+    distribute_equally: false,
     ingredient_branches: [],
     recipe_ingredients: [],
   }
-  branchIngredient.value = { branch_id: null, stock: 0 }
-  recipeIngredient.value = { recipe_id: null, quantity: '' }
+  branchIngredient.value = { branch_id: null, stock: 0, unit: form.value.unit }
+  recipeIngredient.value = { recipe_id: null, quantity: '', unit: form.value.unit }
   globalStockError.value = ''
   branchStockError.value = ''
   recipeQtyError.value = ''
@@ -456,11 +603,14 @@ function openEditDrawer(item) {
   tab.value = 'general'
   form.value = {
     ...JSON.parse(JSON.stringify(item)),
+    stock_unit: item.unit,
+    branch_ids: (item.ingredient_branches ?? []).map(stock => stock.branch_id),
+    distribute_equally: false,
     ingredient_branches: item.ingredient_branches ?? [],
     recipe_ingredients: item.recipe_ingredients ?? [],
   }
-  branchIngredient.value = { branch_id: null, stock: 0 }
-  recipeIngredient.value = { recipe_id: null, quantity: '' }
+  branchIngredient.value = { branch_id: null, stock: 0, unit: form.value.unit }
+  recipeIngredient.value = { recipe_id: null, quantity: '', unit: form.value.unit }
   globalStockError.value = ''
   branchStockError.value = ''
   recipeQtyError.value = ''
@@ -481,28 +631,34 @@ function addBranchStock() {
   if (!branchIngredient.value.branch_id) return
   const newStock = Number(branchIngredient.value.stock)
   if (isNaN(newStock) || newStock < 0) return
+  const convertedStock = convertQuantity(newStock, branchIngredient.value.unit || form.value.unit, form.value.unit)
   const otherBranches = form.value.ingredient_branches.filter(
-    ib => ib.branch_id !== branchIngredient.value.branch_id
+    ib => Number(ib.branch_id) !== Number(branchIngredient.value.branch_id)
   )
-  const totalIfAdd = otherBranches.reduce((sum, ib) => sum + Number(ib.stock), 0) + newStock
-  if (form.value.stock && totalIfAdd > Number(form.value.stock)) {
-    branchStockError.value = `Sum for all branches (${totalIfAdd}) can't exceed global stock (${form.value.stock})`
+  const existing = form.value.ingredient_branches.find(ib => Number(ib.branch_id) === Number(branchIngredient.value.branch_id))
+  const nextStock = Number(existing?.stock ?? 0) + convertedStock
+  const totalIfAdd = otherBranches.reduce((sum, ib) => sum + Number(ib.stock), 0) + nextStock
+  if (form.value.stock && totalIfAdd > globalStockBase.value) {
+    branchStockError.value = `Sum for all branches (${totalIfAdd}) can't exceed global stock (${globalStockBase.value})`
     return
   }
-  const existing = form.value.ingredient_branches.find(ib => ib.branch_id === branchIngredient.value.branch_id)
   if (existing) {
-    existing.stock = newStock
+    existing.stock = Math.round(nextStock * 1000) / 1000
   } else {
     form.value.ingredient_branches.push({
       branch_id: branchIngredient.value.branch_id,
-      stock: newStock
+      stock: convertedStock
     })
   }
-  branchIngredient.value = { branch_id: null, stock: 0 }
+  if (!form.value.branch_ids.map(Number).includes(Number(branchIngredient.value.branch_id))) {
+    form.value.branch_ids.push(branchIngredient.value.branch_id)
+  }
+  branchIngredient.value = { branch_id: null, stock: 0, unit: form.value.unit }
   validateGlobalStock()
 }
 function removeBranchStock(branch_id) {
-  form.value.ingredient_branches = form.value.ingredient_branches.filter(ib => ib.branch_id !== branch_id)
+  form.value.ingredient_branches = form.value.ingredient_branches.filter(ib => Number(ib.branch_id) !== Number(branch_id))
+  form.value.branch_ids = form.value.branch_ids.filter(id => Number(id) !== Number(branch_id))
   validateGlobalStock()
 }
 
@@ -513,24 +669,25 @@ function addRecipeIngredient() {
   if (!recipeIngredient.value.recipe_id) return
   const newQty = Number(recipeIngredient.value.quantity)
   if (isNaN(newQty) || newQty < 0) return
+  const convertedQty = convertQuantity(newQty, recipeIngredient.value.unit || form.value.unit, form.value.unit)
   const otherRecipes = form.value.recipe_ingredients.filter(
     ri => Number(ri.recipe_id) !== Number(recipeIngredient.value.recipe_id)
   )
-  const totalIfAdd = otherRecipes.reduce((sum, ri) => sum + Number(ri.quantity), 0) + newQty
-  if (form.value.stock && totalIfAdd > Number(form.value.stock)) {
-    recipeQtyError.value = `Sum for all recipe assignments (${totalIfAdd}) can't exceed global stock (${form.value.stock})`
+  const totalIfAdd = otherRecipes.reduce((sum, ri) => sum + Number(ri.quantity), 0) + convertedQty
+  if (form.value.stock && totalIfAdd > globalStockBase.value) {
+    recipeQtyError.value = `Sum for all recipe assignments (${totalIfAdd}) can't exceed global stock (${globalStockBase.value})`
     return
   }
   const existing = form.value.recipe_ingredients.find(ri => Number(ri.recipe_id) === Number(recipeIngredient.value.recipe_id))
   if (existing) {
-    existing.quantity = newQty
+    existing.quantity = convertedQty
   } else {
     form.value.recipe_ingredients.push({
       recipe_id: Number(recipeIngredient.value.recipe_id),
-      quantity: newQty
+      quantity: convertedQty
     })
   }
-  recipeIngredient.value = { recipe_id: null, quantity: '' }
+  recipeIngredient.value = { recipe_id: null, quantity: '', unit: form.value.unit }
   validateGlobalStock()
 }
 function removeRecipeIngredient(recipe_id) {
@@ -545,20 +702,35 @@ async function saveIngredient() {
   }
   saving.value = true
   const token = localStorage.getItem('token')
-  const payload = { ...form.value }
-  let response
-  if (isEditing.value) {
-    response = await axios.put(`${API_BASE_URL}/ingredients/${payload.id}`, payload, {
-      headers: { Authorization: `Bearer ${token}` }
-    })
-  } else {
-    response = await axios.post(`${API_BASE_URL}/ingredients`, payload, {
-      headers: { Authorization: `Bearer ${token}` }
-    })
+  const payload = {
+    ...form.value,
+    ingredient_branches: (form.value.ingredient_branches ?? []).map(stock => ({
+      branch_id: stock.branch_id,
+      stock: Number(stock.stock),
+      unit: form.value.unit,
+    })),
+    recipe_ingredients: (form.value.recipe_ingredients ?? []).map(row => ({
+      recipe_id: row.recipe_id,
+      quantity: Number(row.quantity),
+      unit: form.value.unit,
+    })),
   }
-  saving.value = false
-  drawer.value = false
-  fetchIngredients()
+
+  try {
+    if (isEditing.value) {
+      await axios.put(`${API_BASE_URL}/ingredients/${payload.id}`, payload, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+    } else {
+      await axios.post(`${API_BASE_URL}/ingredients`, payload, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+    }
+    drawer.value = false
+    fetchIngredients()
+  } finally {
+    saving.value = false
+  }
 }
 
 onMounted(() => {
@@ -581,5 +753,13 @@ onMounted(() => {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
+}
+.stock-row {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: minmax(0, 1fr) 120px;
+}
+.stock-unit {
+  min-width: 0;
 }
 </style>

@@ -8,8 +8,9 @@ use App\Models\Branch;
 use App\Models\Category;
 use App\Models\Modifier;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Validation\ValidationException;
+use Illuminate\Support\Str;
 
 class CategoryController extends Controller
 {
@@ -20,11 +21,9 @@ class CategoryController extends Controller
         $categories = $this->categoryQueryForUser($request)
             ->with($this->categoryRelations())
             ->orderBy('name')
-            ->get()
-            ->unique(fn (Category $category) => mb_strtolower(trim($category->name)))
-            ->values();
+            ->get();
 
-        return response()->json(['data' => $categories]);
+        return response()->json(['data' => $this->groupForDashboard($categories)->values()]);
     }
 
     public function store(Request $request)
@@ -32,6 +31,8 @@ class CategoryController extends Controller
         $data = $request->validate([
             'name' => 'required|string|max:255',
             'branch_id' => 'nullable|integer|exists:branches,id',
+            'branch_ids' => 'nullable|array',
+            'branch_ids.*' => 'integer|exists:branches,id',
             'questions' => 'nullable|array',
             'questions.*.id' => 'nullable|integer|exists:category_questions,id',
             'questions.*.question' => 'nullable|string|max:255',
@@ -45,60 +46,56 @@ class CategoryController extends Controller
             'modifiers.*.name' => 'nullable|string|max:255',
             'modifiers.*.price' => 'nullable|numeric|min:0',
         ]);
+        $branchIds = $this->branchIdsForWrite(
+            $request,
+            $data['branch_ids'] ?? null,
+            isset($data['branch_id']) ? (int) $data['branch_id'] : null,
+        );
         $questions = $data['questions'] ?? null;
         $modifiers = $data['modifiers'] ?? null;
-        unset($data['questions'], $data['modifiers']);
+        unset($data['questions'], $data['modifiers'], $data['branch_ids'], $data['branch_id']);
 
         $data['name'] = trim($data['name']);
-        if (!empty($data['branch_id'])) {
-            $data['branch_id'] = $this->branchIdForWrite($request, (int) $data['branch_id']);
-        } else {
-            $data['branch_id'] = null;
-        }
+        $groupId = (string) Str::uuid();
 
-        $user = $request->user();
-        $existingQuery = $user?->isPlatformAdmin()
-            ? Category::query()
-            : $this->categoryQueryForUser($request);
+        $categories = DB::transaction(function () use ($data, $branchIds, $groupId, $questions, $modifiers) {
+            $saved = collect();
 
-        $existing = $existingQuery
-            ->whereRaw('LOWER(name) = ?', [mb_strtolower($data['name'])])
-            ->first();
+            foreach ($branchIds as $branchId) {
+                $category = Category::query()
+                    ->where('branch_id', $branchId)
+                    ->whereRaw('LOWER(name) = ?', [mb_strtolower($data['name'])])
+                    ->first();
 
-        if ($existing) {
-            DB::transaction(function () use ($existing, $questions, $modifiers) {
+                $category ??= new Category();
+                $category->fill($data);
+                $category->branch_id = $branchId;
+                $category->branch_group_id = $category->branch_group_id ?: $groupId;
+                $category->save();
+
                 if ($questions !== null) {
-                    $this->syncQuestions($existing, $questions);
+                    $this->syncQuestions($category, $questions);
                 }
                 if ($modifiers !== null) {
-                    $this->syncModifiers($existing, $modifiers);
+                    $this->syncModifiers($category, $modifiers);
                 }
-            });
 
-            return response()->json($existing->fresh()->load($this->categoryRelations()));
-        }
-
-        $category = DB::transaction(function () use ($data, $questions, $modifiers) {
-            $category = Category::create($data);
-
-            if ($questions !== null) {
-                $this->syncQuestions($category, $questions);
-            }
-            if ($modifiers !== null) {
-                $this->syncModifiers($category, $modifiers);
+                $saved->push($category);
             }
 
-            return $category;
+            return $saved;
         });
 
-        return response()->json($category->load($this->categoryRelations()), 201);
+        return response()->json($this->withBranchGroupMetadata($categories->first()->load($this->categoryRelations()), $request), 201);
     }
 
     public function show(Request $request, $id)
     {
-        return $this->categoryQueryForUser($request)
+        $category = $this->categoryQueryForUser($request)
             ->with($this->categoryRelations())
             ->findOrFail($id);
+
+        return $this->withBranchGroupMetadata($category, $request);
     }
 
     public function update(Request $request, $id)
@@ -107,6 +104,8 @@ class CategoryController extends Controller
         $data = $request->validate([
             'name' => 'string|max:255',
             'branch_id' => 'nullable|integer|exists:branches,id',
+            'branch_ids' => 'nullable|array',
+            'branch_ids.*' => 'integer|exists:branches,id',
             'questions' => 'nullable|array',
             'questions.*.id' => 'nullable|integer|exists:category_questions,id',
             'questions.*.question' => 'nullable|string|max:255',
@@ -122,41 +121,52 @@ class CategoryController extends Controller
         ]);
         $questions = $data['questions'] ?? null;
         $modifiers = $data['modifiers'] ?? null;
-        unset($data['questions'], $data['modifiers']);
+        $branchIds = $this->branchIdsForWrite(
+            $request,
+            $data['branch_ids'] ?? null,
+            isset($data['branch_id']) ? (int) $data['branch_id'] : (int) $category->branch_id,
+        );
+        unset($data['questions'], $data['modifiers'], $data['branch_ids'], $data['branch_id']);
 
         if (isset($data['name'])) {
             $data['name'] = trim($data['name']);
-            $duplicate = Category::query()
-                ->whereKeyNot($category->id)
-                ->whereRaw('LOWER(name) = ?', [mb_strtolower($data['name'])])
-                ->exists();
-
-            if ($duplicate) {
-                throw ValidationException::withMessages([
-                    'name' => 'Category names must be unique.',
-                ]);
-            }
         }
 
-        if (array_key_exists('branch_id', $data)) {
-            $data['branch_id'] = $data['branch_id'] === null
-                ? null
-                : $this->branchIdForWrite($request, (int) $data['branch_id']);
-        }
+        $groupId = $category->branch_group_id ?: (string) Str::uuid();
 
-        DB::transaction(function () use ($category, $data, $questions, $modifiers) {
-            $category->update($data);
-            $category->refresh();
-
-            if ($questions !== null) {
-                $this->syncQuestions($category, $questions);
+        DB::transaction(function () use ($category, $data, $branchIds, $groupId, $questions, $modifiers) {
+            if (! $category->branch_group_id) {
+                $category->branch_group_id = $groupId;
+                $category->save();
             }
-            if ($modifiers !== null) {
-                $this->syncModifiers($category, $modifiers);
+
+            foreach ($branchIds as $index => $branchId) {
+                $target = Category::query()
+                    ->where('branch_group_id', $groupId)
+                    ->where('branch_id', $branchId)
+                    ->first();
+
+                if (! $target) {
+                    $target = $index === 0 ? $category : new Category();
+                    $target->branch_id = $branchId;
+                    $target->branch_group_id = $groupId;
+                }
+
+                $target->fill($data);
+                $target->branch_id = $branchId;
+                $target->branch_group_id = $groupId;
+                $target->save();
+
+                if ($questions !== null) {
+                    $this->syncQuestions($target, $questions);
+                }
+                if ($modifiers !== null) {
+                    $this->syncModifiers($target, $modifiers);
+                }
             }
         });
 
-        return response()->json($category->fresh()->load($this->categoryRelations()));
+        return response()->json($this->withBranchGroupMetadata($category->fresh()->load($this->categoryRelations()), $request));
     }
 
     public function destroy(Request $request, $id)
@@ -320,6 +330,45 @@ class CategoryController extends Controller
         }
 
         $inactiveQuery->update(['is_active' => false]);
+    }
+
+    private function groupForDashboard(Collection $categories): Collection
+    {
+        return $categories
+            ->groupBy(fn (Category $category) => $category->branch_group_id ?: mb_strtolower(trim($category->name)))
+            ->map(function (Collection $group) {
+                $category = $group->first();
+                $branches = $group->pluck('branch')->filter()->unique('id')->values();
+
+                $category->setAttribute('branch_ids', $branches->pluck('id')->map(fn ($id) => (int) $id)->values()->all());
+                $category->setRelation('branches', $branches);
+
+                return $category;
+            });
+    }
+
+    private function withBranchGroupMetadata(Category $category, Request $request): Category
+    {
+        $siblingsQuery = Category::query()->with('branch.restaurant:id,name,kind');
+        $branchIds = $this->accessibleBranchIds($request);
+
+        if ($branchIds !== null) {
+            $siblingsQuery->whereIn('branch_id', $branchIds);
+        }
+
+        if ($category->branch_group_id) {
+            $siblingsQuery->where('branch_group_id', $category->branch_group_id);
+        } else {
+            $siblingsQuery->whereRaw('LOWER(name) = ?', [mb_strtolower(trim($category->name))]);
+        }
+
+        $siblings = $siblingsQuery->get();
+
+        $branches = $siblings->pluck('branch')->filter()->unique('id')->values();
+        $category->setAttribute('branch_ids', $branches->pluck('id')->map(fn ($id) => (int) $id)->values()->all());
+        $category->setRelation('branches', $branches);
+
+        return $category;
     }
 
     private function restaurantIdForCategory(Category $category): ?int

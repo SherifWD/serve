@@ -1240,6 +1240,174 @@ class MobileApiRegressionTest extends TestCase
         ]);
     }
 
+    public function test_dashboard_catalog_accepts_multi_branch_selection(): void
+    {
+        $admin = User::query()->where('email', 'admin@restaurant-suite.com')->firstOrFail();
+        $branches = Branch::query()
+            ->whereNotNull('restaurant_id')
+            ->whereIn('restaurant_id', function ($query) {
+                $query->select('restaurant_id')
+                    ->from('branches')
+                    ->whereNotNull('restaurant_id')
+                    ->groupBy('restaurant_id')
+                    ->havingRaw('COUNT(*) >= 2');
+            })
+            ->orderBy('id')
+            ->limit(2)
+            ->get();
+
+        $this->assertCount(2, $branches);
+        Sanctum::actingAs($admin);
+
+        $branchIds = $branches->pluck('id')->all();
+        $categoryId = $this->postJson('/api/categories', [
+            'name' => 'Regression Multi Branch Category',
+            'branch_id' => $branchIds[0],
+            'branch_ids' => $branchIds,
+        ])->assertCreated()
+            ->assertJsonCount(2, 'branch_ids')
+            ->json('id');
+
+        $this->assertSame(2, Category::query()
+            ->where('name', 'Regression Multi Branch Category')
+            ->whereIn('branch_id', $branchIds)
+            ->count());
+
+        $ingredient = Ingredient::query()->firstOrFail();
+        $recipeId = $this->postJson('/api/recipes', [
+            'description' => 'Regression multi branch recipe',
+            'branch_id' => $branchIds[0],
+            'branch_ids' => $branchIds,
+            'ingredients' => [
+                ['ingredient_id' => $ingredient->id, 'quantity' => 10, 'unit' => $ingredient->unit],
+            ],
+        ])->assertCreated()
+            ->assertJsonCount(2, 'branch_ids')
+            ->json('id');
+
+        $this->assertSame(2, Recipe::query()
+            ->where('description', 'Regression multi branch recipe')
+            ->whereIn('branch_id', $branchIds)
+            ->count());
+
+        $this->postJson('/api/products', [
+            'name' => 'Regression Multi Branch Product',
+            'category_id' => $categoryId,
+            'branch_id' => $branchIds[0],
+            'branch_ids' => $branchIds,
+            'price' => 42,
+            'is_available' => true,
+            'recipe_id' => $recipeId,
+        ])->assertCreated()
+            ->assertJsonCount(2, 'branch_ids');
+
+        $this->assertSame(2, Product::query()
+            ->where('name', 'Regression Multi Branch Product')
+            ->whereIn('branch_id', $branchIds)
+            ->count());
+    }
+
+    public function test_ingredient_stock_uses_minimum_units_distribution_and_additive_branch_updates(): void
+    {
+        $admin = User::query()->where('email', 'admin@restaurant-suite.com')->firstOrFail();
+        $branches = Branch::query()
+            ->whereNotNull('restaurant_id')
+            ->whereIn('restaurant_id', function ($query) {
+                $query->select('restaurant_id')
+                    ->from('branches')
+                    ->whereNotNull('restaurant_id')
+                    ->groupBy('restaurant_id')
+                    ->havingRaw('COUNT(*) >= 2');
+            })
+            ->orderBy('id')
+            ->limit(2)
+            ->get();
+
+        $this->assertCount(2, $branches);
+        Sanctum::actingAs($admin);
+
+        $branchIds = $branches->pluck('id')->all();
+        $ingredientId = $this->postJson('/api/ingredients', [
+            'name' => 'Regression Sugar Unit Stock',
+            'unit' => 'g',
+            'stock' => 2,
+            'stock_unit' => 'kg',
+            'branch_ids' => $branchIds,
+            'distribute_equally' => true,
+        ])->assertCreated()
+            ->assertJsonPath('unit', 'g')
+            ->assertJsonPath('stock', 2000)
+            ->json('id');
+
+        $this->assertSame(2000.0, (float) Ingredient::query()->findOrFail($ingredientId)->stock);
+        $this->assertSame(2000.0, (float) IngredientBranch::query()
+            ->where('ingredient_id', $ingredientId)
+            ->whereIn('branch_id', $branchIds)
+            ->sum('stock'));
+
+        $branchStockBefore = (float) IngredientBranch::query()
+            ->where('ingredient_id', $ingredientId)
+            ->where('branch_id', $branchIds[0])
+            ->value('stock');
+
+        $this->postJson('/api/ingredients/update-stock', [
+            'ingredient_id' => $ingredientId,
+            'branch_id' => $branchIds[0],
+            'stock' => 2,
+            'unit' => 'kg',
+        ])->assertOk();
+
+        $branchStockAfter = (float) IngredientBranch::query()
+            ->where('ingredient_id', $ingredientId)
+            ->where('branch_id', $branchIds[0])
+            ->value('stock');
+
+        $this->assertSame($branchStockBefore + 2000.0, $branchStockAfter);
+        $this->assertSame(4000.0, (float) Ingredient::query()->findOrFail($ingredientId)->stock);
+
+        $this->postJson('/api/ingredients', [
+            'name' => 'regression sugar unit stock',
+            'unit' => 'g',
+            'stock' => 1,
+            'stock_unit' => 'kg',
+            'branch_ids' => [$branchIds[0]],
+        ])->assertUnprocessable()
+            ->assertJsonValidationErrors(['name']);
+    }
+
+    public function test_recipe_quantities_are_saved_in_the_ingredient_minimum_unit(): void
+    {
+        $admin = User::query()->where('email', 'admin@restaurant-suite.com')->firstOrFail();
+        $branch = Branch::query()->whereNotNull('restaurant_id')->firstOrFail();
+        $ingredient = Ingredient::query()->create([
+            'name' => 'Regression Recipe Unit Ingredient',
+            'unit' => 'g',
+            'stock' => 2000,
+            'min_stock' => 0,
+        ]);
+
+        Sanctum::actingAs($admin);
+
+        $recipeId = $this->postJson('/api/recipes', [
+            'description' => 'Regression converted quantity recipe',
+            'branch_id' => $branch->id,
+            'ingredients' => [
+                [
+                    'ingredient_id' => $ingredient->id,
+                    'quantity' => 0.02,
+                    'unit' => 'kg',
+                ],
+            ],
+        ])->assertCreated()
+            ->json('id');
+
+        $this->assertDatabaseHas('recipe_ingredients', [
+            'recipe_id' => $recipeId,
+            'ingredient_id' => $ingredient->id,
+            'quantity' => 20,
+        ]);
+    }
+
     public function test_restaurant_owner_cannot_onboard_restaurants(): void
     {
         $owner = User::query()

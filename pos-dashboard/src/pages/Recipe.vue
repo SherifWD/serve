@@ -71,6 +71,19 @@
                 <span v-else class="text-caption" style="color:#aaa;">—</span>
               </div>
             </template>
+            <template #item.branches="{ item }">
+              <div class="d-flex flex-wrap ga-1">
+                <v-chip
+                  v-for="branch in recipeBranches(item)"
+                  :key="branch.id"
+                  color="primary"
+                  size="small"
+                  text-color="white"
+                >
+                  {{ branch.name }}
+                </v-chip>
+              </div>
+            </template>
             <template #item.actions="{ item }">
               <v-btn icon color="accent" class="rounded-xl" @click="openEditDrawer(item)"><v-icon>mdi-pencil</v-icon></v-btn>
               <v-btn icon color="red" class="rounded-xl" @click="deleteRecipe(item)"><v-icon>mdi-delete</v-icon></v-btn>
@@ -108,12 +121,15 @@
             {{ formError }}
           </v-alert>
           <v-select
-            label="Branch"
+            label="Branches"
             :items="branches"
             :item-title="branchTitle"
             item-value="id"
-            v-model="form.branch_id"
+            v-model="form.branch_ids"
             required
+            multiple
+            chips
+            closable-chips
             variant="outlined"
             color="primary"
             class="mb-4"
@@ -133,6 +149,7 @@
               dense outlined color="primary" class="mr-2"
               :menu-props="{ contentClass: 'dashboard-select-menu' }"
               required
+              @update:model-value="onIngredientChange(ing)"
             />
             <v-text-field
               v-model="ing.quantity"
@@ -143,8 +160,19 @@
               dense outlined color="primary" class="mr-2"
               required
             />
+            <v-select
+              v-model="ing.unit"
+              :items="quantityUnitItems(ing.ingredient_id)"
+              label="Unit"
+              style="max-width:105px"
+              dense
+              outlined
+              color="primary"
+              class="mr-2"
+              :disabled="!ing.ingredient_id"
+            />
             <span v-if="ingredientUnit(ing.ingredient_id)" class="text-caption" style="min-width:50px;color:#888;">
-              {{ ingredientUnit(ing.ingredient_id) }}
+              base {{ ingredientUnit(ing.ingredient_id) }}
             </span>
             <v-btn icon type="button" size="small" color="red" @click="removeIngredient(idx)">
               <v-icon>mdi-delete</v-icon>
@@ -182,14 +210,14 @@ const filters = ref({
 
 const form = ref({
   id: null,
-  branch_id: null,
+  branch_ids: [],
   description: '',
   ingredients: []
 })
 
 const headers = [
   { title: 'Description', value: 'description', width: '30%' },
-  { title: 'Branch', value: 'branch.name', width: '20%' },
+  { title: 'Branches', value: 'branches', width: '20%' },
   { title: 'Ingredients', value: 'ingredients', width: '50%' },
   { title: 'Actions', value: 'actions', sortable: false, width: '20%' }
 ]
@@ -199,23 +227,33 @@ const filteredRecipes = computed(() => {
 
   return recipes.value.filter(recipe =>
     matchesRecipeSearch(recipe, q) &&
-    (!filters.value.branch_id || Number(recipe.branch_id) === Number(filters.value.branch_id)) &&
+    (!filters.value.branch_id || recipeBranchIds(recipe).includes(Number(filters.value.branch_id))) &&
     (!filters.value.ingredient_id || (recipe.ingredients ?? []).some(ingredient => Number(ingredient.ingredient_id) === Number(filters.value.ingredient_id)))
   )
 })
 
 const canSaveRecipe = computed(() => {
   const hasDescription = Boolean(form.value.description.trim())
-  const hasBranch = Boolean(form.value.branch_id)
+  const hasBranch = form.value.branch_ids.length > 0
+  const ingredientIds = form.value.ingredients.map((ingredient) => Number(ingredient.ingredient_id)).filter(Boolean)
+  const noDuplicates = ingredientIds.length === new Set(ingredientIds).size
   const ingredientsAreValid = form.value.ingredients.every((ingredient) =>
     Boolean(ingredient.ingredient_id) && Number(ingredient.quantity) > 0
   )
 
-  return hasDescription && hasBranch && ingredientsAreValid
+  return hasDescription && hasBranch && ingredientsAreValid && noDuplicates
 })
 
 function ingredientUnit(ingredient_id) {
   return allIngredients.value.find(i => Number(i.id) === Number(ingredient_id))?.unit ?? ''
+}
+
+function quantityUnitItems(ingredientId) {
+  const base = ingredientUnit(ingredientId)
+  if (base === 'g') return ['g', 'kg']
+  if (base === 'ml') return ['ml', 'l']
+  if (base === 'pc') return ['pc']
+  return base ? [base] : []
 }
 
 function branchTitle(branch) {
@@ -229,7 +267,7 @@ function matchesRecipeSearch(recipe, query) {
   if (!query) return true
 
   return (recipe.description || '').toLowerCase().includes(query) ||
-    (recipe.branch?.name || '').toLowerCase().includes(query) ||
+    recipeBranches(recipe).some(branch => branch.name.toLowerCase().includes(query)) ||
     (recipe.ingredients ?? []).some(ingredient => ingredient.name.toLowerCase().includes(query))
 }
 
@@ -286,7 +324,8 @@ function defaultBranchId() {
 function openAddDrawer() {
   isEditing.value = false
   formError.value = ''
-  form.value = { id: null, branch_id: defaultBranchId(), description: '', ingredients: [] }
+  const defaultBranch = defaultBranchId()
+  form.value = { id: null, branch_ids: defaultBranch ? [defaultBranch] : [], description: '', ingredients: [] }
   drawer.value = true
 }
 function openEditDrawer(item) {
@@ -295,11 +334,12 @@ function openEditDrawer(item) {
   // Clone deep for safe editing
   form.value = {
     id: item.id,
-    branch_id: item.branch_id,
+    branch_ids: recipeBranchIds(item),
     description: item.description,
     ingredients: (item.ingredients ?? []).map(ri => ({
       ingredient_id: ri.ingredient_id,
-      quantity: ri.quantity
+      quantity: ri.quantity,
+      unit: ingredientUnit(ri.ingredient_id),
     }))
   }
   drawer.value = true
@@ -308,7 +348,10 @@ function removeIngredient(idx) {
   form.value.ingredients.splice(idx, 1)
 }
 function addIngredient() {
-  form.value.ingredients.push({ ingredient_id: null, quantity: '' })
+  form.value.ingredients.push({ ingredient_id: null, quantity: '', unit: '' })
+}
+function onIngredientChange(ingredient) {
+  ingredient.unit = ingredientUnit(ingredient.ingredient_id)
 }
 async function saveRecipe() {
   if (!canSaveRecipe.value) return
@@ -322,10 +365,12 @@ async function saveRecipe() {
 
   const payload = {
     description: form.value.description.trim(),
-    branch_id: form.value.branch_id,
+    branch_id: form.value.branch_ids[0],
+    branch_ids: form.value.branch_ids,
     ingredients: form.value.ingredients.map(i => ({
       ingredient_id: i.ingredient_id,
-      quantity: Number(i.quantity)
+      quantity: Number(i.quantity),
+      unit: i.unit || ingredientUnit(i.ingredient_id),
     }))
   }
 
@@ -339,6 +384,23 @@ async function saveRecipe() {
   } finally {
     saving.value = false
   }
+}
+
+function recipeBranchIds(recipe) {
+  if (Array.isArray(recipe?.branch_ids) && recipe.branch_ids.length) {
+    return recipe.branch_ids.map(Number)
+  }
+  return recipe?.branch_id ? [Number(recipe.branch_id)] : []
+}
+
+function recipeBranches(recipe) {
+  if (Array.isArray(recipe?.branches) && recipe.branches.length) {
+    return recipe.branches
+  }
+  if (recipe?.branch) return [recipe.branch]
+  return recipeBranchIds(recipe)
+    .map(id => branches.value.find(branch => Number(branch.id) === Number(id)))
+    .filter(Boolean)
 }
 
 function errorMessage(error) {

@@ -86,6 +86,19 @@
                   {{ modifierCount(item) }} modifiers
                 </v-chip>
               </template>
+              <template #item.branches="{ item }">
+                <div class="d-flex flex-wrap ga-1">
+                  <v-chip
+                    v-for="branch in categoryBranches(item)"
+                    :key="branch.id"
+                    color="primary"
+                    size="small"
+                    text-color="white"
+                  >
+                    {{ branch.name }}
+                  </v-chip>
+                </div>
+              </template>
               <template #item.actions="{ item }">
                 <v-btn icon class="rounded-xl" size="small" color="primary" @click="openEditDrawer(item)">
                   <v-icon>mdi-pencil</v-icon>
@@ -140,12 +153,15 @@
                   style="border-radius: 1.5rem;"
                 />
                 <v-select
-                  label="Branch"
+                  label="Branches"
                   :items="branches"
                   item-title="name"
                   item-value="id"
-                  v-model="form.branch_id"
+                  v-model="form.branch_ids"
                   required
+                  multiple
+                  chips
+                  closable-chips
                   variant="outlined"
                   color="primary"
                   class="mb-4 rounded-xl"
@@ -321,7 +337,7 @@ const filters = ref({
 
 const headers = [
   { title: 'Name', value: 'name' },
-  { title: 'Branch', value: 'branch.name' },
+  { title: 'Branches', value: 'branches' },
   { title: 'Questions', value: 'questions', sortable: false },
   { title: 'Modifiers', value: 'modifiers', sortable: false },
   { title: 'Actions', value: 'actions', sortable: false }
@@ -337,10 +353,10 @@ const filteredCategories = computed(() => {
   return categories.value.filter(cat =>
     (!q ||
       cat.name.toLowerCase().includes(q) ||
-      (cat.branch?.name ?? '').toLowerCase().includes(q) ||
+      categoryBranches(cat).some(branch => branch.name.toLowerCase().includes(q)) ||
       (cat.questions ?? []).some(question => question.question.toLowerCase().includes(q)) ||
       (cat.modifiers ?? []).some(modifier => modifier.name.toLowerCase().includes(q))) &&
-    (!filters.value.branch_id || Number(cat.branch_id) === Number(filters.value.branch_id)) &&
+    (!filters.value.branch_id || categoryBranchIds(cat).includes(Number(filters.value.branch_id))) &&
     matchesPresenceFilter(questionCount(cat), filters.value.questions) &&
     matchesPresenceFilter(modifierCount(cat), filters.value.modifiers)
   )
@@ -348,7 +364,7 @@ const filteredCategories = computed(() => {
 
 const canSave = computed(() =>
   Boolean(form.value.name.trim()) &&
-  Boolean(form.value.branch_id) &&
+  form.value.branch_ids.length > 0 &&
   !saving.value
 )
 
@@ -468,7 +484,7 @@ function blankForm() {
   return {
     id: null,
     name: '',
-    branch_id: null,
+    branch_ids: branches.value.length === 1 ? [branches.value[0].id] : [],
     questions: [],
     modifiers: [],
   }
@@ -506,7 +522,7 @@ function categoryToForm(category) {
   return {
     id: category.id,
     name: category.name ?? '',
-    branch_id: category.branch_id ?? null,
+    branch_ids: categoryBranchIds(category),
     questions: (category.questions ?? []).map(question => ({
       id: question.id ?? null,
       local_key: nextLocalKey(),
@@ -521,7 +537,8 @@ function categoryToForm(category) {
 function categoryPayload() {
   return {
     name: form.value.name.trim(),
-    branch_id: form.value.branch_id,
+    branch_id: form.value.branch_ids[0],
+    branch_ids: form.value.branch_ids,
     questions: form.value.questions
       .map(question => ({
         id: question.id,
@@ -544,6 +561,23 @@ function categoryPayload() {
       }))
       .filter(modifier => modifier.name),
   }
+}
+
+function categoryBranchIds(category) {
+  if (Array.isArray(category?.branch_ids) && category.branch_ids.length) {
+    return category.branch_ids.map(Number)
+  }
+  return category?.branch_id ? [Number(category.branch_id)] : []
+}
+
+function categoryBranches(category) {
+  if (Array.isArray(category?.branches) && category.branches.length) {
+    return category.branches
+  }
+  if (category?.branch) return [category.branch]
+  return categoryBranchIds(category)
+    .map(id => branches.value.find(branch => Number(branch.id) === Number(id)))
+    .filter(Boolean)
 }
 
 function nextLocalKey() {

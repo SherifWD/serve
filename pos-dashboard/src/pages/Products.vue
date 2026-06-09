@@ -86,8 +86,18 @@
                 <template #item.category.name="{ item }">
                   <v-chip color="success" size="small" text-color="white" v-if="item.category">{{ item.category.name }}</v-chip>
                 </template>
-                <template #item.branch.name="{ item }">
-                  <v-chip color="primary" size="small" text-color="white" v-if="item.branch">{{ item.branch.name }}</v-chip>
+                <template #item.branches="{ item }">
+                  <div class="d-flex flex-wrap ga-1">
+                    <v-chip
+                      v-for="branch in productBranches(item)"
+                      :key="branch.id"
+                      color="primary"
+                      size="small"
+                      text-color="white"
+                    >
+                      {{ branch.name }}
+                    </v-chip>
+                  </div>
                 </template>
                 <template #item.is_available="{ item }">
                   <v-chip :color="item.is_available ? 'success' : 'red'" size="small" text-color="white">
@@ -141,7 +151,7 @@
               <div class="pa-6">
               <v-text-field label="Name" v-model="drawerForm.name" required variant="outlined" color="primary" class="mb-4 rounded-xl" />
               <v-select label="Category" :items="categoryItems" item-title="name" item-value="id" v-model="drawerForm.category_id" required variant="outlined" color="primary" class="mb-4 rounded-xl" :menu-props="{ contentClass: 'dashboard-select-menu' }" />
-              <v-select label="Branch" :items="branches" item-title="name" item-value="id" v-model="drawerForm.branch_id" required variant="outlined" color="primary" class="mb-4 rounded-xl" :menu-props="{ contentClass: 'dashboard-select-menu' }" @update:model-value="onBranchChange" />
+              <v-select label="Branches" :items="branches" item-title="name" item-value="id" v-model="drawerForm.branch_ids" required multiple chips closable-chips variant="outlined" color="primary" class="mb-4 rounded-xl" :menu-props="{ contentClass: 'dashboard-select-menu' }" @update:model-value="onBranchChange" />
               <v-text-field label="Price" v-model="drawerForm.price" type="number" required variant="outlined" color="primary" class="mb-4 rounded-xl" />
               <v-text-field label="Minimum stock" v-model="drawerForm.min_stock" type="number" min="0" variant="outlined" color="primary" class="mb-4 rounded-xl" />
               <v-switch label="Available" v-model="drawerForm.is_available" color="primary" inset class="mb-6" style="--v-switch-track-color: #2a9d8f;" />
@@ -235,7 +245,17 @@
           <div class="mb-5">
             <div class="text-h6 font-weight-bold mb-2" style="color:#2a9d8f;">{{ viewProduct.name }}</div>
             <div class="my-2" v-if="viewProduct.category"><v-chip color="success" size="small" text-color="white">{{ viewProduct.category.name }}</v-chip></div>
-            <div class="my-2" v-if="viewProduct.branch"><v-chip color="primary" size="small" text-color="white">{{ viewProduct.branch.name }}</v-chip></div>
+            <div class="my-2 d-flex flex-wrap ga-1" v-if="productBranches(viewProduct).length">
+              <v-chip
+                v-for="branch in productBranches(viewProduct)"
+                :key="branch.id"
+                color="primary"
+                size="small"
+                text-color="white"
+              >
+                {{ branch.name }}
+              </v-chip>
+            </div>
             <div class="my-2" style="color:#2a9d8f;"><v-icon size="small" color="primary" class="mr-1">mdi-cash</v-icon><span>Price: </span><b style="color:#fff;">{{ viewProduct.price }}</b></div>
             <div class="my-2">
               <v-chip :color="viewProduct.is_available ? 'success' : 'red'" size="small" text-color="white">
@@ -284,7 +304,7 @@ const drawerForm = ref({
   name: '',
   category_id: null,
   price: '',
-  branch_id: null,
+  branch_ids: [],
   is_available: true,
   min_stock: 0,
   recipe_id: null,
@@ -302,7 +322,7 @@ const filters = ref({
 const headers = [
   { text: 'Name', value: 'name' },
   { title: 'Category', value: 'category.name' },
-  { title: 'Branch', value: 'branch.name' },
+  { title: 'Branches', value: 'branches' },
   { title: 'Price', value: 'price' },
   { title: 'Available', value: 'is_available' },
   { title: 'Actions', value: 'actions', sortable: false }
@@ -323,7 +343,7 @@ const filteredProducts = computed(() => {
   const q = search.value.toLowerCase()
   return products.value.filter(prod =>
     matchesProductSearch(prod, q) &&
-    (!filters.value.branch_id || Number(prod.branch_id) === Number(filters.value.branch_id)) &&
+    (!filters.value.branch_id || productBranchIds(prod).includes(Number(filters.value.branch_id))) &&
     (!filters.value.category_id || Number(prod.category_id) === Number(filters.value.category_id)) &&
     matchesAvailabilityFilter(prod) &&
     matchesRecipeFilter(prod)
@@ -346,16 +366,16 @@ const categoryItems = computed(() => {
 })
 
 const filteredRecipes = computed(() => {
-  if (!drawerForm.value.branch_id) return recipes.value
+  if (!drawerForm.value.branch_ids.length) return recipes.value
   return recipes.value.filter((recipe) =>
-    !recipe.branch_id || Number(recipe.branch_id) === Number(drawerForm.value.branch_id)
+    !recipe.branch_id || drawerForm.value.branch_ids.map(Number).includes(Number(recipe.branch_id))
   )
 })
 
 const canSaveProduct = computed(() =>
   Boolean(drawerForm.value.name.trim()) &&
   Boolean(drawerForm.value.category_id) &&
-  Boolean(drawerForm.value.branch_id) &&
+  drawerForm.value.branch_ids.length > 0 &&
   Number(drawerForm.value.price) >= 0
 )
 
@@ -409,7 +429,7 @@ function openAddDrawer() {
     name: '', 
     category_id: null, 
     price: '', 
-    branch_id: null,
+    branch_ids: branches.value.length === 1 ? [branches.value[0].id] : [],
     is_available: true, 
     min_stock: 0,
     recipe_id: null,
@@ -427,7 +447,7 @@ function openEditDrawer(product) {
     name: product.name,
     category_id: product.category_id,
     price: product.price,
-    branch_id: product.branch_id,
+    branch_ids: productBranchIds(product),
     is_available: !!product.is_available,
     min_stock: product.min_stock ?? 0,
     recipe_id: product.recipe?.id || null,
@@ -483,7 +503,7 @@ function matchesProductSearch(product, query) {
 
   return product.name.toLowerCase().includes(query) ||
     (product.category?.name ?? '').toLowerCase().includes(query) ||
-    (product.branch?.name ?? '').toLowerCase().includes(query) ||
+    productBranches(product).some(branch => branch.name.toLowerCase().includes(query)) ||
     (product.recipe ? recipeTitle(product.recipe).toLowerCase().includes(query) : false)
 }
 
@@ -527,7 +547,8 @@ async function saveProduct() {
   const payload = {
     name: drawerForm.value.name.trim(),
     category_id: drawerForm.value.category_id,
-    branch_id: drawerForm.value.branch_id,
+    branch_id: drawerForm.value.branch_ids[0],
+    branch_ids: drawerForm.value.branch_ids,
     price: Number(drawerForm.value.price),
     is_available: drawerForm.value.is_available,
     min_stock: drawerForm.value.min_stock === '' || drawerForm.value.min_stock === null
@@ -546,6 +567,23 @@ async function saveProduct() {
   } catch (error) {
     formError.value = errorMessage(error);
   }
+}
+
+function productBranchIds(product) {
+  if (Array.isArray(product?.branch_ids) && product.branch_ids.length) {
+    return product.branch_ids.map(Number)
+  }
+  return product?.branch_id ? [Number(product.branch_id)] : []
+}
+
+function productBranches(product) {
+  if (Array.isArray(product?.branches) && product.branches.length) {
+    return product.branches
+  }
+  if (product?.branch) return [product.branch]
+  return productBranchIds(product)
+    .map(id => branches.value.find(branch => Number(branch.id) === Number(id)))
+    .filter(Boolean)
 }
 
 function errorMessage(error) {

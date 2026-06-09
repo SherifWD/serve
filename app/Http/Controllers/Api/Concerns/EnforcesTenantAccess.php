@@ -144,6 +144,71 @@ trait EnforcesTenantAccess
         ]);
     }
 
+    protected function branchIdsForWrite(Request $request, ?array $branchIds = null, ?int $branchId = null): array
+    {
+        $ids = collect($branchIds ?? [])
+            ->merge($branchId !== null ? [$branchId] : [])
+            ->filter(fn ($id) => $id !== null && $id !== '')
+            ->map(fn ($id) => (int) $id)
+            ->filter()
+            ->unique()
+            ->values();
+
+        $user = $this->apiUser($request);
+        if ($ids->isEmpty() && $user->branch_id) {
+            $ids = collect([(int) $user->branch_id]);
+        }
+
+        if ($ids->isEmpty()) {
+            throw ValidationException::withMessages([
+                'branch_ids' => 'At least one branch is required.',
+            ]);
+        }
+
+        return $ids
+            ->map(fn (int $id) => $this->branchIdForWrite($request, $id))
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    protected function restaurantBranchIdsForWrite(Request $request, ?array $branchIds = null, ?int $restaurantId = null): array
+    {
+        if ($branchIds) {
+            return $this->branchIdsForWrite($request, $branchIds);
+        }
+
+        $user = $this->apiUser($request);
+        $query = Branch::query()->orderBy('id');
+
+        if ($user->branch_id) {
+            return [(int) $user->branch_id];
+        }
+
+        if ($user->restaurant_id) {
+            $query->where('restaurant_id', $user->restaurant_id);
+        } elseif ($restaurantId !== null) {
+            $this->ensureRestaurantAccess($request, $restaurantId);
+            $query->where('restaurant_id', $restaurantId);
+        } elseif (! $user->isPlatformAdmin()) {
+            return [];
+        } else {
+            throw ValidationException::withMessages([
+                'restaurant_id' => 'Restaurant is required when distributing across all branches.',
+            ]);
+        }
+
+        $ids = $query->pluck('id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
+
+        foreach ($ids as $id) {
+            $this->ensureBranchAccess($request, $id);
+        }
+
+        return $ids;
+    }
+
     protected function restaurantIdForWrite(Request $request, ?int $restaurantId): int
     {
         $user = $this->apiUser($request);

@@ -10,112 +10,121 @@ use App\Models\Product;
 use App\Models\Recipe;
 use App\Models\RecipeIngredient;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 
 class ProductController extends Controller
 {
     use EnforcesTenantAccess;
 
-    // Display a listing of products
     public function index(Request $request)
     {
-        // Optionally: filter by branch, pagination
-        $query = $this->branchScoped($request, Product::query());
+        $products = $this->branchScoped($request, Product::query())
+            ->with('category', 'recipe.ingredients.recipeIngredients', 'branch')
+            ->latest()
+            ->get();
 
-        return response()->json($query->with('category', 'recipe.ingredients.recipeIngredients', 'branch')->latest()->paginate(20));
+        return response()->json(['data' => $this->groupForDashboard($products)->values()]);
     }
 
-    // Store a new product along with a recipe and ingredients
     public function store(Request $request)
     {
         $data = $request->validate([
             'name' => 'required|string',
             'category_id' => 'required|integer|exists:categories,id',
-            'branch_id' => 'required|integer|exists:branches,id',
+            'branch_id' => 'nullable|integer|exists:branches,id',
+            'branch_ids' => 'nullable|array',
+            'branch_ids.*' => 'integer|exists:branches,id',
             'price' => 'required|numeric',
             'is_available' => 'boolean',
             'min_stock' => 'nullable|integer|min:0',
             'recipe_id' => 'nullable|integer|exists:recipes,id',
+            'recipe.description' => 'nullable|string',
+            'recipe.ingredients' => 'nullable|array',
+            'recipe.ingredients.*.name' => 'required_with:recipe.ingredients|string',
+            'recipe.ingredients.*.unit' => 'required_with:recipe.ingredients|string',
+            'recipe.ingredients.*.quantity' => 'required_with:recipe.ingredients|numeric|min:0.01',
             'image' => 'nullable|image|max:2048',
         ]);
-        $data['branch_id'] = $this->branchIdForWrite($request, (int) $data['branch_id']);
+
+        $branchIds = $this->branchIdsForWrite(
+            $request,
+            $data['branch_ids'] ?? null,
+            isset($data['branch_id']) ? (int) $data['branch_id'] : null,
+        );
         $this->ensureCategoryCanBeUsed($request, (int) $data['category_id']);
+
         $recipeId = $data['recipe_id'] ?? null;
-        unset($data['recipe_id']);
+        unset($data['recipe_id'], $data['branch_ids'], $data['branch_id'], $data['recipe']);
         $data['min_stock'] = $data['min_stock'] ?? 0;
+        $data['is_available'] = array_key_exists('is_available', $data) ? (int) $request->boolean('is_available') : 1;
+        $data['branch_group_id'] = (string) Str::uuid();
 
-        // Generate unique SKU
-        do {
-            $sku = strtoupper(Str::random(8));
-        } while (Product::where('sku', $sku)->exists());
-        $data['sku'] = $sku;
-
-        // Handle image upload
         if ($request->hasFile('image')) {
-            $path = $request->file('image')->store('product_images', 'public');
-            $data['image'] = $path;
-        }
-        $product = Product::create($data);
-
-        if ($request->has('recipe_id')) {
-            $this->assignExistingRecipe($request, $product, $recipeId);
+            $data['image'] = $request->file('image')->store('product_images', 'public');
         }
 
-        // If the product includes a recipe, store it along with ingredients
-        if (! $request->has('recipe_id') && $request->has('recipe')) {
-            // Create the recipe associated with the product
-            $recipe = Recipe::create([
-                'product_id' => $product->id,
-                'branch_id' => $product->branch_id,
-                'description' => $request->recipe['description'],
-            ]);
+        $products = DB::transaction(function () use ($request, $data, $branchIds, $recipeId) {
+            $created = collect();
 
-            // Loop through ingredients and add them
-            foreach ($request->recipe['ingredients'] as $ingredientData) {
-                $ingredient = Ingredient::firstOrCreate([
-                    'name' => $ingredientData['name'],
-                    'unit' => $ingredientData['unit'],
-                ]);
+            foreach ($branchIds as $branchId) {
+                $product = Product::create(array_merge($data, [
+                    'branch_id' => $branchId,
+                    'sku' => $this->uniqueSku(),
+                ]));
 
-                RecipeIngredient::create([
-                    'recipe_id' => $recipe->id,
-                    'ingredient_id' => $ingredient->id,
-                    'quantity' => $ingredientData['quantity'],
-                ]);
+                if ($request->has('recipe_id')) {
+                    $this->assignExistingRecipe($request, $product, $recipeId);
+                } elseif ($request->has('recipe')) {
+                    $this->syncInlineRecipe($request, $product);
+                }
+
+                $created->push($product);
             }
-        }
 
-        return response()->json($product->fresh(['category', 'recipe.ingredients', 'branch']), 201);
+            return $created;
+        });
+
+        return response()->json($this->withBranchGroupMetadata($products->first()->fresh(['category', 'recipe.ingredients', 'branch']), $request), 201);
     }
 
-    // Display the specified product along with its recipe and ingredients
     public function show(Request $request, $id)
     {
-        $product = $this->branchScoped($request, Product::with(['category', 'recipe.ingredients']))->findOrFail($id);
+        $product = $this->branchScoped($request, Product::with(['category', 'recipe.ingredients', 'branch']))->findOrFail($id);
 
-        return response()->json($product);
+        return response()->json($this->withBranchGroupMetadata($product, $request));
     }
 
-    // Update an existing product and its recipe and ingredients
     public function update(Request $request, $id)
     {
-        // Validate product data
         $product = $this->branchScoped($request, Product::query())->findOrFail($id);
         $data = $request->validate([
             'name' => 'string',
             'category_id' => 'integer|exists:categories,id',
-            'branch_id' => 'integer|exists:branches,id',
+            'branch_id' => 'nullable|integer|exists:branches,id',
+            'branch_ids' => 'nullable|array',
+            'branch_ids.*' => 'integer|exists:branches,id',
             'price' => 'numeric',
             'is_available' => 'boolean',
             'min_stock' => 'nullable|integer|min:0',
             'recipe_id' => 'nullable|integer|exists:recipes,id',
+            'recipe.description' => 'nullable|string',
+            'recipe.ingredients' => 'nullable|array',
+            'recipe.ingredients.*.name' => 'required_with:recipe.ingredients|string',
+            'recipe.ingredients.*.unit' => 'required_with:recipe.ingredients|string',
+            'recipe.ingredients.*.quantity' => 'required_with:recipe.ingredients|numeric|min:0.01',
             'image' => 'nullable|image|max:2048',
         ]);
-        if (array_key_exists('branch_id', $data)) {
-            $data['branch_id'] = $this->branchIdForWrite($request, (int) $data['branch_id']);
-        }
+
+        $branchIds = $this->branchIdsForWrite(
+            $request,
+            $data['branch_ids'] ?? null,
+            isset($data['branch_id']) ? (int) $data['branch_id'] : (int) $product->branch_id,
+        );
+
         if (array_key_exists('category_id', $data)) {
             $this->ensureCategoryCanBeUsed($request, (int) $data['category_id']);
         }
@@ -125,70 +134,69 @@ class ProductController extends Controller
         if (array_key_exists('min_stock', $data) && $data['min_stock'] === null) {
             $data['min_stock'] = 0;
         }
+
         $recipeId = $data['recipe_id'] ?? null;
-        unset($data['recipe_id']);
-        // Handle image upload
+        unset($data['recipe_id'], $data['branch_ids'], $data['branch_id'], $data['recipe']);
+
         if ($request->hasFile('image')) {
-            // Delete old if exists
             $oldImage = $product->getRawOriginal('image');
             if ($oldImage && ! Str::startsWith($oldImage, ['http://', 'https://'])) {
                 Storage::disk('public')->delete($oldImage);
             }
-            $path = $request->file('image')->store('product_images', 'public');
-            $data['image'] = $path;
+            $data['image'] = $request->file('image')->store('product_images', 'public');
         }
 
-        $product->update($data);
-        $product->refresh();
+        $groupId = $product->branch_group_id ?: (string) Str::uuid();
 
-        if ($request->has('recipe_id')) {
-            $this->assignExistingRecipe($request, $product, $recipeId);
-        }
-
-        // If the request includes a recipe, update the recipe and its ingredients
-        if (! $request->has('recipe_id') && $request->has('recipe')) {
-            // Update or create the recipe
-            $recipe = Recipe::updateOrCreate(
-                ['product_id' => $product->id],
-                [
-                    'branch_id' => $product->branch_id,
-                    'description' => $request->recipe['description'],
-                ]
-            );
-
-            // Delete old ingredients and add new ones
-            $recipe->ingredients()->delete();  // Remove all old ingredients
-
-            // Add new ingredients
-            foreach ($request->recipe['ingredients'] as $ingredientData) {
-                $ingredient = Ingredient::firstOrCreate([
-                    'name' => $ingredientData['name'],
-                    'unit' => $ingredientData['unit'],
-                ]);
-
-                RecipeIngredient::create([
-                    'recipe_id' => $recipe->id,
-                    'ingredient_id' => $ingredient->id,
-                    'quantity' => $ingredientData['quantity'],
-                ]);
+        DB::transaction(function () use ($request, $product, $data, $branchIds, $recipeId, $groupId) {
+            if (! $product->branch_group_id) {
+                $product->branch_group_id = $groupId;
+                $product->save();
             }
-        }
 
-        return response()->json($product->fresh(['category', 'recipe.ingredients', 'branch']));
+            foreach ($branchIds as $index => $branchId) {
+                $target = Product::query()
+                    ->where('branch_group_id', $groupId)
+                    ->where('branch_id', $branchId)
+                    ->first();
+
+                if (! $target) {
+                    $target = $index === 0 ? $product : $product->replicate(['sku']);
+                    $target->branch_id = $branchId;
+                    $target->branch_group_id = $groupId;
+                    if (! $target->exists) {
+                        $target->sku = $this->uniqueSku();
+                    }
+                }
+
+                $target->fill($data);
+                if (! $target->sku) {
+                    $target->sku = $this->uniqueSku();
+                }
+                $target->branch_group_id = $groupId;
+                $target->branch_id = $branchId;
+                $target->save();
+
+                if ($request->has('recipe_id')) {
+                    $this->assignExistingRecipe($request, $target, $recipeId);
+                } elseif ($request->has('recipe')) {
+                    $this->syncInlineRecipe($request, $target);
+                }
+            }
+        });
+
+        return response()->json($this->withBranchGroupMetadata($product->fresh(['category', 'recipe.ingredients', 'branch']), $request));
     }
 
-    // Remove a product from the database
     public function destroy(Request $request, $id)
     {
         $product = $this->branchScoped($request, Product::query())->findOrFail($id);
 
-        // If the product has a recipe, delete the associated recipe and ingredients
         if ($product->recipe) {
-            $product->recipe->ingredients()->delete();
+            $product->recipe->ingredients()->detach();
             $product->recipe->delete();
         }
 
-        // Delete the product
         $product->delete();
 
         return response()->json(['message' => 'Product and associated recipe deleted successfully']);
@@ -220,55 +228,152 @@ class ProductController extends Controller
 
     private function assignExistingRecipe(Request $request, Product $product, ?int $recipeId): void
     {
-        DB::transaction(function () use ($request, $product, $recipeId): void {
-            $product->loadMissing('recipe');
+        $product->loadMissing('recipe');
 
-            if ($recipeId === null) {
-                Recipe::query()
-                    ->where('product_id', $product->id)
-                    ->update(['product_id' => null]);
-
-                return;
-            }
-
-            $recipe = Recipe::query()
-                ->with('ingredients')
-                ->findOrFail($recipeId);
-
-            if ($recipe->branch_id !== null) {
-                $this->ensureBranchAccess($request, (int) $recipe->branch_id);
-                abort_unless(
-                    (int) $recipe->branch_id === (int) $product->branch_id,
-                    422,
-                    'Product recipe must belong to the selected branch.'
-                );
-            }
-
+        if ($recipeId === null) {
             Recipe::query()
                 ->where('product_id', $product->id)
-                ->whereKeyNot($recipe->id)
                 ->update(['product_id' => null]);
 
-            if (! $recipe->product_id || (int) $recipe->product_id === (int) $product->id) {
-                $recipe->update([
-                    'product_id' => $product->id,
-                    'branch_id' => $product->branch_id,
-                ]);
+            return;
+        }
 
-                return;
-            }
+        $recipe = Recipe::query()
+            ->with('ingredients')
+            ->findOrFail($recipeId);
 
-            $copy = Recipe::create([
+        if ($recipe->branch_id !== null) {
+            $this->ensureBranchAccess($request, (int) $recipe->branch_id);
+        }
+
+        Recipe::query()
+            ->where('product_id', $product->id)
+            ->whereKeyNot($recipe->id)
+            ->update(['product_id' => null]);
+
+        if ((int) $recipe->branch_id === (int) $product->branch_id && (! $recipe->product_id || (int) $recipe->product_id === (int) $product->id)) {
+            $recipe->update([
                 'product_id' => $product->id,
                 'branch_id' => $product->branch_id,
-                'description' => $recipe->description,
+                'branch_group_id' => $recipe->branch_group_id ?: $product->branch_group_id,
             ]);
 
-            foreach ($recipe->ingredients as $ingredient) {
-                $copy->ingredients()->attach($ingredient->id, [
-                    'quantity' => $ingredient->pivot->quantity,
+            return;
+        }
+
+        $copy = Recipe::create([
+            'product_id' => $product->id,
+            'branch_id' => $product->branch_id,
+            'branch_group_id' => $recipe->branch_group_id ?: $product->branch_group_id,
+            'description' => $recipe->description,
+        ]);
+
+        foreach ($recipe->ingredients as $ingredient) {
+            $copy->ingredients()->attach($ingredient->id, [
+                'quantity' => $ingredient->pivot->quantity,
+            ]);
+        }
+    }
+
+    private function syncInlineRecipe(Request $request, Product $product): void
+    {
+        $ingredients = $request->input('recipe.ingredients', []);
+        $seen = [];
+
+        foreach ($ingredients as $ingredientData) {
+            $key = mb_strtolower(trim((string) ($ingredientData['name'] ?? '')));
+            if ($key === '') {
+                continue;
+            }
+            if (isset($seen[$key])) {
+                throw ValidationException::withMessages([
+                    'recipe.ingredients' => 'Recipe ingredients cannot contain duplicates.',
                 ]);
             }
-        });
+            $seen[$key] = true;
+        }
+
+        $recipe = Recipe::updateOrCreate(
+            ['product_id' => $product->id],
+            [
+                'branch_id' => $product->branch_id,
+                'branch_group_id' => $product->branch_group_id,
+                'description' => $request->input('recipe.description'),
+            ]
+        );
+
+        $recipe->ingredients()->detach();
+
+        foreach ($ingredients as $ingredientData) {
+            $name = trim((string) ($ingredientData['name'] ?? ''));
+            if ($name === '') {
+                continue;
+            }
+
+            $ingredient = Ingredient::query()
+                ->whereRaw('LOWER(name) = ?', [mb_strtolower($name)])
+                ->first();
+
+            $ingredient ??= Ingredient::create([
+                'name' => $name,
+                'unit' => $ingredientData['unit'],
+                'stock' => 0,
+            ]);
+
+            RecipeIngredient::create([
+                'recipe_id' => $recipe->id,
+                'ingredient_id' => $ingredient->id,
+                'quantity' => $ingredientData['quantity'],
+            ]);
+        }
+    }
+
+    private function uniqueSku(): string
+    {
+        do {
+            $sku = strtoupper(Str::random(8));
+        } while (Product::where('sku', $sku)->exists());
+
+        return $sku;
+    }
+
+    private function groupForDashboard(Collection $products): Collection
+    {
+        return $products
+            ->groupBy(fn (Product $product) => $product->branch_group_id ?: 'product:'.$product->id)
+            ->map(function (Collection $group) {
+                $product = $group->first();
+                $branches = $group->pluck('branch')->filter()->unique('id')->values();
+
+                $product->setAttribute('branch_ids', $branches->pluck('id')->map(fn ($id) => (int) $id)->values()->all());
+                $product->setRelation('branches', $branches);
+
+                return $product;
+            });
+    }
+
+    private function withBranchGroupMetadata(Product $product, Request $request): Product
+    {
+        if (! $product->branch_group_id) {
+            $branches = collect([$product->branch])->filter()->values();
+            $product->setAttribute('branch_ids', $branches->pluck('id')->map(fn ($id) => (int) $id)->all());
+            $product->setRelation('branches', $branches);
+
+            return $product;
+        }
+
+        $siblings = Product::query()
+            ->where('branch_group_id', $product->branch_group_id)
+            ->with('branch')
+            ->when($this->accessibleBranchIds($request) !== null, function ($query) use ($request) {
+                $query->whereIn('branch_id', $this->accessibleBranchIds($request));
+            })
+            ->get();
+        $branches = $siblings->pluck('branch')->filter()->unique('id')->values();
+
+        $product->setAttribute('branch_ids', $branches->pluck('id')->map(fn ($id) => (int) $id)->values()->all());
+        $product->setRelation('branches', $branches);
+
+        return $product;
     }
 }
