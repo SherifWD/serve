@@ -8,7 +8,7 @@ plugins {
 android {
     namespace = "com.example.restaurant_suite"
     compileSdk = flutter.compileSdkVersion
-    ndkVersion = flutter.ndkVersion
+    ndkVersion = "27.0.12077973"
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
@@ -20,14 +20,49 @@ android {
     }
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "com.example.restaurant_suite"
+        applicationId = "com.janova.serve"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        resValue("string", "app_name", "Janova Serve")
+    }
+
+    flavorDimensions += "role"
+
+    productFlavors {
+        create("suite") {
+            dimension = "role"
+            applicationIdSuffix = ".suite"
+            resValue("string", "app_name", "Janova Serve")
+        }
+        create("cashier") {
+            dimension = "role"
+            applicationIdSuffix = ".cashier"
+            resValue("string", "app_name", "Janova Cashier")
+        }
+        create("waiter") {
+            dimension = "role"
+            applicationIdSuffix = ".waiter"
+            resValue("string", "app_name", "Janova Waiter")
+        }
+        create("kitchen") {
+            dimension = "role"
+            applicationIdSuffix = ".kitchen"
+            resValue("string", "app_name", "Janova Kitchen")
+        }
+        create("owner") {
+            dimension = "role"
+            applicationIdSuffix = ".owner"
+            resValue("string", "app_name", "Janova Owner")
+        }
+        create("customer") {
+            dimension = "role"
+            applicationIdSuffix = ".customer"
+            resValue("string", "app_name", "Janova Customer")
+        }
     }
 
     buildTypes {
