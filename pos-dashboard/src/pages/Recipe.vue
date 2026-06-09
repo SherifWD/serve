@@ -61,6 +61,9 @@
             density="comfortable"
             style="border-radius:1.5rem;overflow:hidden;"
           >
+            <template #item.name="{ item }">
+              {{ recipeTitle(item) }}
+            </template>
             <!-- Custom column for Ingredients display -->
             <template #item.ingredients="{ item }">
               <div class="d-flex flex-column" style="min-width:200px;">
@@ -309,6 +312,13 @@ function matchesRecipeSearch(recipe, query) {
     (recipe.ingredients ?? []).some(ingredient => ingredient.name.toLowerCase().includes(query))
 }
 
+function recipeTitle(recipe) {
+  const name = stringValue(recipe?.name).trim()
+  if (name) return name
+
+  return recipe?.id ? `Unnamed recipe #${recipe.id}` : 'Unnamed recipe'
+}
+
 function resetFilters() {
   search.value = ''
   filters.value = {
@@ -472,7 +482,7 @@ function stringValue(value) {
 }
 
 async function deleteRecipe(item) {
-  const label = item.name || item.description || `#${item.id}`
+  const label = recipeTitle(item)
   if (!await confirmDelete(`recipe "${label}"`)) return
   await axios.delete(`${API_BASE_URL}/recipes/${item.id}`, {
     headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }

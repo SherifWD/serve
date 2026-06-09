@@ -43,6 +43,8 @@ class ProductController extends Controller
             'is_available' => 'boolean',
             'min_stock' => 'nullable|integer|min:0',
             'recipe_id' => 'nullable|integer|exists:recipes,id',
+            'recipe.name' => 'nullable|string|max:255',
+            'recipe.category' => 'nullable|string|max:255',
             'recipe.description' => 'nullable|string',
             'recipe.ingredients' => 'nullable|array',
             'recipe.ingredients.*.name' => 'required_with:recipe.ingredients|string',
@@ -118,6 +120,8 @@ class ProductController extends Controller
             'is_available' => 'boolean',
             'min_stock' => 'nullable|integer|min:0',
             'recipe_id' => 'nullable|integer|exists:recipes,id',
+            'recipe.name' => 'nullable|string|max:255',
+            'recipe.category' => 'nullable|string|max:255',
             'recipe.description' => 'nullable|string',
             'recipe.ingredients' => 'nullable|array',
             'recipe.ingredients.*.name' => 'required_with:recipe.ingredients|string',
@@ -285,6 +289,8 @@ class ProductController extends Controller
             'product_id' => $product->id,
             'branch_id' => $product->branch_id,
             'branch_group_id' => $recipe->branch_group_id ?: $product->branch_group_id,
+            'name' => $recipe->name,
+            'category' => $recipe->category,
             'description' => $recipe->description,
         ]);
 
@@ -318,6 +324,8 @@ class ProductController extends Controller
             [
                 'branch_id' => $product->branch_id,
                 'branch_group_id' => $product->branch_group_id,
+                'name' => $this->normalizedRecipeName($request, $product),
+                'category' => $this->normalizedOptionalString($request->input('recipe.category')),
                 'description' => $request->input('recipe.description'),
             ]
         );
@@ -346,6 +354,19 @@ class ProductController extends Controller
                 'quantity' => $ingredientData['quantity'],
             ]);
         }
+    }
+
+    private function normalizedRecipeName(Request $request, Product $product): string
+    {
+        return $this->normalizedOptionalString($request->input('recipe.name'))
+            ?: "{$product->name} recipe";
+    }
+
+    private function normalizedOptionalString($value): ?string
+    {
+        $value = trim((string) $value);
+
+        return $value === '' ? null : $value;
     }
 
     private function uniqueSku(): string

@@ -163,13 +163,13 @@
               @update:model-value="onRecipeChange"
             />
             <div v-if="selectedRecipe" class="recipe-preview pa-4 mb-4">
+              <div class="mb-2">
+                <span class="font-weight-bold" style="color:#2a9d8f;">Recipe:</span>
+                <span style="color:#333;">{{ recipeTitle(selectedRecipe) }}</span>
+              </div>
               <div v-if="recipeDescription(selectedRecipe)" class="mb-2">
                 <span class="font-weight-bold" style="color:#2a9d8f;">Description:</span>
                 <span style="color:#333;">{{ recipeDescription(selectedRecipe) }}</span>
-              </div>
-              <div v-else-if="recipeIngredientSummary(selectedRecipe)" class="mb-2">
-                <span class="font-weight-bold" style="color:#2a9d8f;">Recipe:</span>
-                <span style="color:#333;">{{ recipeIngredientSummary(selectedRecipe) }}</span>
               </div>
               <div v-if="selectedRecipe.ingredients && selectedRecipe.ingredients.length">
                 <span class="font-weight-bold" style="color:#2a9d8f;">Ingredients:</span>
@@ -251,7 +251,10 @@
             <v-divider class="my-4" />
             <div class="recipe-container">
               <h3 style="margin-bottom:4px;">Recipe:</h3>
-              <p>{{ recipeDescription(viewProduct.recipe) || recipeIngredientSummary(viewProduct.recipe) || 'No description available.' }}</p>
+              <p>{{ viewProduct.recipe ? recipeTitle(viewProduct.recipe) : 'No recipe assigned.' }}</p>
+              <p v-if="recipeDescription(viewProduct.recipe)" class="text-caption" style="color:#64748b;">
+                {{ recipeDescription(viewProduct.recipe) }}
+              </p>
               <div v-if="viewProduct.recipe?.ingredients && viewProduct.recipe.ingredients.length">
                 <div class="mt-2" style="display:flex;flex-wrap:wrap;gap:7px;">
                   <v-chip v-for="(ingredient, index) in viewProduct.recipe.ingredients" :key="index" color="success" size="small" text-color="white">
@@ -459,13 +462,7 @@ function recipeTitle(recipe) {
   const name = (recipe?.name ?? '').trim()
   if (name) return name
 
-  const description = recipeDescription(recipe)
-  if (description) return description
-
-  const ingredients = recipeIngredientSummary(recipe)
-  if (ingredients) return ingredients
-
-  return `Recipe #${recipe?.id ?? ''}`
+  return recipe?.id ? `Unnamed recipe #${recipe.id}` : 'Unnamed recipe'
 }
 
 function recipeDescription(recipe) {

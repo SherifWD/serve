@@ -467,13 +467,7 @@ function recipeTitle(recipe) {
   const name = (recipe?.name ?? '').trim()
   if (name) return name
 
-  const description = (recipe?.description ?? '').trim()
-  if (description) return description
-
-  const ingredients = recipeIngredientSummary(recipe)
-  if (ingredients) return ingredients
-
-  return `Recipe #${recipe?.id ?? ''}`
+  return recipe?.id ? `Unnamed recipe #${recipe.id}` : 'Unnamed recipe'
 }
 
 function recipeIngredientSummary(recipe) {
