@@ -401,6 +401,7 @@ import { ref, computed, onMounted, watch } from 'vue'
 import axios from 'axios'
 import { API_BASE_URL } from '../lib/api'
 import { confirmDelete } from '../lib/confirmDelete'
+import { missingField, showValidationAlert } from '../lib/validationAlert'
 import OwnerLayout from '@/layouts/OwnerLayout.vue'
 
 const inventoryItems = ref([])
@@ -653,6 +654,12 @@ function openViewDrawer(item) {
 }
 
 async function saveInventoryItem() {
+  const validationFields = inventoryItemValidationFields()
+  if (validationFields.length) {
+    await showValidationAlert(validationFields, { title: 'Complete inventory item details' })
+    return
+  }
+
   const token = localStorage.getItem('token')
   const data = {
     ...drawerForm.value,
@@ -666,6 +673,18 @@ async function saveInventoryItem() {
   await axios[method](url, data, { headers: { Authorization: `Bearer ${token}` } })
   rightDrawer.value = false
   loadInventoryItems()
+}
+
+function inventoryItemValidationFields() {
+  return [
+    missingField('Inventory Type', ['ingredient', 'product'].includes(inventoryType.value)),
+    missingField('Ingredient', inventoryType.value !== 'ingredient' || Boolean(drawerForm.value.ingredient_id)),
+    missingField('Product', inventoryType.value !== 'product' || Boolean(drawerForm.value.product_id)),
+    missingField('Unit', Boolean(drawerForm.value.unit)),
+    missingField('Quantity', hasNumberAtLeast(drawerForm.value.quantity, 0)),
+    missingField('Branch', Boolean(drawerForm.value.branch_id)),
+    missingField('Min Stock', hasNumberAtLeast(drawerForm.value.min_stock, 0)),
+  ].filter(Boolean)
 }
 
 async function deleteInventoryItem(item) {
@@ -723,6 +742,12 @@ function operationReference(prefix) {
 }
 
 async function submitInventoryOperation() {
+  const validationFields = inventoryOperationValidationFields()
+  if (validationFields.length) {
+    await showValidationAlert(validationFields, { title: 'Complete stock operation details' })
+    return
+  }
+
   operationLoading.value = true
   operationMessage.value = null
 
@@ -806,6 +831,28 @@ async function submitInventoryOperation() {
   } finally {
     operationLoading.value = false
   }
+}
+
+function inventoryOperationValidationFields() {
+  const form = operationForm.value
+
+  return [
+    missingField('Operation', Boolean(form.type)),
+    missingField('Source branch', Boolean(form.branch_id)),
+    missingField('Target branch', form.type !== 'transfer' || Boolean(form.to_branch_id)),
+    missingField('Inventory item', Boolean(form.inventory_item_id)),
+    missingField('Quantity', ['receive', 'transfer', 'waste'].includes(form.type) ? hasNumberAtLeast(form.quantity, 0.001) : true),
+    missingField('Adjustment quantity', form.type !== 'adjust' || form.adjustment_operation === 'adjustment' || hasNumberAtLeast(form.quantity, 0.001)),
+    missingField('Counted quantity', form.type !== 'count' || hasNumberAtLeast(form.counted_quantity, 0)),
+    missingField('Target quantity', form.type !== 'adjust' || form.adjustment_operation !== 'adjustment' || hasNumberAtLeast(form.target_quantity, 0)),
+    missingField('Unit cost', form.type !== 'receive' || form.unit_cost === '' || form.unit_cost === null || hasNumberAtLeast(form.unit_cost, 0)),
+  ].filter(Boolean)
+}
+
+function hasNumberAtLeast(value, min) {
+  if (value === '' || value === null || value === undefined) return false
+  const numeric = Number(value)
+  return Number.isFinite(numeric) && numeric >= min
 }
 </script>
 

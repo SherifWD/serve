@@ -233,6 +233,7 @@ import { computed, onMounted, ref } from 'vue'
 import axios from 'axios'
 import OwnerLayout from '@/layouts/OwnerLayout.vue'
 import { API_BASE_URL } from '../lib/api'
+import { missingField, showValidationAlert } from '../lib/validationAlert'
 import { useAuthStore } from '../store/auth'
 
 const auth = useAuthStore()
@@ -396,6 +397,12 @@ function openEdit(user) {
 }
 
 async function saveUser() {
+  const validationFields = userValidationFields()
+  if (validationFields.length) {
+    await showValidationAlert(validationFields, { title: 'Complete user details' })
+    return
+  }
+
   const payload = {
     name: form.value.name,
     email: form.value.email,
@@ -427,6 +434,16 @@ async function saveUser() {
 
   dialog.value = false
   await loadUsers()
+}
+
+function userValidationFields() {
+  return [
+    missingField('Full name', Boolean(form.value.name.trim())),
+    missingField('Email', /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.value.email)),
+    missingField('Role', Boolean(form.value.role)),
+    missingField('Restaurant', !auth.isAdmin || Boolean(form.value.restaurant_id)),
+    missingField('Branch', !requiresBranch.value || Boolean(form.value.branch_id)),
+  ].filter(Boolean)
 }
 
 async function removeUser(id) {

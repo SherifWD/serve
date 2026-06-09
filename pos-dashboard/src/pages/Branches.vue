@@ -152,6 +152,7 @@ import { computed, onMounted, ref } from 'vue'
 import axios from 'axios'
 import OwnerLayout from '@/layouts/OwnerLayout.vue'
 import { API_BASE_URL } from '../lib/api'
+import { missingField, showValidationAlert } from '../lib/validationAlert'
 import { useAuthStore } from '../store/auth'
 
 const auth = useAuthStore()
@@ -238,6 +239,12 @@ function openEdit(branch) {
 }
 
 async function saveBranch() {
+  const validationFields = branchValidationFields()
+  if (validationFields.length) {
+    await showValidationAlert(validationFields, { title: 'Complete branch details' })
+    return
+  }
+
   const payload = {
     name: form.value.name,
     location: form.value.location,
@@ -259,6 +266,13 @@ async function saveBranch() {
 
   dialog.value = false
   await loadBranches()
+}
+
+function branchValidationFields() {
+  return [
+    missingField('Restaurant', !auth.isAdmin || Boolean(form.value.restaurant_id)),
+    missingField('Branch name', Boolean(form.value.name.trim())),
+  ].filter(Boolean)
 }
 
 async function removeBranch(id) {

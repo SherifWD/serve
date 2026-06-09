@@ -234,6 +234,7 @@ import { ref, computed, onMounted } from 'vue'
 import axios from 'axios'
 import { API_BASE_URL } from '../lib/api'
 import { confirmDelete } from '../lib/confirmDelete'
+import { missingField, showValidationAlert } from '../lib/validationAlert'
 import OwnerLayout from '@/layouts/OwnerLayout.vue'
 
 const suppliers = ref([])
@@ -324,6 +325,12 @@ function openViewDrawer(supplier) {
 }
 
 async function saveSupplier() {
+  const validationFields = supplierValidationFields()
+  if (validationFields.length) {
+    await showValidationAlert(validationFields, { title: 'Complete supplier details' })
+    return
+  }
+
   const token = localStorage.getItem('token')
   const url = isEditing.value
     ? `${API_BASE_URL}/suppliers/${drawerForm.value.id}`
@@ -334,6 +341,12 @@ async function saveSupplier() {
   })
   rightDrawer.value = false
   loadSuppliers()
+}
+
+function supplierValidationFields() {
+  return [
+    missingField('Name', Boolean(drawerForm.value.name.trim())),
+  ].filter(Boolean)
 }
 
 async function deleteSupplier(supplier) {

@@ -157,7 +157,6 @@
               color="primary"
               class="rs-pill"
               :loading="saving"
-              :disabled="!canSaveRestaurant"
               @click="saveRestaurant"
             >
               Save
@@ -174,6 +173,7 @@ import { computed, onMounted, ref } from 'vue'
 import axios from 'axios'
 import OwnerLayout from '@/layouts/OwnerLayout.vue'
 import { API_BASE_URL } from '../lib/api'
+import { missingField, showValidationAlert } from '../lib/validationAlert'
 import { useAuthStore } from '../store/auth'
 
 const auth = useAuthStore()
@@ -262,7 +262,13 @@ function openEdit(restaurant) {
 }
 
 async function saveRestaurant() {
-  if (!canSaveRestaurant.value || saving.value) return
+  const validationFields = restaurantValidationFields()
+  if (validationFields.length) {
+    await showValidationAlert(validationFields, { title: 'Complete venue details' })
+    return
+  }
+
+  if (saving.value) return
 
   const payload = {
     name: form.value.name.trim(),
@@ -290,6 +296,13 @@ async function saveRestaurant() {
   } finally {
     saving.value = false
   }
+}
+
+function restaurantValidationFields() {
+  return [
+    missingField('Venue name', Boolean(form.value.name.trim())),
+    missingField('Venue type', ['restaurant', 'cafe'].includes(form.value.kind)),
+  ].filter(Boolean)
 }
 
 function errorMessage(error) {

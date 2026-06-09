@@ -179,6 +179,7 @@ import { computed, onMounted, ref } from 'vue'
 import axios from 'axios'
 import OwnerLayout from '@/layouts/OwnerLayout.vue'
 import { API_BASE_URL } from '../lib/api'
+import { missingField, showValidationAlert } from '../lib/validationAlert'
 import { useAuthStore } from '../store/auth'
 
 const auth = useAuthStore()
@@ -276,6 +277,12 @@ function openEdit(role) {
 }
 
 async function saveRole() {
+  const validationFields = roleValidationFields()
+  if (validationFields.length) {
+    await showValidationAlert(validationFields, { title: 'Complete role details' })
+    return
+  }
+
   const payload = {
     name: form.value.name,
     permissions: form.value.permissions,
@@ -293,6 +300,12 @@ async function saveRole() {
 
   dialog.value = false
   await loadRoles()
+}
+
+function roleValidationFields() {
+  return [
+    missingField('Role name', Boolean(form.value.name.trim())),
+  ].filter(Boolean)
 }
 
 async function removeRole(id) {

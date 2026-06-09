@@ -197,7 +197,7 @@
           </div>
           <v-btn color="primary" type="button" @click="addIngredient" class="mb-4">Add Ingredient</v-btn>
           <v-divider class="my-4" />
-          <v-btn color="primary" block class="rounded-pill mt-2" :loading="saving" type="submit" :disabled="!canSaveRecipe">
+          <v-btn color="primary" block class="rounded-pill mt-2" :loading="saving" type="submit">
             <v-icon start>mdi-check</v-icon>{{ isEditing ? 'Update' : 'Add' }}
           </v-btn>
         </v-form>
@@ -211,6 +211,7 @@ import { ref, computed, onMounted } from 'vue'
 import axios from 'axios'
 import { API_BASE_URL } from '../lib/api'
 import { confirmDelete } from '../lib/confirmDelete'
+import { missingField, showValidationAlert } from '../lib/validationAlert'
 import OwnerLayout from '@/layouts/OwnerLayout.vue'
 
 const recipes = ref([])
@@ -420,7 +421,11 @@ function normalizedSelectedBranchIds(selected) {
     .filter(value => Number.isFinite(value) && value > 0)
 }
 async function saveRecipe() {
-  if (!canSaveRecipe.value) return
+  const validationFields = recipeValidationFields()
+  if (validationFields.length) {
+    await showValidationAlert(validationFields, { title: 'Complete recipe details' })
+    return
+  }
 
   saving.value = true
   const token = localStorage.getItem('token')
@@ -452,6 +457,21 @@ async function saveRecipe() {
   } finally {
     saving.value = false
   }
+}
+
+function recipeValidationFields() {
+  const ingredientIds = form.value.ingredients.map((ingredient) => Number(ingredient.ingredient_id)).filter(Boolean)
+  const duplicateIngredients = ingredientIds.length !== new Set(ingredientIds).size
+
+  return [
+    missingField('Name', Boolean(stringValue(form.value.name).trim())),
+    missingField('Branches', form.value.branch_ids.length > 0),
+    missingField('Description', Boolean(stringValue(form.value.description).trim())),
+    missingField('Ingredients', form.value.ingredients.length > 0),
+    missingField('Ingredient', form.value.ingredients.every((ingredient) => Boolean(ingredient.ingredient_id))),
+    missingField('Qty', form.value.ingredients.every((ingredient) => Number(ingredient.quantity) > 0)),
+    missingField('Recipe ingredients cannot contain duplicates', !duplicateIngredients),
+  ].filter(Boolean)
 }
 
 function recipeBranchIds(recipe) {

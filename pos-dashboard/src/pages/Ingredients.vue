@@ -155,11 +155,11 @@
           </div>
           <v-switch
             v-model="form.distribute_equally"
-            label="Equal distribution across selected branches"
+            label="Equal distribution across all branches"
             color="primary"
             inset
             class="mb-4"
-            @update:model-value="applyEqualDistribution"
+            @update:model-value="onEqualDistributionChange"
           />
           <v-alert v-if="globalStockError" type="error" variant="outlined" class="mb-2">
             {{ globalStockError }}
@@ -313,7 +313,6 @@
             block
             class="rounded-pill mt-4"
             :loading="saving"
-            :disabled="!!globalStockError"
           >
             <v-icon start>mdi-check</v-icon>{{ isEditing ? 'Update' : 'Add' }}
           </v-btn>
@@ -328,6 +327,7 @@ import { ref, computed, onMounted } from 'vue'
 import axios from 'axios'
 import { API_BASE_URL } from '../lib/api'
 import { confirmDelete } from '../lib/confirmDelete'
+import { missingField, showValidationAlert } from '../lib/validationAlert'
 import OwnerLayout from '@/layouts/OwnerLayout.vue'
 
 const ingredients = ref([])
@@ -545,6 +545,10 @@ function onBaseUnitChange() {
   form.value.stock_unit = form.value.unit
   branchIngredient.value.unit = form.value.unit
   recipeIngredient.value.unit = form.value.unit
+  if (form.value.distribute_equally) {
+    applyEqualDistribution()
+    return
+  }
   validateGlobalStock()
 }
 
@@ -564,6 +568,16 @@ function onSelectedBranchesChange() {
   validateGlobalStock()
 }
 
+function onEqualDistributionChange(enabled) {
+  if (enabled) {
+    form.value.branch_ids = branches.value.map(branch => branch.id)
+    applyEqualDistribution()
+    return
+  }
+
+  validateGlobalStock()
+}
+
 function normalizedSelectedBranchIds(selected) {
   const values = Array.isArray(selected) ? selected : []
   if (values.includes(ALL_BRANCHES_VALUE)) {
@@ -576,7 +590,16 @@ function normalizedSelectedBranchIds(selected) {
 }
 
 function applyEqualDistribution() {
-  if (!form.value.distribute_equally || !form.value.branch_ids.length) return
+  if (!form.value.distribute_equally) return
+
+  if (!form.value.branch_ids.length) {
+    form.value.branch_ids = branches.value.map(branch => branch.id)
+  }
+
+  if (!form.value.branch_ids.length) {
+    validateGlobalStock()
+    return
+  }
 
   const total = globalStockBase.value
   const branchIds = form.value.branch_ids.map(Number)
@@ -608,6 +631,9 @@ async function fetchBranches() {
     headers: { Authorization: `Bearer ${token}` }
   })
   branches.value = data.data || data
+  if (drawer.value && form.value.distribute_equally) {
+    onEqualDistributionChange(true)
+  }
 }
 async function fetchRecipes() {
   const token = localStorage.getItem('token')
@@ -759,8 +785,16 @@ function removeRecipeIngredient(recipe_id) {
 }
 
 async function saveIngredient() {
+  const validationFields = ingredientValidationFields()
+  if (validationFields.length) {
+    await showValidationAlert(validationFields, { title: 'Complete ingredient details' })
+    return
+  }
+
   if (!validateGlobalStock()) {
-    globalStockError.value = 'Please fix errors before saving'
+    await showValidationAlert([globalStockError.value || 'Please fix stock quantities before saving.'], {
+      title: 'Fix stock quantities',
+    })
     return
   }
   saving.value = true
@@ -794,6 +828,22 @@ async function saveIngredient() {
   } finally {
     saving.value = false
   }
+}
+
+function ingredientValidationFields() {
+  return [
+    missingField('Name', Boolean(form.value.name.trim())),
+    missingField('Minimum Unit', Boolean(form.value.unit)),
+    missingField('Global Stock', hasNumberAtLeast(form.value.stock, 0)),
+    missingField('Minimum Stock', hasNumberAtLeast(form.value.min_stock, 0)),
+    missingField('Branches', !form.value.distribute_equally || branches.value.length > 0),
+  ].filter(Boolean)
+}
+
+function hasNumberAtLeast(value, min) {
+  if (value === '' || value === null || value === undefined) return false
+  const numeric = Number(value)
+  return Number.isFinite(numeric) && numeric >= min
 }
 
 onMounted(() => {

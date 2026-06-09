@@ -231,7 +231,6 @@
             size="large"
             style="color:#181818;font-weight:bold;"
             type="submit"
-            :disabled="!canSave"
           >
             <v-icon start>mdi-check</v-icon>
             {{ editing ? 'Save table' : saveLabel }}
@@ -247,6 +246,7 @@ import { computed, onMounted, ref } from 'vue'
 import axios from 'axios'
 import { API_BASE_URL } from '../lib/api'
 import OwnerLayout from '@/layouts/OwnerLayout.vue'
+import { missingField, showValidationAlert } from '../lib/validationAlert'
 import { useAuthStore } from '../store/auth'
 
 const auth = useAuthStore()
@@ -482,7 +482,11 @@ function openEdit(table) {
 }
 
 async function saveTable() {
-  if (!canSave.value) return
+  const validationFields = tableValidationFields()
+  if (validationFields.length) {
+    await showValidationAlert(validationFields, { title: 'Complete table details' })
+    return
+  }
 
   if (editing.value) {
     await axios.put(`${API_BASE_URL}/tables/${form.value.id}`, {
@@ -508,6 +512,22 @@ async function saveTable() {
 
   drawer.value = false
   await loadTables()
+}
+
+function tableValidationFields() {
+  if (editing.value) {
+    return [
+      missingField('Branch', Boolean(form.value.branch_id)),
+      missingField('Table name', Boolean(form.value.name.trim())),
+      missingField('Seats', validSeats(form.value.seats)),
+    ].filter(Boolean)
+  }
+
+  return [
+    missingField('Branch', Boolean(form.value.branch_id)),
+    missingField('Table name', rowsToSave.value.length > 0),
+    missingField('Seats', form.value.tables.every((row) => !row.name.trim() || validSeats(row.seats))),
+  ].filter(Boolean)
 }
 
 async function deleteTable(id) {

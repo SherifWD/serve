@@ -200,7 +200,6 @@
               size="large"
               style="color:#181818;font-weight:bold;"
               type="submit"
-              :disabled="!canSaveProduct"
             >
               <v-icon start>mdi-check</v-icon>{{ isEditing ? 'Update' : 'Add' }}
             </v-btn>
@@ -278,6 +277,7 @@ import { ref, computed, onMounted } from 'vue'
 import axios from 'axios'
 import { API_BASE_URL } from '../lib/api'
 import { confirmDelete } from '../lib/confirmDelete'
+import { missingField, showValidationAlert } from '../lib/validationAlert'
 import OwnerLayout from '@/layouts/OwnerLayout.vue'
 
 const products = ref([])
@@ -544,7 +544,11 @@ function resetFilters() {
 }
 
 async function saveProduct() {
-  if (!canSaveProduct.value) return
+  const validationFields = productValidationFields()
+  if (validationFields.length) {
+    await showValidationAlert(validationFields, { title: 'Complete product details' })
+    return
+  }
 
   const token = localStorage.getItem('token');
   const url = isEditing.value
@@ -575,6 +579,21 @@ async function saveProduct() {
   } catch (error) {
     formError.value = errorMessage(error);
   }
+}
+
+function productValidationFields() {
+  return [
+    missingField('Name', Boolean(drawerForm.value.name.trim())),
+    missingField('Category', Boolean(drawerForm.value.category_id)),
+    missingField('Branches', drawerForm.value.branch_ids.length > 0),
+    missingField('Price', hasNumberAtLeast(drawerForm.value.price, 0)),
+  ].filter(Boolean)
+}
+
+function hasNumberAtLeast(value, min) {
+  if (value === '' || value === null || value === undefined) return false
+  const numeric = Number(value)
+  return Number.isFinite(numeric) && numeric >= min
 }
 
 function productBranchIds(product) {

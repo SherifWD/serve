@@ -166,6 +166,7 @@ import { ref, computed, onMounted, nextTick, watch } from 'vue'
 import axios from 'axios'
 import { API_BASE_URL } from '../lib/api'
 import { confirmDelete } from '../lib/confirmDelete'
+import { missingField, showValidationAlert } from '../lib/validationAlert'
 import Chart from 'chart.js/auto'
 import OwnerLayout from '@/layouts/OwnerLayout.vue'
 
@@ -246,6 +247,12 @@ function openEdit(emp) {
 }
 
 async function saveEmployee() {
+  const validationFields = employeeValidationFields()
+  if (validationFields.length) {
+    await showValidationAlert(validationFields, { title: 'Complete employee details' })
+    return
+  }
+
   const token = localStorage.getItem('token')
   if (editing.value) {
     await axios.put(`${API_BASE_URL}/employees/${form.value.id}`, form.value, {
@@ -258,6 +265,22 @@ async function saveEmployee() {
   }
   dialog.value = false
   loadEmployees()
+}
+
+function employeeValidationFields() {
+  return [
+    missingField('Name', Boolean(form.value.name.trim())),
+    missingField('Position', Boolean(form.value.position.trim())),
+    missingField('Base Salary', hasNumberAtLeast(form.value.base_salary, 0)),
+    missingField('Branch', Boolean(form.value.branch_id)),
+    missingField('Hired At', Boolean(form.value.hired_at)),
+  ].filter(Boolean)
+}
+
+function hasNumberAtLeast(value, min) {
+  if (value === '' || value === null || value === undefined) return false
+  const numeric = Number(value)
+  return Number.isFinite(numeric) && numeric >= min
 }
 
 async function deleteEmployee(emp) {

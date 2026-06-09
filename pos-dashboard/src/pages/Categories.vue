@@ -286,7 +286,6 @@
               style="color:#181818;font-weight:bold;"
               type="submit"
               :loading="saving"
-              :disabled="!canSave"
             >
               <v-icon start>mdi-check</v-icon>{{ editing ? 'Update' : 'Add' }}
             </v-btn>
@@ -302,6 +301,7 @@ import { ref, computed, onMounted } from 'vue'
 import axios from 'axios'
 import { API_BASE_URL } from '../lib/api'
 import { confirmDelete } from '../lib/confirmDelete'
+import { missingField, showValidationAlert } from '../lib/validationAlert'
 import OwnerLayout from '@/layouts/OwnerLayout.vue'
 
 const categories = ref([])
@@ -394,7 +394,11 @@ function openEditDrawer(cat) {
 }
 
 async function saveCategory() {
-  if (!canSave.value) return
+  const validationFields = categoryValidationFields()
+  if (validationFields.length) {
+    await showValidationAlert(validationFields, { title: 'Complete category details' })
+    return
+  }
 
   const token = localStorage.getItem('token')
   const payload = categoryPayload()
@@ -416,6 +420,13 @@ async function saveCategory() {
   } finally {
     saving.value = false
   }
+}
+
+function categoryValidationFields() {
+  return [
+    missingField('Name', Boolean(form.value.name.trim())),
+    missingField('Branches', form.value.branch_ids.length > 0),
+  ].filter(Boolean)
 }
 
 async function deleteCategory(cat) {

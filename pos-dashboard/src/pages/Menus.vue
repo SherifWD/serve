@@ -180,7 +180,6 @@
             size="large"
             style="color:#181818;font-weight:bold;"
             type="submit"
-            :disabled="!canSaveMenu"
           >
             <v-icon start>mdi-check</v-icon>{{ isEditing ? 'Update' : 'Add' }}
           </v-btn>
@@ -250,6 +249,7 @@ import { ref, computed, onMounted } from 'vue'
 import axios from 'axios'
 import { API_BASE_URL } from '../lib/api'
 import { confirmDelete } from '../lib/confirmDelete'
+import { missingField, showValidationAlert } from '../lib/validationAlert'
 import OwnerLayout from '@/layouts/OwnerLayout.vue'
 
 const menus = ref([])
@@ -360,7 +360,11 @@ function openViewDrawer(menu) {
 }
 
 async function saveMenu() {
-  if (!canSaveMenu.value) return
+  const validationFields = menuValidationFields()
+  if (validationFields.length) {
+    await showValidationAlert(validationFields, { title: 'Complete menu details' })
+    return
+  }
 
   const token = localStorage.getItem('token')
   const url = isEditing.value
@@ -382,6 +386,13 @@ async function saveMenu() {
   } catch (error) {
     formError.value = errorMessage(error)
   }
+}
+
+function menuValidationFields() {
+  return [
+    missingField('Name', Boolean(drawerForm.value.name.trim())),
+    missingField('Branch', Boolean(drawerForm.value.branch_id)),
+  ].filter(Boolean)
 }
 
 function errorMessage(error) {
