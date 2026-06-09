@@ -3,10 +3,10 @@ namespace App\Events;
 use App\Models\Order;
 use Illuminate\Broadcasting\InteractsWithSockets;
 use Illuminate\Broadcasting\PrivateChannel;
-use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
+use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
 use Illuminate\Queue\SerializesModels;
 
-class OrderSentToKDS implements ShouldBroadcast
+class OrderSentToKDS implements ShouldBroadcastNow
 {
     use InteractsWithSockets, SerializesModels;
 
@@ -14,16 +14,26 @@ class OrderSentToKDS implements ShouldBroadcast
 
     public function __construct(Order $order)
     {
-        $this->order = $order->loadMissing('items.product');
+        $this->order = $order->loadMissing(['table', 'customer', 'items.product', 'items.modifiers.modifier']);
     }
 
     public function broadcastOn()
     {
-        return ['branch.'.$this->order->branch_id.'.kds'];
+        return new PrivateChannel('branch.'.$this->order->branch_id);
     }
 
     public function broadcastAs()
     {
-        return 'order.sent';
+        return 'order.sent_to_kds';
+    }
+
+    public function broadcastWith(): array
+    {
+        return [
+            'event' => 'order.sent_to_kds',
+            'branch_id' => (int) $this->order->branch_id,
+            'server_time' => now()->toISOString(),
+            'order' => $this->order,
+        ];
     }
 }

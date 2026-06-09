@@ -18,6 +18,7 @@ import Tables from '../pages/Tables.vue'
 import Ingredients from '../pages/Ingredients.vue'
 import Recipe from '../pages/Recipe.vue'
 import Settings from '../pages/Settings.vue'
+import MarketingInquiries from '../pages/MarketingInquiries.vue'
 
 const authenticatedMeta = { requiresAuth: true }
 
@@ -125,6 +126,12 @@ const routes = [
     name: 'settings',
     component: Settings,
     meta: { ...authenticatedMeta, title: 'Settings', permission: 'settings.view' },
+  },
+  {
+    path: '/marketing-inquiries',
+    name: 'marketing-inquiries',
+    component: MarketingInquiries,
+    meta: { ...authenticatedMeta, title: 'Marketing Leads', permission: 'settings.view' },
   },
   { path: '/:pathMatch(.*)*', redirect: '/dashboard' },
 ]

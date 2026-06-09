@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\Api\Mobile;
 
+use App\Events\BranchOrderUpdated;
+use App\Events\OrderReadyForCashier;
 use App\Events\OrderSentToKDS;
 use App\Http\Controllers\Controller;
 use App\Models\Branch;
@@ -88,6 +90,46 @@ class OrderMobileController extends Controller
             });
     }
 
+    private function resolveOrderLocation(Request $request, array $data): array
+    {
+        $orderType = $data['order_type'] ?? (! empty($data['table_id']) ? 'dine-in' : 'takeaway');
+
+        if ($orderType === 'dine-in' && empty($data['table_id'])) {
+            throw ValidationException::withMessages([
+                'table_id' => 'A table is required for dine-in orders.',
+            ]);
+        }
+
+        if (! empty($data['table_id'])) {
+            $table = Table::with('branch')->findOrFail($data['table_id']);
+
+            if (! empty($data['branch_id']) && (int) $data['branch_id'] !== (int) $table->branch_id) {
+                throw ValidationException::withMessages([
+                    'branch_id' => 'Branch must match the selected table.',
+                ]);
+            }
+
+            return [$table->branch, $table, $orderType];
+        }
+
+        $branchId = $data['branch_id'] ?? $request->user()?->branch_id;
+
+        if (! $branchId && $request->user()?->restaurant_id) {
+            $branchId = Branch::query()
+                ->where('restaurant_id', $request->user()->restaurant_id)
+                ->orderBy('id')
+                ->value('id');
+        }
+
+        if (! $branchId) {
+            throw ValidationException::withMessages([
+                'branch_id' => 'Branch is required for takeaway or delivery orders without a table.',
+            ]);
+        }
+
+        return [Branch::query()->findOrFail($branchId), null, $orderType];
+    }
+
     private function appendItemRuntimeState(Order $order): void
     {
         $order->loadMissing('payments');
@@ -96,6 +138,17 @@ class OrderMobileController extends Controller
             $item->setRelation('order', $order);
             $item->append(['item_note', 'change_note', 'paid_amount', 'payment_status']);
         });
+    }
+
+    private function broadcastOrderChange(Order $order, string $event = 'order.updated'): void
+    {
+        event(new BranchOrderUpdated($order->fresh([
+            'table',
+            'customer',
+            'items.product',
+            'items.modifiers.modifier',
+            'payments',
+        ]) ?? $order, $event));
     }
 
     private function orderItemsReadyForCashier(Order $order): bool
@@ -190,8 +243,8 @@ class OrderMobileController extends Controller
             $order->table->update(['status' => 'cashier']);
         }
 
-        // (optional) broadcast to waiter & cashier UIs
-        // event(new \App\Events\OrderReadyForCashier($order));
+        event(new OrderReadyForCashier($order->fresh(['table', 'customer', 'items.product', 'payments'])));
+        $this->broadcastOrderChange($order, 'order.sent_to_cashier');
 
         return response()->json(['ok' => true]);
     }
@@ -226,7 +279,8 @@ class OrderMobileController extends Controller
                     $order->table->update(['status' => 'cashier']);
                 }
                 $ok[] = $id;
-                // event(new \App\Events\OrderReadyForCashier($order));
+                event(new OrderReadyForCashier($order->fresh(['table', 'customer', 'items.product', 'payments'])));
+                $this->broadcastOrderChange($order, 'order.sent_to_cashier');
             } else {
                 $failed[] = $id;
             }
@@ -257,7 +311,8 @@ class OrderMobileController extends Controller
     public function store(Request $request)
     {
         $data = $request->validate([
-            'table_id' => 'required|integer|exists:tables,id',
+            'table_id' => 'nullable|integer|exists:tables,id',
+            'branch_id' => 'nullable|integer|exists:branches,id',
             'order_type' => 'nullable|in:dine-in,takeaway,delivery',
             'customer_id' => 'nullable|integer|exists:customers,id',
             'customer_name' => 'nullable|string|max:255',
@@ -277,29 +332,32 @@ class OrderMobileController extends Controller
             'discount' => 'nullable|numeric|min:0',
             'discount_type' => 'nullable|in:fixed,percent',
             'coupon_code' => 'nullable|string|max:50',
+            'send_to_cashier' => 'nullable|boolean',
         ]);
 
-        $table = Table::with('branch')->findOrFail($data['table_id']);
-        if ($authResponse = $this->ensureBranchAccessible($request, (int) $table->branch_id)) {
+        [$branch, $table, $orderType] = $this->resolveOrderLocation($request, $data);
+        if ($authResponse = $this->ensureBranchAccessible($request, (int) $branch->id)) {
             return $authResponse;
         }
-        $restaurantId = $table->branch?->restaurant_id;
+        $restaurantId = $branch->restaurant_id;
 
         DB::beginTransaction();
         try {
             $stockService = app(ProductStockService::class);
             $customer = $this->resolveCustomer($data);
 
-            $openOrder = Order::where('table_id', $table->id)
-                ->where(fn ($query) => $this->activeOrderConstraint($query))
-                ->lockForUpdate()
-                ->first();
+            $openOrder = $table
+                ? Order::where('table_id', $table->id)
+                    ->where(fn ($query) => $this->activeOrderConstraint($query))
+                    ->lockForUpdate()
+                    ->first()
+                : null;
 
             $order = $openOrder ?: Order::create([
-                'branch_id' => $table->branch_id ?? 1,
-                'table_id' => $table->id,
+                'branch_id' => $branch->id,
+                'table_id' => $table?->id,
                 'customer_id' => $customer?->id,
-                'order_type' => $data['order_type'] ?? 'dine-in',
+                'order_type' => $orderType,
                 'status' => 'pending',
                 'subtotal' => 0,
                 'tax' => 0,
@@ -314,7 +372,7 @@ class OrderMobileController extends Controller
             }
 
             $orderTotal = $order->total;
-            $branchId = $table->branch_id;
+            $branchId = $branch->id;
 
             // Helper: sum modifier price for modifier_ids
             $sumModifierPrice = function (array $mods, Product $product) use ($restaurantId): float {
@@ -448,8 +506,10 @@ class OrderMobileController extends Controller
             }
             $order->save();
 
-            $table->status = \App\Enums\TableStatus::OCCUPIED;
-            $table->save();
+            if ($table) {
+                $table->status = \App\Enums\TableStatus::OCCUPIED;
+                $table->save();
+            }
 
             // recompute unified subtotal/tax/total (keeps fields consistent)
             $order = \App\Services\Orders\RecalculateOrder::run($order);
@@ -463,10 +523,16 @@ class OrderMobileController extends Controller
                 $order->save();
             }
 
+            if ($request->boolean('send_to_cashier') && $order->payment_status !== 'paid') {
+                $order->status = 'cashier';
+                $order->save();
+            }
+
             DB::commit();
 
-            $order->load(['branch.restaurant', 'customer', 'items.product', 'items.answers.choice.question', 'items.modifiers.modifier', 'payments']); // eager
+            $order->load(['branch.restaurant', 'table', 'customer', 'items.product', 'items.answers.choice.question', 'items.modifiers.modifier', 'payments']); // eager
             $this->appendItemRuntimeState($order);
+            $this->broadcastOrderChange($order, $openOrder ? 'order.updated' : 'order.created');
 
             return response()->json(['order' => $order], $openOrder ? 200 : 201);
 
@@ -520,8 +586,10 @@ class OrderMobileController extends Controller
             $order->table->update(['status' => 'occupied']);
         }
 
-        // Broadcast to branch — KDS should refresh/append ticket
-        // event(new OrderSentToKDS($order));
+        if ($updated > 0) {
+            event(new OrderSentToKDS($order->fresh(['table', 'customer', 'items.product', 'items.modifiers.modifier'])));
+            $this->broadcastOrderChange($order, 'order.sent_to_kds');
+        }
 
         return response()->json(['ok' => true, 'order_id' => $order->id]);
     }
@@ -642,6 +710,10 @@ class OrderMobileController extends Controller
 
         $order->refresh()->load(['branch.restaurant', 'customer', 'items.product', 'items.modifiers.modifier', 'payments']);
         $this->appendItemRuntimeState($order);
+        $this->broadcastOrderChange(
+            $order,
+            $order->status === 'paid' ? 'order.paid' : 'order.payment_updated',
+        );
 
         // Optionally send email receipt
         if (! empty($data['email_receipt'])) {

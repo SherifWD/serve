@@ -1,13 +1,18 @@
 <?php
 
+use App\Http\Controllers\MarketingInquiryPublicController;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/', function () {
-    if (file_exists(public_path('dashboard/index.html'))) {
-        $baseUrl = rtrim(request()->getBaseUrl(), '/');
+Route::view('/', 'marketing.home')->name('marketing.home');
+Route::view('/contact', 'marketing.contact')->name('marketing.contact');
+Route::post('/contact', [MarketingInquiryPublicController::class, 'store'])->name('marketing.contact.store');
 
-        return redirect(($baseUrl !== '' ? $baseUrl : '').'/dashboard/');
+Route::get('/app', function () {
+    $baseUrl = rtrim(request()->getBaseUrl(), '/');
+
+    if (! file_exists(public_path('dashboard/index.html')) && app()->environment('local')) {
+        return redirect('http://127.0.0.1:5173/');
     }
 
-    return view('welcome');
-});
+    return redirect(($baseUrl !== '' ? $baseUrl : '').'/dashboard/');
+})->name('marketing.app');

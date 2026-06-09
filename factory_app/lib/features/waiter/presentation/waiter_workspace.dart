@@ -1,9 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../../core/models/app_models.dart';
 import '../../../core/widgets/state_views.dart';
+import '../../suite/data/realtime_service.dart';
 import '../../suite/data/suite_repository.dart';
 import 'waiter_order_page.dart';
 
@@ -17,18 +20,63 @@ class WaiterWorkspacePage extends ConsumerStatefulWidget {
 
 class _WaiterWorkspacePageState extends ConsumerState<WaiterWorkspacePage> {
   late Future<List<TableOverview>> _tablesFuture;
+  Timer? _liveRefreshTimer;
+  RealtimeSubscription? _realtimeSubscription;
 
   @override
   void initState() {
     super.initState();
     _tablesFuture = ref.read(suiteRepositoryProvider).fetchTables();
+    _connectRealtime();
+    _liveRefreshTimer = Timer.periodic(
+      const Duration(seconds: 5),
+      (_) {
+        if (mounted) {
+          _refreshTables(background: true);
+        }
+      },
+    );
   }
 
-  Future<void> _refreshTables() async {
+  Future<void> _connectRealtime() async {
+    final subscription =
+        await ref.read(realtimeServiceProvider).subscribeToBranch(
+              surface: 'waiter',
+              onEvent: () => _refreshTables(background: true),
+            );
+    if (!mounted) {
+      await subscription?.close();
+      return;
+    }
+    _realtimeSubscription = subscription;
+  }
+
+  Future<void> _refreshTables({bool background = false}) async {
+    final future = ref.read(suiteRepositoryProvider).fetchTables();
+    if (background) {
+      try {
+        final tables = await future;
+        if (!mounted) return;
+        setState(() {
+          _tablesFuture = Future.value(tables);
+        });
+      } catch (_) {
+        // Keep the current floor map during transient LAN/socket outages.
+      }
+      return;
+    }
+
     setState(() {
-      _tablesFuture = ref.read(suiteRepositoryProvider).fetchTables();
+      _tablesFuture = future;
     });
     await _tablesFuture;
+  }
+
+  @override
+  void dispose() {
+    _realtimeSubscription?.close();
+    _liveRefreshTimer?.cancel();
+    super.dispose();
   }
 
   @override

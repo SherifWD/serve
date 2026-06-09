@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\Mobile;
 
+use App\Events\BranchOrderUpdated;
 use App\Events\KDSItemStatusUpdated;
 use App\Events\OrderReadyForCashier;
 use App\Http\Controllers\Controller;
@@ -88,10 +89,11 @@ public function setOrderItemStatus(Request $request, OrderItem $item)
     }
     $item->save();
 
+    $order = $item->order()->with('items')->first();
     event(new KDSItemStatusUpdated($item));
+    event(new BranchOrderUpdated($order, 'kds.item_status_updated'));
 
     // If all non-canceled/non-refunded items are ready/served → broadcast ready_for_cashier
-    $order = $item->order()->with('items')->first();
     $allDone = $order->items
     ->filter(function ($i) {
         $status = $i->kds_status ?? $i->status; // fallback if NULL
@@ -104,6 +106,7 @@ public function setOrderItemStatus(Request $request, OrderItem $item)
 
     if ($allDone) {
         event(new OrderReadyForCashier($order));
+        event(new BranchOrderUpdated($order, 'order.ready_for_cashier'));
     }
 
     return response()->json(['item' => $item]);
@@ -145,7 +148,10 @@ public function setOrderItemStatus(Request $request, OrderItem $item)
             }
         });
 
-        return response()->json(['message' => 'Order status updated', 'order' => $order->fresh('items')]);
+        $order = $order->fresh(['items.product', 'table']);
+        event(new BranchOrderUpdated($order, 'kds.order_status_updated'));
+
+        return response()->json(['message' => 'Order status updated', 'order' => $order]);
     }
 
     /**

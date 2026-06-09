@@ -1,0 +1,739 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Janova POS Competitive Gap Analysis - Sleft Payments 2026</title>
+  <style>
+    body {
+      font-family: Arial, Helvetica, sans-serif;
+      color: #172026;
+      line-height: 1.48;
+      margin: 36px;
+      max-width: 1200px;
+    }
+    h1, h2, h3 {
+      color: #102a43;
+      margin-top: 28px;
+    }
+    h1 {
+      font-size: 30px;
+      margin-bottom: 6px;
+    }
+    h2 {
+      font-size: 22px;
+      border-bottom: 2px solid #d9e2ec;
+      padding-bottom: 6px;
+    }
+    h3 {
+      font-size: 17px;
+      margin-bottom: 4px;
+    }
+    p {
+      margin: 8px 0;
+    }
+    .meta {
+      color: #52616b;
+      margin-bottom: 22px;
+    }
+    .callout {
+      background: #f0f7ff;
+      border-left: 5px solid #2f80ed;
+      padding: 14px 16px;
+      margin: 18px 0;
+    }
+    .warning {
+      background: #fff7e6;
+      border-left: 5px solid #f59e0b;
+      padding: 14px 16px;
+      margin: 18px 0;
+    }
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      margin: 14px 0 24px;
+      table-layout: fixed;
+    }
+    th, td {
+      border: 1px solid #cbd5df;
+      padding: 9px 10px;
+      vertical-align: top;
+      word-wrap: break-word;
+    }
+    th {
+      background: #e8eef5;
+      color: #102a43;
+      font-weight: bold;
+    }
+    .small {
+      font-size: 12px;
+      color: #52616b;
+    }
+    .score {
+      font-weight: bold;
+      white-space: nowrap;
+    }
+    .win {
+      color: #0b6b3a;
+      font-weight: bold;
+    }
+    .gap {
+      color: #9a3412;
+      font-weight: bold;
+    }
+    .neutral {
+      color: #374151;
+      font-weight: bold;
+    }
+    ul {
+      margin-top: 6px;
+    }
+    li {
+      margin-bottom: 5px;
+    }
+    a {
+      color: #175cd3;
+    }
+  </style>
+</head>
+<body>
+  <h1>Janova POS Competitive Gap Analysis</h1>
+  <p class="meta">Prepared on 2026-06-09. Focus: Sleft Payments' 2026 small business POS article and related POS pain points, compared with this local restaurant POS codebase.</p>
+
+  <div class="callout">
+    <p><strong>Bottom line:</strong> Janova can win prospects who are frustrated by Toast-style processing lock-in, Square's flat-rate ceiling, Clover reseller confusion, and generic POS systems that do not fit restaurant operations. The strongest marketable angle is not "we have every feature." It is: restaurant-specific workflow, flexible payment and hardware architecture, clear local support, fiscal readiness, and ownership of data.</p>
+    <p><strong>Current readiness:</strong> strong for controlled pilots and implementation-led sales to cafes, takeaway shops, and restaurants. Not yet strong enough to claim full Toast/Square/Clover replacement for every merchant until physical payment terminals, certified printers, true offline mode, data export/import, support SLAs, and migration tooling are proven.</p>
+  </div>
+
+  <h2>Scope And Source Bias</h2>
+  <p>The main source requested by the user is Sleft Payments' article, <a href="https://www.sleftpayments.com/learning-hub/best-pos-system-small-business-2026">Best POS Systems for Small Business 2026</a>. Sleft is a payment provider, so its articles emphasize payment transparency, hardware ownership, contract terms, cash discounting, and support. I treated Sleft's complaint pages as competitive pain-point intelligence, not as neutral proof that every listed vendor always behaves badly.</p>
+  <p>I cross-checked with official vendor pages where practical, especially for feature and pricing facts from Square, Clover, Toast, Lightspeed, TouchBistro, Oracle, NCR, SpotOn, and Foodics. Source links are listed at the end.</p>
+
+  <h2>Executive Verdict</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Question</th>
+        <th>Answer</th>
+        <th>Marketing Meaning</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Can Janova compete with popular POS systems?</td>
+        <td>Yes, for cafes, takeaway, drinks shops, and restaurants that need waiter, cashier, KDS, receipt, inventory, owner dashboard, fiscal export, and customer ordering flows.</td>
+        <td>Sell first to merchants who value implementation support and restaurant workflows over a huge marketplace ecosystem.</td>
+      </tr>
+      <tr>
+        <td>Where does Janova clearly win?</td>
+        <td>Flexible payment-provider configuration, generic printer/device profiles, server print queue, restaurant workflow coverage, fiscal/ETA export, tenant/branch scoping, and localizable MENA positioning.</td>
+        <td>Position against lock-in, poor local support, add-on creep, and generic retail POS workarounds.</td>
+      </tr>
+      <tr>
+        <td>Where do competitors still beat Janova?</td>
+        <td>Certified payment processing, physical hardware bundles, offline guarantees, app marketplaces, migration tools, payroll/tips, reservations/waitlist, delivery integrations, marketing automation, support SLAs, and enterprise proof.</td>
+        <td>Do not oversell. Use pilots, demos, and clear roadmap commitments.</td>
+      </tr>
+      <tr>
+        <td>Most important product changes to win more clients?</td>
+        <td>Finish processor integrations, hardware certification, offline queue, data export/import, no-table staff takeaway, receipt UX, shift close/cash drawer close, and transparent pricing/support policies.</td>
+        <td>These changes convert "interesting custom POS" into a credible switch-away-from-Toast/Square/Clover product.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>Sleft Pain Points And Janova Comparison</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Pain Point People Complain About</th>
+        <th>What Sleft Highlights</th>
+        <th>Janova Status Today</th>
+        <th>How Janova Can Win</th>
+        <th>Required Changes Before Strong Marketing Claim</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Payment processing lock-in and unclear true cost</strong></td>
+        <td>Sleft says owners should check processing model, effective rate, add-on fees, and whether they can use a different processor. Its Toast article complains about locked processing; its Square section warns flat rates can become expensive at volume.</td>
+        <td><span class="win">Partial win.</span> The backend has configurable payment providers with modes for manual, terminal, online, and gateway, plus supported methods for cash, card, and wallet. Evidence: <code>PaymentProviderController</code> validates provider mode and supported methods; <code>HardwareValidation</code> validates payment method support.</td>
+        <td>Market as "payment-flexible by design" and "built to avoid single-processor dependency" for merchants tired of lock-in.</td>
+        <td>Implement real gateway/terminal adapters, settlement reconciliation, fee reporting, Sleft or local acquiring integration, cash discount or dual-pricing rules where legally allowed, and a statement comparison calculator. Do not claim "use any processor" until certified.</td>
+      </tr>
+      <tr>
+        <td><strong>Hardware ownership and proprietary devices</strong></td>
+        <td>Sleft asks whether hardware is owned, leased, processor-locked, or portable. Its Toast complaint pages emphasize proprietary hardware; its Clover page warns that reseller/processor setup can change costs and portability.</td>
+        <td><span class="win">Architecture win, proof gap.</span> Janova supports device heartbeat, printer profiles, endpoints, and a server print queue. Printer profiles include browser print, cash drawer, Epson thermal, ESC/POS network, ESC/POS USB, PDF, and system printer.</td>
+        <td>Sell "bring compatible printers and terminals" to cafes and restaurants that hate locked hardware.</td>
+        <td>Create a certified hardware matrix, printer setup wizard, cash drawer tests, terminal pairing flow, health dashboard, replacement-device workflow, and real store pilot logs showing successful printing during rush hours.</td>
+      </tr>
+      <tr>
+        <td><strong>Long contracts, early termination fees, and leases</strong></td>
+        <td>Sleft calls month-to-month terms safer and lists pressure sales, long leases, and hard cancellation as red flags.</td>
+        <td><span class="neutral">Business policy, not code.</span> The product can support transparent SaaS billing, but code alone does not prove no long contract or no ETF.</td>
+        <td>Win trust with simple month-to-month pricing, hardware ownership, written cancellation terms, data export rights, and no surprise add-ons.</td>
+        <td>Publish commercial terms, service order template, cancellation process, support SLA, refund rules, data ownership clause, and hardware warranty policy.</td>
+      </tr>
+      <tr>
+        <td><strong>Support failures during busy service</strong></td>
+        <td>Sleft asks what happens during a Friday 7 PM outage and its Toast complaint pages emphasize slow or scripted support.</td>
+        <td><span class="win">Good foundation.</span> Janova has support context and ops endpoints reporting devices online/offline, queued/failed print jobs, payment attempts, offline mutations, ETA queue state, and runtime readiness.</td>
+        <td>Market local human support, WhatsApp/phone access, and remote diagnostics as a major differentiator.</td>
+        <td>Add incident dashboards, alerting, support runbooks, audit trails, SLA response targets, backup internet guidance, customer-visible status page, and support staff training.</td>
+      </tr>
+      <tr>
+        <td><strong>Generic POS does not fit restaurants</strong></td>
+        <td>Sleft says restaurants need order management, KDS, table management, modifiers, tips, menu flexibility, and delivery/online workflows.</td>
+        <td><span class="win">Strong win for F&B.</span> Janova has table routes, waiter order creation, KDS item updates, cashier payment, receipt generation, print jobs, inventory, customer checkout, coupons, loyalty, and owner dashboards.</td>
+        <td>Use scenario demos: drinks-only cashier, takeaway cafe with KDS, small cafe dine-in, large cafe split tender, small restaurant, large restaurant with table move, and customer takeaway pickup.</td>
+        <td>Improve tips/service charge, coursing, seat-level split bills, no-table staff takeaway, delivery statuses, reservations/waitlist, and polished front-end UX for each role.</td>
+      </tr>
+      <tr>
+        <td><strong>Add-on creep and expensive paid modules</strong></td>
+        <td>Sleft warns about software add-ons. Official Square pricing shows some restaurant modules, such as KDS and Kiosk, can have separate monthly app fees depending on plan and device.</td>
+        <td><span class="win">Potential pricing win.</span> Janova already includes KDS/cashier/customer/order/print API surfaces in one product architecture.</td>
+        <td>Package KDS, customer ordering, inventory basics, and owner reporting in one clear restaurant plan.</td>
+        <td>Create a public feature matrix that says exactly what is included, what costs extra, and what never becomes a surprise add-on.</td>
+      </tr>
+      <tr>
+        <td><strong>Data export and switching friction</strong></td>
+        <td>Sleft's checklist asks if data can be exported and recommends exporting customer/menu/report data before switching.</td>
+        <td><span class="gap">Current gap.</span> The codebase has fiscal receipt export and database backup, but no obvious merchant self-service export/import workflow for menu, customers, products, modifiers, orders, receipts, and payments.</td>
+        <td>A one-click migration path can be a major acquisition weapon against Toast, Square, Clover, and Foodics.</td>
+        <td>Build CSV/Excel exports, imports from common POS CSV formats, data validation, import preview, rollback, API/webhooks, and a migration checklist.</td>
+      </tr>
+      <tr>
+        <td><strong>Offline, cellular backup, and pop-up mobility</strong></td>
+        <td>Sleft says mobile/pop-up sellers need portability, cellular, and fast setup. Official Toast and Square pages document offline payment/order behavior with caveats.</td>
+        <td><span class="neutral">Foundation only.</span> Mobile sync advertises queueable actions and client mutation IDs, but true offline order/payment/print behavior still needs client-side queue implementation and field testing.</td>
+        <td>After implementation, market "keep selling during internet issues" to cafes and takeaway shops.</td>
+        <td>Build local-first mobile queues, replay rules, conflict UI, offline receipt numbering, offline print queue, payment fallback, and outage simulations with real devices.</td>
+      </tr>
+      <tr>
+        <td><strong>Delivery app commissions and online ordering control</strong></td>
+        <td>Sleft warns restaurants that delivery app fees can be high and recommends restaurant-specific ordering controls.</td>
+        <td><span class="win">Partial win.</span> Janova has customer auth, restaurant browsing, customer orders, pay-at-counter checkout, coupons, and loyalty routes.</td>
+        <td>Market commission-free branded pickup ordering for cafes, drinks shops, and takeaway restaurants.</td>
+        <td>Add online payment, delivery-zone pricing, kitchen throttling, pickup time slots, driver handoff, third-party marketplace optional integrations, and customer notifications.</td>
+      </tr>
+      <tr>
+        <td><strong>Retail/service vertical depth</strong></td>
+        <td>The Sleft article separates restaurant, retail, mobile, service, and e-commerce needs.</td>
+        <td><span class="gap">Not the best target yet.</span> Janova is clearly stronger for restaurants/cafes than salons, boutiques, repair shops, or mixed retail.</td>
+        <td>Win by being the restaurant specialist instead of trying to look universal.</td>
+        <td>Only chase retail/service later if you add barcodes, variants, purchase orders at retail depth, appointments, commissions, memberships, and retail integrations.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>Competitive Positioning By Vendor</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Competitor</th>
+        <th>Common Buyer Pain To Attack</th>
+        <th>Janova Advantage</th>
+        <th>Where They Still Beat Janova</th>
+        <th>Recommended Marketing Angle</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Toast</td>
+        <td>Processing lock-in, proprietary hardware concerns, contract complaints, add-on costs, and support frustration as described by Sleft complaint pages.</td>
+        <td>Flexible provider architecture, generic printer profiles, local support positioning, restaurant-specific workflows, fiscal readiness.</td>
+        <td>Mature restaurant hardware, offline mode, ecosystem, payroll/scheduling, online ordering, marketing, enterprise integrations, and brand trust.</td>
+        <td>"For cafes and restaurants that want Toast-like restaurant workflow without forced processing and proprietary hardware dependency."</td>
+      </tr>
+      <tr>
+        <td>Square for Restaurants</td>
+        <td>Flat-rate processing can be simple but costly at higher volume; restaurant add-ons and ecosystem dependency can increase cost.</td>
+        <td>Restaurant workflow depth can be packaged tightly for local F&B, with provider flexibility and fiscal/local compliance as differentiators.</td>
+        <td>Fast onboarding, polished hardware, broad small-business ecosystem, offline payments, banking/payroll/marketing stack.</td>
+        <td>"For cafes that outgrew Square and need a restaurant-first POS with more payment flexibility and local support."</td>
+      </tr>
+      <tr>
+        <td>Clover</td>
+        <td>Reseller confusion, processor-lock risk, different rates for same hardware, and app/add-on dependence.</td>
+        <td>One clear implementation owner, hardware profile transparency, integrated waiter/KDS/cashier/customer flows.</td>
+        <td>Packaged devices, merchant acquiring availability, app marketplace, simpler small-merchant setup.</td>
+        <td>"Transparent restaurant POS setup without reseller confusion."</td>
+      </tr>
+      <tr>
+        <td>Lightspeed Restaurant</td>
+        <td>Can feel expensive/complex for smaller cafes if they only need reliable counter, KDS, receipt, inventory, and owner reports.</td>
+        <td>Lean local implementation for cafes/restaurants, fiscal export, flexible hardware direction.</td>
+        <td>Global maturity, inventory/reporting polish, integrations, multi-location operational depth.</td>
+        <td>"A focused cafe and restaurant system that avoids paying for complexity you do not use."</td>
+      </tr>
+      <tr>
+        <td>TouchBistro</td>
+        <td>iPad-centric and restaurant-specific, but merchants may want more local payment/fiscal customization.</td>
+        <td>Backend flexibility, fiscal/ETA direction, local implementation, customer pickup and branch scoping.</td>
+        <td>Polished iPad restaurant UX, reservations, marketing, loyalty, KDS, gift cards, payments, hardware maturity.</td>
+        <td>"Restaurant workflows adapted to local fiscal and operational needs."</td>
+      </tr>
+      <tr>
+        <td>Foodics</td>
+        <td>Regional leader, but some buyers may want more control over hardware, payments, custom workflows, or local implementation terms.</td>
+        <td>Egypt/MENA fiscal readiness, customizable stack, implementation-led support, tenant/branch model.</td>
+        <td>Regional ecosystem, payment network, accounting/integration depth, pay-at-table, self-ordering, support scale.</td>
+        <td>"Local, flexible alternative for operators who want restaurant workflows plus ownership of configuration and data."</td>
+      </tr>
+      <tr>
+        <td>Generic retail POS systems</td>
+        <td>Restaurants often force retail POS into table/KDS/modifier workflows it was not built for.</td>
+        <td>Janova is built around F&B lifecycle: table, KDS, cashier, receipt, inventory, customer order, owner view.</td>
+        <td>Retail POS may be better for barcode-heavy retail, appointments, or non-food businesses.</td>
+        <td>"A restaurant POS, not a retail checkout with restaurant labels added."</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>What Janova Wins On Today</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Win Area</th>
+        <th>Evidence In The Product</th>
+        <th>How To Use It In Sales</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Restaurant-specific order lifecycle</td>
+        <td>Routes support mobile order creation, table move, send to KDS, KDS item status, send to cashier, pay, receipt, and print job. The production scenario test covers seven cafe/restaurant workflows with receipt and print-job completion.</td>
+        <td>Demo the whole cycle, not screenshots. Show cashier, waiter, kitchen, owner, and customer views in one live script.</td>
+      </tr>
+      <tr>
+        <td>Flexible payment architecture</td>
+        <td><code>PaymentProviderController</code> supports configurable providers, provider modes, supported methods, credentials, terminal config, webhooks, and branch scoping.</td>
+        <td>Say "built to support processor choice" until real adapters are certified. This is a strong future-proofing message.</td>
+      </tr>
+      <tr>
+        <td>Open hardware direction</td>
+        <td><code>HardwareValidation</code> supports several printer profiles and endpoint schemes. <code>PrintJobController</code> queues, claims, and updates print jobs. <code>MobileSyncController</code> exposes server print queue and device heartbeat.</td>
+        <td>Position against proprietary hardware, but back it with a published compatibility list before making a hard promise.</td>
+      </tr>
+      <tr>
+        <td>Support diagnostics</td>
+        <td><code>SupportController</code> reports runtime, devices, print jobs, payment attempts, offline mutations, and ETA queue status.</td>
+        <td>Promise faster local diagnosis because support can see the store state, not just ask the cashier to reboot everything.</td>
+      </tr>
+      <tr>
+        <td>Fiscal and local compliance path</td>
+        <td>Routes include fiscal profile, receipt fiscal export, and ETA submission APIs.</td>
+        <td>Use as a major differentiator in Egypt/MENA where global POS products may not fit local receipt and tax needs without customization.</td>
+      </tr>
+      <tr>
+        <td>Customer ordering and loyalty foundation</td>
+        <td>Customer routes include OTP auth, restaurant browsing, checkout, order history, and loyalty.</td>
+        <td>Sell commission-free pickup ordering as a next-step upsell after core POS stabilization.</td>
+      </tr>
+      <tr>
+        <td>Multi-branch SaaS foundation</td>
+        <td>Controllers repeatedly enforce restaurant/branch scope and the data model supports branches, devices, users, products, orders, fiscal profiles, and subscriptions.</td>
+        <td>Target growing cafe groups and multi-branch restaurants after pilot proof.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>Do Not Claim Yet</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Claim To Avoid</th>
+        <th>Why It Is Risky</th>
+        <th>Safer Claim</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>"Works with any processor"</td>
+        <td>The model supports provider configuration, but certification and real gateway/terminal integrations are not proven.</td>
+        <td>"Built for payment-provider flexibility, with supported processors listed by market."</td>
+      </tr>
+      <tr>
+        <td>"No hardware lock-in"</td>
+        <td>Printer profiles are flexible, but real certified hardware compatibility still needs field proof.</td>
+        <td>"Supports standard printer/device profiles, with a certified hardware list."</td>
+      </tr>
+      <tr>
+        <td>"Offline like Toast or Square"</td>
+        <td>The API advertises queueable actions, but true offline client behavior, receipt numbering, payment fallback, and sync conflict UI need implementation/testing.</td>
+        <td>"Offline-ready architecture; full outage mode available after certified deployment testing."</td>
+      </tr>
+      <tr>
+        <td>"Full Toast/Foodics replacement"</td>
+        <td>Missing mature reservations, payroll/tips, delivery marketplaces, marketing automation, gift cards, app marketplace, and support scale.</td>
+        <td>"Restaurant POS for cafes, takeaway, and restaurants that need core operations with flexible implementation."</td>
+      </tr>
+      <tr>
+        <td>"Guaranteed physical printing"</td>
+        <td>Tests prove server print-job status, not actual thermal printer output under network faults.</td>
+        <td>"Server print queue with supported certified printers and monitored retries."</td>
+      </tr>
+      <tr>
+        <td>"No contracts and no hidden fees"</td>
+        <td>This is a business promise, not a code feature.</td>
+        <td>Publish a transparent pricing page and signed terms, then make the claim.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>Modification Roadmap To Win More Clients</h2>
+  <h3>P0 - Build Before Aggressive Competitive Marketing</h3>
+  <table>
+    <thead>
+      <tr>
+        <th>Change</th>
+        <th>Reason</th>
+        <th>Marketing Benefit</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Payment integrations and cost transparency</td>
+        <td>Add real processor adapters, terminal capture, reconciliation, settlement reports, fee display, and legal cash discount/dual pricing rules where allowed.</td>
+        <td>Lets you attack the biggest Sleft pain point: processing cost and lock-in.</td>
+      </tr>
+      <tr>
+        <td>Certified hardware program</td>
+        <td>Validate actual Epson/ESC-POS printers, cash drawers, tablets, Android devices, barcode scanners if needed, and terminal devices.</td>
+        <td>Turns "hardware flexible" from architecture into proof.</td>
+      </tr>
+      <tr>
+        <td>True counter/takeaway no-table staff flow</td>
+        <td>The scenario test currently shows cashier-only takeaway still uses a table and leaves it occupied; customer takeaway properly has no table. Staff takeaway should not require a fake table.</td>
+        <td>Critical for drinks-only shops, takeaway cafes, and pickup restaurants.</td>
+      </tr>
+      <tr>
+        <td>Receipt UX hardening</td>
+        <td>Separate bill preview, paid receipt, fiscal receipt, kitchen ticket, and reprint flows. Default to paid receipt after payment.</td>
+        <td>Improves trust during the exact moment customers and cashiers care most.</td>
+      </tr>
+      <tr>
+        <td>Migration/export toolkit</td>
+        <td>Add exports/imports for menu, modifiers, customers, loyalty, orders, receipts, payments, inventory, users, and branch settings.</td>
+        <td>Lets sales say, "We can move you from Toast, Square, Clover, Foodics, or spreadsheets with less risk."</td>
+      </tr>
+      <tr>
+        <td>Support SLA and ops dashboard</td>
+        <td>Build support runbooks, alerting, customer context, device/printer/payment issue triage, and SLA commitments.</td>
+        <td>Directly addresses Friday-night outage anxiety.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>P1 - Needed To Beat Mature Restaurant POS In More Deals</h3>
+  <table>
+    <thead>
+      <tr>
+        <th>Change</th>
+        <th>Reason</th>
+        <th>Marketing Benefit</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Offline/outage mode</td>
+        <td>Implement local order queue, local print queue, idempotent sync replay, conflict screens, and terminal fallback.</td>
+        <td>Competes with Toast, Square, Oracle, and NCR offline claims.</td>
+      </tr>
+      <tr>
+        <td>Tips, service charge, tip-out, cash drawer close, and shift close</td>
+        <td>Restaurants and cafes need end-of-day controls, accountability, and tip handling.</td>
+        <td>Helps replace real restaurant POS instead of only serving simple cashier checkout.</td>
+      </tr>
+      <tr>
+        <td>Reservations, waitlist, and table pacing</td>
+        <td>Full-service restaurants expect more than table status.</td>
+        <td>Improves big restaurant fit.</td>
+      </tr>
+      <tr>
+        <td>Commission-free branded ordering</td>
+        <td>Add online payments, pickup slots, customer notifications, delivery zones, and kitchen throttling.</td>
+        <td>Attacks delivery app fees and builds merchant-owned customer relationship.</td>
+      </tr>
+      <tr>
+        <td>Marketing, loyalty, gift cards, and campaigns</td>
+        <td>Competitors use these modules to raise retention and revenue per merchant.</td>
+        <td>Raises lifetime value and makes the platform harder to replace.</td>
+      </tr>
+      <tr>
+        <td>Accounting and marketplace integrations</td>
+        <td>Owners need exports or integrations for accounting, tax, payroll, delivery, and analytics.</td>
+        <td>Removes a common switching blocker.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>P2 - Optional Expansion</h3>
+  <table>
+    <thead>
+      <tr>
+        <th>Change</th>
+        <th>Reason</th>
+        <th>Marketing Benefit</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Retail vertical support</td>
+        <td>Requires variants, barcode workflows, purchase orders, returns, vendor management, and product matrices.</td>
+        <td>Only useful if you want to compete beyond food and beverage.</td>
+      </tr>
+      <tr>
+        <td>Salon/service vertical support</td>
+        <td>Requires appointments, staff commissions, memberships, service durations, and deposits.</td>
+        <td>Could expand market, but risks diluting restaurant focus.</td>
+      </tr>
+      <tr>
+        <td>Enterprise franchise controls</td>
+        <td>Requires SSO, audit/compliance, menu publishing approvals, BI warehouse, and high availability SLAs.</td>
+        <td>Useful after multi-branch restaurant pilots prove reliability.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>Marketing Claims That Can Convert</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Audience</th>
+        <th>Problem They Feel</th>
+        <th>Message</th>
+        <th>Proof Asset Needed</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Small cafe</td>
+        <td>Needs quick order, payment, receipt, inventory basics, and simple owner view.</td>
+        <td>"Run counter, table, receipt, stock, and owner reports without paying for a heavy enterprise POS."</td>
+        <td>10-minute cafe demo and simple monthly price.</td>
+      </tr>
+      <tr>
+        <td>Big cafe group</td>
+        <td>Needs branch control, split tender, inventory, low-stock alerts, cashier accountability, and consistent receipts.</td>
+        <td>"Multi-branch cafe operations with KDS, cashier, stock, receipt, and owner reporting in one workflow."</td>
+        <td>Branch comparison dashboard and pilot metrics.</td>
+      </tr>
+      <tr>
+        <td>Drinks-only/takeaway shop</td>
+        <td>Needs cashier-only speed, printed receipt, simple handover, and no table complexity.</td>
+        <td>"Fast cashier-first takeaway flow for drinks and pickup orders."</td>
+        <td>No-table counter mode demo after P0 fix.</td>
+      </tr>
+      <tr>
+        <td>Small restaurant</td>
+        <td>Needs waiter, kitchen, cashier, receipt, and table reopen/move controls.</td>
+        <td>"A real restaurant cycle: waiter to kitchen to cashier to receipt."</td>
+        <td>Scenario video with waiter, KDS, cashier, and printed receipt.</td>
+      </tr>
+      <tr>
+        <td>Large restaurant</td>
+        <td>Needs table moves, split tender, stronger KDS, staff roles, support, and reporting.</td>
+        <td>"Restaurant operations with branch control and support visibility."</td>
+        <td>Load test, hardware test, support SLA, and manager training plan.</td>
+      </tr>
+      <tr>
+        <td>Toast/Square/Clover unhappy merchant</td>
+        <td>Feels locked into fees, hardware, support, or add-ons.</td>
+        <td>"Your menu, your devices, your payment options, your data."</td>
+        <td>Cost calculator, migration checklist, certified processor/hardware list.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>Real Scenario Proof From The Test Suite</h2>
+  <p>The current feature test <code>tests/Feature/PosProductionScenarioTest.php</code> runs seven production-like scenarios. In each scenario, the test creates an order, processes the normal service cycle, pays the order, generates a paid receipt PDF, queues a print job, claims the job by a device, and marks the print job as printed.</p>
+  <table>
+    <thead>
+      <tr>
+        <th>Scenario</th>
+        <th>Cycle Tested</th>
+        <th>What Happened</th>
+        <th>Sales Meaning</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Small cafe dine-in</td>
+        <td>Waiter creates table order, kitchen prepares, cashier pays, receipt prints.</td>
+        <td>Order became paid, payment status became paid, receipt total was positive, print job became printed, and dine-in table returned open.</td>
+        <td>Good proof for small cafes with tables and kitchen/barista prep.</td>
+      </tr>
+      <tr>
+        <td>Big cafe split tender</td>
+        <td>Waiter order with two quantities, kitchen, cashier, split cash/card payment, receipt, print.</td>
+        <td>Split tender completed and printed receipt cycle passed.</td>
+        <td>Useful for cafes where groups split payment.</td>
+      </tr>
+      <tr>
+        <td>Drinks-only cashier takeaway</td>
+        <td>Cashier creates takeaway, pays, receipt, print.</td>
+        <td>Payment and print succeeded, but the test still creates a table and leaves it occupied.</td>
+        <td>Shows cashier-only sale works, but no-table staff takeaway must be fixed before marketing to drinks-only shops.</td>
+      </tr>
+      <tr>
+        <td>Takeaway cafe with barista/KDS</td>
+        <td>Cashier creates takeaway, sends to KDS, kitchen marks ready, cashier pays, receipt, print.</td>
+        <td>Normal cashier-to-barista-to-cashier cycle completed.</td>
+        <td>Good for coffee shops that need order prep display.</td>
+      </tr>
+      <tr>
+        <td>Small restaurant dine-in</td>
+        <td>Waiter, table, KDS, cashier, payment, receipt, print.</td>
+        <td>Restaurant dine-in cycle completed and table reopened after payment.</td>
+        <td>Core restaurant claim is credible in API testing.</td>
+      </tr>
+      <tr>
+        <td>Big restaurant table move</td>
+        <td>Waiter creates order, moves table, kitchen, cashier, split tender, receipt, print.</td>
+        <td>Moved-table order completed, paid, and printed.</td>
+        <td>Useful for larger venues where guests move tables.</td>
+      </tr>
+      <tr>
+        <td>Customer takeaway restaurant pickup</td>
+        <td>Customer places pickup order, kitchen prepares, cashier pays, receipt, print.</td>
+        <td>Customer order had no table, moved through KDS/cashier, then printed receipt.</td>
+        <td>Good proof for commission-free pickup ordering.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>Production Readiness Score Against Competitive Pain Points</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Area</th>
+        <th>Score</th>
+        <th>Reason</th>
+        <th>Next Gate</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Restaurant workflow coverage</td>
+        <td class="score">8/10</td>
+        <td>Strong API test coverage across waiter, kitchen, cashier, customer, receipt, and print job flows.</td>
+        <td>Polished role UX and live staff pilot.</td>
+      </tr>
+      <tr>
+        <td>Payment competitiveness</td>
+        <td class="score">5/10</td>
+        <td>Flexible provider model exists, but real acquiring, terminal capture, settlement, and fee analytics are not complete.</td>
+        <td>Certified processors and reconciliation.</td>
+      </tr>
+      <tr>
+        <td>Hardware flexibility</td>
+        <td class="score">6/10</td>
+        <td>Printer/device architecture is good, but physical certification and failure handling are incomplete.</td>
+        <td>Hardware lab and compatibility page.</td>
+      </tr>
+      <tr>
+        <td>Offline/outage resilience</td>
+        <td class="score">4/10</td>
+        <td>Idempotency and queue intent exist; true local offline operation is not proven.</td>
+        <td>Offline client queue and outage simulation.</td>
+      </tr>
+      <tr>
+        <td>Data portability/migration</td>
+        <td class="score">3/10</td>
+        <td>Backup and fiscal export exist, but merchant export/import is missing.</td>
+        <td>CSV/Excel/API migration toolkit.</td>
+      </tr>
+      <tr>
+        <td>Support operations</td>
+        <td class="score">6/10</td>
+        <td>Support context and ops endpoints exist, but SLA, alerting, and live process proof are missing.</td>
+        <td>Support desk workflow and incident response drills.</td>
+      </tr>
+      <tr>
+        <td>Marketing readiness</td>
+        <td class="score">6/10</td>
+        <td>Strong enough for controlled pilots and honest competitive positioning; not enough for broad "best POS" claims.</td>
+        <td>Proof assets, pricing page, certification, and pilot references.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>Recommended Sales Assets</h2>
+  <ul>
+    <li><strong>Cost calculator:</strong> compare current processor effective rate, POS subscription, hardware lease, add-ons, support, and cancellation cost.</li>
+    <li><strong>Migration checklist:</strong> contract review, data export, menu cleanup, hardware audit, staff training, parallel run, go-live day, rollback plan.</li>
+    <li><strong>Hardware compatibility page:</strong> printers, cash drawers, tablets, Android devices, terminals, network requirements, supported paper widths.</li>
+    <li><strong>Seven scenario demo videos:</strong> use the exact flows from the production scenario test and show receipt printing.</li>
+    <li><strong>Transparent pricing page:</strong> state what is included in POS, KDS, customer ordering, inventory, support, onboarding, hardware, and payment processing.</li>
+    <li><strong>Support promise page:</strong> channels, support hours, response targets, outage process, and remote diagnostic capability.</li>
+    <li><strong>Data ownership page:</strong> export formats, backup policy, cancellation data handover, and API/webhook roadmap.</li>
+  </ul>
+
+  <h2>Suggested Landing Page Copy</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Use</th>
+        <th>Copy</th>
+        <th>Condition</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Headline</td>
+        <td>Restaurant POS for cafes, takeaway, and dining rooms that want control over payments, hardware, and data.</td>
+        <td>Safe now if you do not imply universal processor support.</td>
+      </tr>
+      <tr>
+        <td>Competitive line</td>
+        <td>Built for merchants who outgrew simple checkout apps and do not want to be trapped by processor or hardware lock-in.</td>
+        <td>Safe as positioning; back with roadmap and certified support list.</td>
+      </tr>
+      <tr>
+        <td>Feature proof</td>
+        <td>Waiter order, KDS, cashier payment, printed receipt, owner dashboard, inventory, and customer pickup in one workflow.</td>
+        <td>Safe based on current scenario test.</td>
+      </tr>
+      <tr>
+        <td>Local advantage</td>
+        <td>Designed for local restaurant operations, fiscal receipts, and implementation support.</td>
+        <td>Safe if fiscal workflow is part of sold package.</td>
+      </tr>
+      <tr>
+        <td>Future claim after P0</td>
+        <td>Switch from Toast, Square, Clover, Foodics, or spreadsheets with guided migration and data import.</td>
+        <td>Only after migration toolkit exists.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>Final Recommendation</h2>
+  <div class="warning">
+    <p><strong>Best go-to-market path:</strong> sell Janova first as a focused restaurant/cafe POS for implementation-led pilots, not as a universal small-business POS. Your best buyers are cafes, takeaway shops, drinks shops, and restaurants that are frustrated by payment lock-in, bad local support, hardware restrictions, or generic POS limitations.</p>
+    <p><strong>Next 30 to 60 days:</strong> finish no-table counter/takeaway mode, certify printers and terminals, add data export/import, publish pricing/support policies, and create a cost comparison calculator. Those changes directly answer the issues Sleft says merchants complain about, and they give your sales team proof instead of promises.</p>
+  </div>
+
+  <h2>Sources</h2>
+  <ul>
+    <li>Sleft Payments, Best POS Systems for Small Business 2026: <a href="https://www.sleftpayments.com/learning-hub/best-pos-system-small-business-2026">https://www.sleftpayments.com/learning-hub/best-pos-system-small-business-2026</a></li>
+    <li>Sleft Payments, Toast POS Problems and Complaints 2026: <a href="https://www.sleftpayments.com/learning-hub/toast-pos-problems-complaints-2026">https://www.sleftpayments.com/learning-hub/toast-pos-problems-complaints-2026</a></li>
+    <li>Sleft Payments, Why Restaurants Are Leaving Toast POS in 2026: <a href="https://www.sleftpayments.com/learning-hub/why-restaurants-leaving-toast-pos-2026">https://www.sleftpayments.com/learning-hub/why-restaurants-leaving-toast-pos-2026</a></li>
+    <li>Sleft Payments, Clover POS Review and Hidden Fees 2026: <a href="https://www.sleftpayments.com/learning-hub/clover-pos-review-honest-pricing-2026">https://www.sleftpayments.com/learning-hub/clover-pos-review-honest-pricing-2026</a></li>
+    <li>Sleft Payments, Best Restaurant POS 2026: <a href="https://www.sleftpayments.com/learning-hub/best-pos-system-restaurants-2026">https://www.sleftpayments.com/learning-hub/best-pos-system-restaurants-2026</a></li>
+    <li>Square official pricing: <a href="https://squareup.com/us/en/pricing">https://squareup.com/us/en/pricing</a></li>
+    <li>Square for Restaurants: <a href="https://squareup.com/us/en/point-of-sale/restaurants">https://squareup.com/us/en/point-of-sale/restaurants</a></li>
+    <li>Clover restaurant pricing and features: <a href="https://www.clover.com/pricing/restaurant">https://www.clover.com/pricing/restaurant</a></li>
+    <li>Toast restaurant POS: <a href="https://pos.toasttab.com/restaurant-pos">https://pos.toasttab.com/restaurant-pos</a></li>
+    <li>Toast offline mode support: <a href="https://support.toasttab.com/en/article/Using-Toast-in-Offline-Mode">https://support.toasttab.com/en/article/Using-Toast-in-Offline-Mode</a></li>
+    <li>Lightspeed Restaurant features: <a href="https://www.lightspeedhq.com/pos/restaurant/features/">https://www.lightspeedhq.com/pos/restaurant/features/</a></li>
+    <li>TouchBistro restaurant POS: <a href="https://www.touchbistro.com/">https://www.touchbistro.com/</a></li>
+    <li>Oracle MICROS Simphony POS: <a href="https://www.oracle.com/food-beverage/restaurant-pos-systems/simphony-pos/">https://www.oracle.com/food-beverage/restaurant-pos-systems/simphony-pos/</a></li>
+    <li>NCR Aloha POS overview: <a href="https://www.docs.ncr.com/restaurant/aloha-pos/about/overview">https://www.docs.ncr.com/restaurant/aloha-pos/about/overview</a></li>
+    <li>SpotOn Restaurant POS: <a href="https://www.spoton.com/restaurant-pos/">https://www.spoton.com/restaurant-pos/</a></li>
+    <li>Foodics RMS features: <a href="https://www.foodics.com/rms-features/">https://www.foodics.com/rms-features/</a></li>
+  </ul>
+
+  <p class="small">Local code evidence reviewed: <code>app/Http/Controllers/Api/PaymentProviderController.php</code>, <code>app/Http/Controllers/Api/Mobile/MobileSyncController.php</code>, <code>app/Http/Controllers/Api/PrintJobController.php</code>, <code>app/Http/Controllers/Api/SupportController.php</code>, <code>app/Support/HardwareValidation.php</code>, <code>routes/api.php</code>, and <code>tests/Feature/PosProductionScenarioTest.php</code>.</p>
+</body>
+</html>

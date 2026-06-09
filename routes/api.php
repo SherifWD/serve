@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\CategoryController;
 use App\Http\Controllers\Api\CustomerController;
 use App\Http\Controllers\Api\Customer\CustomerAuthController;
 use App\Http\Controllers\Api\Customer\CustomerPortalController;
+use App\Http\Controllers\Api\DataExportController;
 use App\Http\Controllers\Api\DeviceController;
 use App\Http\Controllers\Api\EmployeeController;
 use App\Http\Controllers\Api\EtaSubmissionController;
@@ -17,6 +18,7 @@ use App\Http\Controllers\Api\IngredientController;
 use App\Http\Controllers\Api\InventoryItemController;
 use App\Http\Controllers\Api\InventoryOperationController;
 use App\Http\Controllers\Api\InventoryTransactionController;
+use App\Http\Controllers\Api\MarketingInquiryController;
 use App\Http\Controllers\Api\MenuController;
 use App\Http\Controllers\Api\Mobile\CouponController;
 use App\Http\Controllers\Api\Mobile\KDSController;
@@ -76,6 +78,9 @@ Route::middleware(['auth:sanctum', EnsureApiPermission::class])->group(function 
     Route::post('print-jobs', [PrintJobController::class, 'store']);
     Route::get('print-jobs/{printJob}', [PrintJobController::class, 'show']);
     Route::patch('print-jobs/{printJob}', [PrintJobController::class, 'update']);
+    Route::apiResource('marketing-inquiries', MarketingInquiryController::class)
+        ->only(['index', 'show', 'update'])
+        ->parameters(['marketing-inquiries' => 'marketingInquiry']);
     Route::apiResource('tables', TableController::class);
     Route::apiResource('roles', RoleController::class);
     Route::apiResource('users', UserController::class);
@@ -84,6 +89,7 @@ Route::middleware(['auth:sanctum', EnsureApiPermission::class])->group(function 
     Route::get('receipts/{receipt}/fiscal-export', [FiscalReceiptController::class, 'show']);
     Route::post('receipts/{receipt}/eta-submissions', [EtaSubmissionController::class, 'store']);
     Route::get('eta-submissions/{etaReceiptSubmission}', [EtaSubmissionController::class, 'show']);
+    Route::get('data-exports/{dataset}', [DataExportController::class, 'show']);
     Route::prefix('billing')->group(function () {
         Route::get('plans', [BillingController::class, 'plans']);
         Route::get('subscription', [BillingController::class, 'subscription']);

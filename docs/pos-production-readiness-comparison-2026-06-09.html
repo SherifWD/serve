@@ -1,0 +1,498 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>POS Production Readiness and Global Benchmark Report</title>
+  <style>
+    body { font-family: Arial, Helvetica, sans-serif; color: #1f2933; line-height: 1.35; }
+    h1, h2, h3 { color: #172554; }
+    h1 { font-size: 26px; margin-bottom: 4px; }
+    h2 { font-size: 20px; margin-top: 28px; border-bottom: 1px solid #cbd5e1; padding-bottom: 4px; }
+    h3 { font-size: 16px; margin-top: 18px; }
+    p { margin: 8px 0; }
+    table { border-collapse: collapse; width: 100%; margin: 12px 0 18px; font-size: 10.5px; }
+    th, td { border: 1px solid #9ca3af; padding: 6px; vertical-align: top; }
+    th { background: #e5e7eb; color: #111827; }
+    .muted { color: #4b5563; }
+    .verdict { background: #fff7ed; border: 1px solid #f97316; padding: 12px; margin: 12px 0; }
+    .pass { color: #166534; font-weight: bold; }
+    .partial { color: #a16207; font-weight: bold; }
+    .gap { color: #b91c1c; font-weight: bold; }
+    .small { font-size: 10px; }
+    ul { margin-top: 6px; }
+  </style>
+</head>
+<body>
+  <h1>POS Production Readiness and Global Benchmark Report</h1>
+  <p><strong>Project:</strong> Janova Suite POS / Restaurant POS application</p>
+  <p><strong>Date:</strong> June 9, 2026</p>
+  <p><strong>Workspace:</strong> /Applications/XAMPP/xamppfiles/htdocs/pos_restaurant</p>
+  <p><strong>Scope:</strong> Backend POS API, mobile waiter/cashier/kitchen/customer flows, owner reporting endpoints, receipt PDF generation, server print queue, inventory checks, payments, tenant authorization, and scenario coverage for cafes, takeaway shops, drinks-only shops, and restaurants.</p>
+
+  <div class="verdict">
+    <p><strong>Executive verdict:</strong> The system is <strong>functionally strong for a controlled pilot or staging production trial</strong>, but it is <strong>not yet ready for wide unattended production rollout</strong> across mixed restaurant types without closing the gaps listed in this report.</p>
+    <p>The core lifecycle passed automated real-life scenario testing: order creation, KDS send, kitchen ready status, send to cashier, cash/card payment, paid-scope receipt PDF generation, print job queue, print claim, printed status, stock consumption, owner dashboard support, customer takeaway checkout, table move, and split tender.</p>
+    <p>The biggest readiness risks are cashier-only takeaway table handling, physical hardware confirmation beyond API print-job status, offline/local-first guarantees compared with Toast/Square/Oracle/NCR, and missing or partial advanced modules such as reservations, labor scheduling, native delivery marketplaces, gift cards, deep loyalty campaigns, and full load testing.</p>
+  </div>
+
+  <h2>1. Verification Summary</h2>
+  <table>
+    <tr>
+      <th>Verification item</th>
+      <th>Result</th>
+      <th>Evidence</th>
+    </tr>
+    <tr>
+      <td>Full Laravel test suite</td>
+      <td class="pass">PASS</td>
+      <td><code>php artisan test</code>: 62 tests passed, 584 assertions, duration 1.93s.</td>
+    </tr>
+    <tr>
+      <td>New production scenario test</td>
+      <td class="pass">PASS</td>
+      <td><code>tests/Feature/PosProductionScenarioTest.php</code>: 7 named shop scenarios, 176 assertions.</td>
+    </tr>
+    <tr>
+      <td>Receipt generation</td>
+      <td class="pass">PASS with correct scope</td>
+      <td>Paid receipts must use <code>/api/mobile/orders/{id}/receipt?scope=paid</code>. The default full receipt after payment represents remaining due and can show 0.00.</td>
+    </tr>
+    <tr>
+      <td>Print lifecycle</td>
+      <td class="pass">PASS at API queue level</td>
+      <td>Each scenario created a receipt print job, claimed it by device UUID, moved it to printing, then marked it printed.</td>
+    </tr>
+    <tr>
+      <td>Physical printers and card terminals</td>
+      <td class="partial">NOT physically validated</td>
+      <td>The API validates printer endpoints and device profiles, but this run did not use real Epson/ESC-POS printers, cash drawer hardware, or payment terminals.</td>
+    </tr>
+    <tr>
+      <td>Flutter mobile UI / dashboard UI</td>
+      <td class="partial">Not part of this run</td>
+      <td>The tested evidence is backend/API behavior. Final launch still needs device UI acceptance testing on waiter, cashier, kitchen, owner, and customer apps.</td>
+    </tr>
+  </table>
+
+  <h2>2. Global POS Benchmark</h2>
+  <p>The comparison below uses current official/vendor sources available on June 9, 2026. The selected systems represent major restaurant POS platforms used globally or regionally at scale: Toast, Square for Restaurants, Lightspeed Restaurant, Clover, TouchBistro, Oracle MICROS Simphony, NCR Aloha, SpotOn, Foodics, Loyverse, and PAR.</p>
+  <table>
+    <tr>
+      <th>Benchmark POS</th>
+      <th>Relevant public feature signals</th>
+      <th>Comparison to this project</th>
+    </tr>
+    <tr>
+      <td>Toast POS</td>
+      <td>Restaurant POS, dine-in/takeout/delivery/online ordering, payments, inventory, loyalty, email/SMS marketing, integrations, KDS, handhelds, kiosks, multilocation, payroll/scheduling, router cellular backup, and offline mode where staff can keep taking orders and payments while tickets print or route to hardwired KDS. Sources: <a href="https://pos.toasttab.com/restaurant-pos">Toast restaurant POS</a>, <a href="https://support.toasttab.com/en/article/Using-Toast-in-Offline-Mode">Toast offline mode</a>.</td>
+      <td>This project covers the core order/KDS/payment/receipt flow, inventory consumption, loyalty earning, owner reporting, devices, and print queue. It does not yet match Toast in mature offline behavior, payroll/scheduling depth, native marketing suite, commercial hardware validation, and enterprise support operations.</td>
+    </tr>
+    <tr>
+      <td>Square for Restaurants</td>
+      <td>Food and beverage POS for full service, quick service, bars, coffee shops, online ordering, table and seat management, KDS, team management, live sales reporting, 24/7 support, kiosk/hardware ecosystem, customer directory, loyalty, and offline payments. Sources: <a href="https://squareup.com/us/en/point-of-sale/restaurants?country_redirection=true">Square Restaurants POS</a>, <a href="https://squareup.com/help/us/en/article/7777-process-card-payments-with-offline-mode">Square offline payments</a>.</td>
+      <td>This project is competitive on API lifecycle coverage and tenant scoping, but Square is ahead on hardware/payment maturity, self-service ecosystem, polished offline payment operations, and broad small-business tooling.</td>
+    </tr>
+    <tr>
+      <td>Lightspeed Restaurant</td>
+      <td>Inventory management, customizable menu, adjustable floorplan, kitchen display, staff profiles, hardware, mobile service, takeout/delivery, contactless ordering, bill splitting, payments, and remote access. Source: <a href="https://www.lightspeedhq.com/pos/restaurant/features/">Lightspeed Restaurant features</a>.</td>
+      <td>This project covers menus, products, tables, KDS, bill/payment splitting, branch stock, owner reports, and hardware profiles. It needs stronger UI workflow validation, floor plan polish, reservations, and offline/terminal maturity to match Lightspeed.</td>
+    </tr>
+    <tr>
+      <td>Clover Restaurant POS</td>
+      <td>Order entry, table management, inventory tracking, kitchen display integrations, delivery-service integrations, online ordering, loyalty/customer management, POS hardware options, and app ecosystem. Source: <a href="https://www.clover.com/pos-solutions/food-beverage">Clover food and beverage POS</a>.</td>
+      <td>This project covers restaurant-specific order flow and server print queue well. Clover is ahead on packaged hardware, app marketplace, payment acquiring, and simpler setup for small merchants.</td>
+    </tr>
+    <tr>
+      <td>TouchBistro</td>
+      <td>All-in-one restaurant management with POS, reporting, payments, staff management, floor/table management, menu management, tableside ordering, customer-facing display, inventory, labor, KDS, profit management, loyalty, marketing, gift cards, online ordering, and reservations. Source: <a href="https://www.touchbistro.com/">TouchBistro platform</a>.</td>
+      <td>This project covers the core restaurant workflow but is not yet at TouchBistro depth for reservations, customer-facing display, labor management, profit management, and polished iPad-like FOH experience.</td>
+    </tr>
+    <tr>
+      <td>Oracle MICROS Simphony</td>
+      <td>Enterprise cloud POS with more than 200 integrations, offline mode, 24/7 support, online and in-house operations, mobile order/pay, loyalty, kiosks, staff UX, Oracle payments, KDS, labor management, reporting/analytics, table management, multilingual and multicurrency support, and scale across many countries. Source: <a href="https://www.oracle.com/food-beverage/restaurant-pos-systems/simphony-pos/">Oracle Simphony POS</a>.</td>
+      <td>This project has a good modern Laravel API foundation, but Oracle is far ahead for enterprise scale, global localization, BI integrations, multi-kitchen KDS tooling, kiosk support, and validated offline operations.</td>
+    </tr>
+    <tr>
+      <td>NCR Aloha</td>
+      <td>End-to-end restaurant technology for quick service and table service, online/digital ordering, contactless ordering/payment, loyalty/marketing, menu updates, real-time mobile alerts, forecasting, in-store/takeout/curbside/pickup/delivery integration, handheld POS, offline payments, reporting, and analytics. Source: <a href="https://www.docs.ncr.com/restaurant/aloha-pos/about/overview">NCR Aloha overview</a>.</td>
+      <td>This project covers many modern cloud POS basics, but Aloha is ahead for mature restaurant hardware, offline continuity, forecasting, drive-thru/enterprise operations, and decades of operational edge cases.</td>
+    </tr>
+    <tr>
+      <td>SpotOn</td>
+      <td>Cloud restaurant POS, flexible interface, table/menu management, cellular backup, multi-unit management, advanced modifiers, guest data, reporting, alerts, online ordering, Fresh KDS, reservations/waitlist, marketing, loyalty, gift cards, labor, tip management, payroll integrations, and inventory integrations. Source: <a href="https://www.spoton.com/restaurant-pos/">SpotOn restaurant POS</a>.</td>
+      <td>This project is close on core POS/KDS/print/payment APIs and tenant scoping, but SpotOn is ahead on cellular backup, integrated guest/reservation stack, payroll/tips, and commercially managed onboarding/support.</td>
+    </tr>
+    <tr>
+      <td>Foodics</td>
+      <td>Cloud POS/RMS, pay at table, customer display, Foodics Pay, self ordering, waiter app, online ordering, KDS, accounting, business intelligence, CRM, menu engineering, real-time reporting, inventory, suppliers/purchasing/transfers, roles, promotions, loyalty, coupons, gift cards, integrations, table management, coursing, multiple payments, and order splitting. Source: <a href="https://www.foodics.com/rms-features/">Foodics features</a>.</td>
+      <td>This project has especially relevant overlap for Egypt/MENA: tables, KDS, receipts, ETA/fiscal export, inventory, roles, and payments. It still needs stronger pay-at-table, self-ordering/kiosk, gift cards, promotions automation, accounting, and business intelligence depth.</td>
+    </tr>
+    <tr>
+      <td>Loyverse</td>
+      <td>Small-business POS with back office, dashboard, kitchen display, customer display, employee management, multi-store, inventory, loyalty, and restaurant/cafe use cases. Source: <a href="https://loyverse.com/features">Loyverse features</a>.</td>
+      <td>This project already exceeds a simple POS in tenant scoping, fiscal/export and richer restaurant API lifecycle, but Loyverse is simpler and more mature for quick small-shop setup and user-friendly receipt/hardware workflows.</td>
+    </tr>
+    <tr>
+      <td>PAR / Brink ecosystem</td>
+      <td>Restaurant management software and hardware across front/back of house, drive-thru, ordering, payments, loyalty, integrations, partner ecosystem, enterprise tablets/terminals, and KDS. Source: <a href="https://partech.com/solutions/">PAR solutions</a>.</td>
+      <td>This project is not yet a PAR-level enterprise stack. It needs enterprise hardware certification, open integration ecosystem, drive-thru support, and deeper multi-location operations.</td>
+    </tr>
+  </table>
+
+  <h2>3. Feature Matrix</h2>
+  <table>
+    <tr>
+      <th>Feature area</th>
+      <th>Top POS expectation</th>
+      <th>This project status</th>
+      <th>Production note</th>
+    </tr>
+    <tr>
+      <td>Order entry</td>
+      <td>Fast counter and table order entry with modifiers, notes, discounts, and item changes.</td>
+      <td class="pass">Strong</td>
+      <td>Mobile staff order API supports products, quantities, modifiers, raw modifiers, notes, item/order discount, coupons, and adding items after cashier state.</td>
+    </tr>
+    <tr>
+      <td>Table service</td>
+      <td>Table status, floor/table transfer, split checks, seat/table awareness.</td>
+      <td class="pass">Strong core, UI pending</td>
+      <td>Dine-in table release after full payment passed. Table move passed in the big restaurant scenario. Visual floor-plan UI needs acceptance testing.</td>
+    </tr>
+    <tr>
+      <td>Cashier-only takeaway</td>
+      <td>Cashier can ring, take payment, print receipt, hand over item without waiter/kitchen/table friction.</td>
+      <td class="partial">Works, but with table caveat</td>
+      <td>Cashier-only takeaway paid and printed successfully. Staff-created takeaway still requires a table_id and can leave a virtual counter table occupied after payment.</td>
+    </tr>
+    <tr>
+      <td>KDS</td>
+      <td>Orders route to kitchen/bar by station, kitchen updates prep/ready/served, FOH sees status.</td>
+      <td class="pass">Strong core</td>
+      <td>Send-to-KDS, item ready, ready-for-cashier, and KDS filtering passed. Station routing and prep-time analytics are not fully proven.</td>
+    </tr>
+    <tr>
+      <td>Payments</td>
+      <td>Cash, card, wallet, split tender, item-level payment, terminal attempts, offline handling, refunds.</td>
+      <td class="partial">Good API, hardware/offline pending</td>
+      <td>Cash/card split tender passed. Payment attempts and provider validation exist. Real terminal capture and offline card risk handling still require field tests.</td>
+    </tr>
+    <tr>
+      <td>Receipts</td>
+      <td>Paid receipt, reprint, itemized lines, paid amount, taxes, business/fiscal fields, printer routing.</td>
+      <td class="partial">Good, with scope gotcha</td>
+      <td>Use <code>scope=paid</code> for normal final paid receipts. Default full receipt after payment shows remaining due, which may be 0.00.</td>
+    </tr>
+    <tr>
+      <td>Print queue</td>
+      <td>Queued jobs, device claim, retries/failures, printed confirmation, kitchen tickets and receipts.</td>
+      <td class="pass">API queue passes</td>
+      <td>Receipt print job queue/claim/printed passed. Real printer status, paper-out, network loss, and retry monitoring need hardware testing.</td>
+    </tr>
+    <tr>
+      <td>Customer ordering</td>
+      <td>Customer can order takeaway/delivery, track order, and pay/settle at pickup or online.</td>
+      <td class="pass">Core takeaway works</td>
+      <td>Customer takeaway checkout without table passed and avoided virtual table occupancy. Online payment integration is not complete.</td>
+    </tr>
+    <tr>
+      <td>Owner dashboard</td>
+      <td>Sales, order count, AOV, branch performance, payment mix, low stock, active tables, KDS backlog, cashier queue.</td>
+      <td class="pass">Backend strong</td>
+      <td>Dashboard summary and date-range owner receipt tests pass. Frontend visual/workflow testing remains required.</td>
+    </tr>
+    <tr>
+      <td>Inventory</td>
+      <td>Finished product and recipe ingredient stock, low-stock alerts, purchase, transfer, count, adjustment, wastage.</td>
+      <td class="pass">Strong backend</td>
+      <td>Order creation blocks unavailable product stock. Inventory operations are tested for receiving, transfer, count, adjustment, and wastage.</td>
+    </tr>
+    <tr>
+      <td>Tenant security</td>
+      <td>Branch and restaurant isolation for staff, owners, customers, receipts, payments, and inventory.</td>
+      <td class="pass">Strong</td>
+      <td>Tests cover cross-branch payment, receipt, item history, inventory transfer, products, suppliers, and permissions.</td>
+    </tr>
+    <tr>
+      <td>Offline operations</td>
+      <td>Orders/payments continue during network outage with safe sync/replay and clear limitations.</td>
+      <td class="partial">Foundation only</td>
+      <td>Client mutation id replay prevents duplicate charge. Full local offline app queue, conflict handling under real outage, and offline payment risk process remain open.</td>
+    </tr>
+    <tr>
+      <td>Reservations / waitlist</td>
+      <td>Host stand, reservations, waitlist, guest seating, table turn analytics.</td>
+      <td class="gap">Gap</td>
+      <td>No complete reservations/waitlist workflow observed.</td>
+    </tr>
+    <tr>
+      <td>Labor/payroll/tips</td>
+      <td>Scheduling, time clock, shifts, payroll exports, tip pooling/tip-outs.</td>
+      <td class="partial">Partial</td>
+      <td>Employees, attendance and shifts exist, but not enough to match Toast, Square, TouchBistro, SpotOn, or Oracle labor tooling.</td>
+    </tr>
+    <tr>
+      <td>Marketing/loyalty/gift cards</td>
+      <td>CRM, loyalty, campaigns, coupons, gift cards, segments, marketing automation.</td>
+      <td class="partial">Partial</td>
+      <td>Customer records, loyalty earning, coupons/discount structures exist. Full gift card, campaign, segmentation, and loyalty redemption lifecycle needs more work.</td>
+    </tr>
+    <tr>
+      <td>Fiscal/compliance</td>
+      <td>Tax profiles, receipt numbering, local fiscal exports/submission as required.</td>
+      <td class="pass">Strong for current backend scope</td>
+      <td>VAT recalculation, fiscal profile management, ETA receipt export and submission queue are tested.</td>
+    </tr>
+    <tr>
+      <td>Load and rush-hour resilience</td>
+      <td>High ticket volume, many devices, print contention, network interruption, long service windows.</td>
+      <td class="gap">Not proven</td>
+      <td>No load, soak, or concurrent device simulation was run in this report.</td>
+    </tr>
+  </table>
+
+  <h2>4. Real-Life Scenario Test Results</h2>
+  <p>All seven scenarios below were executed through the automated feature test <code>tests/Feature/PosProductionScenarioTest.php</code>. Each scenario completed a paid order and a receipt print job. The print result means API-level print queue completion, not physical paper verification.</p>
+
+  <h3>Scenario 1: Small Cafe Shop - Dine-in Table Service</h3>
+  <table>
+    <tr><th>Actor cycle</th><td>Customer sits -> waiter opens table -> waiter adds item/note -> waiter sends order to KDS -> kitchen marks item ready -> waiter sends order to cashier -> cashier takes cash -> cashier generates paid receipt PDF -> cashier queues receipt print -> printer device claims job -> job marked printed -> owner dashboard can include paid order.</td></tr>
+    <tr><th>Expected real shop behavior</th><td>Normal small cafe table-service flow where one waiter, one barista/kitchen user, and one cashier are involved.</td></tr>
+    <tr><th>What happened</th><td>Order became paid. Payment status became paid. Paid receipt total was greater than zero when using <code>scope=paid</code>. Print job moved queued -> printing -> printed. Dine-in table status returned to open after payment.</td></tr>
+    <tr><th>Result</th><td class="pass">Pass for controlled production flow.</td></tr>
+    <tr><th>Readiness note</th><td>Needs UI/device confirmation on the actual waiter, kitchen, and cashier apps.</td></tr>
+  </table>
+
+  <h3>Scenario 2: Big Cafe Shop - Dine-in With Split Tender</h3>
+  <table>
+    <tr><th>Actor cycle</th><td>Customer order was entered by waiter, sent to KDS, marked ready, sent to cashier, paid with split cash/card tender, then receipt PDF and print job were completed.</td></tr>
+    <tr><th>Expected real shop behavior</th><td>Higher-volume cafe may have more checks and mixed payment methods. Split tender must not leave order partially paid.</td></tr>
+    <tr><th>What happened</th><td>Split tender completed. Order status paid. Payment status paid. Receipt printed through queue. Table returned to open.</td></tr>
+    <tr><th>Result</th><td class="pass">Pass for split tender API flow.</td></tr>
+    <tr><th>Readiness note</th><td>This did not simulate true rush-hour concurrency, printer contention, or multiple simultaneous cashiers.</td></tr>
+  </table>
+
+  <h3>Scenario 3: Drinks-Only Shop - Cashier-Only Takeaway</h3>
+  <table>
+    <tr><th>Actor cycle</th><td>Customer orders drink at counter -> cashier creates takeaway order -> no waiter -> no kitchen/KDS required -> cashier takes cash -> cashier generates paid receipt PDF -> receipt print job queued, claimed, and marked printed -> cashier hands drink to customer.</td></tr>
+    <tr><th>Expected real shop behavior</th><td>A drinks-only counter should not need waiter or kitchen. Cashier must ring, print, collect payment, and hand over product quickly.</td></tr>
+    <tr><th>What happened</th><td>The order became paid and receipt printing completed. However, staff-created takeaway currently still requires a <code>table_id</code>. The virtual counter table remained occupied after the paid takeaway order.</td></tr>
+    <tr><th>Result</th><td class="partial">Pass for money/receipt flow, but operational caveat.</td></tr>
+    <tr><th>Production impact</th><td>For takeaway-only or drinks-only shops, this should be fixed before rollout or handled with a dedicated non-table counter order endpoint. Otherwise the counter/table UI may show stale occupied state even though the order is paid.</td></tr>
+  </table>
+
+  <h3>Scenario 4: Takeaway Cafe - Counter Order With Barista/KDS</h3>
+  <table>
+    <tr><th>Actor cycle</th><td>Cashier creates takeaway order -> cashier sends to KDS/barista -> kitchen/barista marks ready -> order sent to cashier -> cashier records payment -> paid receipt generated -> receipt print job completed -> product handed over.</td></tr>
+    <tr><th>Expected real shop behavior</th><td>Useful for a coffee shop where cashier takes order, barista prepares, cashier hands over.</td></tr>
+    <tr><th>What happened</th><td>KDS route, payment, paid receipt, and print job all passed.</td></tr>
+    <tr><th>Result</th><td class="partial">Core flow passes, same staff-takeaway table caveat applies.</td></tr>
+    <tr><th>Production impact</th><td>Use customer/takeaway order path where possible, or update staff takeaway to work without a physical table and to clear virtual counters.</td></tr>
+  </table>
+
+  <h3>Scenario 5: Small Restaurant - Dine-in Waiter, Kitchen, Cashier</h3>
+  <table>
+    <tr><th>Actor cycle</th><td>Customer sits -> waiter enters restaurant order -> order sent to kitchen -> kitchen marks ready -> waiter sends to cashier -> cashier takes payment -> paid receipt PDF -> receipt print job completed -> table opens for next guest.</td></tr>
+    <tr><th>Expected real shop behavior</th><td>Normal small restaurant service with separate waiter, kitchen, and cashier roles.</td></tr>
+    <tr><th>What happened</th><td>Order status paid. Payment status paid. Receipt printed at API queue level. Dine-in table returned to open.</td></tr>
+    <tr><th>Result</th><td class="pass">Pass.</td></tr>
+    <tr><th>Readiness note</th><td>Needs field validation with real kitchen screen, real receipt printer, and cashier drawer process.</td></tr>
+  </table>
+
+  <h3>Scenario 6: Big Restaurant - Table Move and Split Tender</h3>
+  <table>
+    <tr><th>Actor cycle</th><td>Waiter opens dine-in table -> waiter moves order to another table -> KDS receives order -> kitchen marks ready -> waiter sends to cashier -> cashier settles with split cash/card tender -> paid receipt generated -> print queue completed -> moved-to table opens after payment.</td></tr>
+    <tr><th>Expected real shop behavior</th><td>Larger restaurants commonly move guests, combine operational steps, and accept split/mixed tenders.</td></tr>
+    <tr><th>What happened</th><td>Table move preserved active order flow. Split tender completed as paid. Receipt and print job completed. Final table status was open.</td></tr>
+    <tr><th>Result</th><td class="pass">Pass for backend/API logic.</td></tr>
+    <tr><th>Readiness note</th><td>Does not prove seat-level split checks, course firing by seat, service charge/tip-out rules, or high-concurrency floor operation.</td></tr>
+  </table>
+
+  <h3>Scenario 7: Takeaway Restaurant - Customer Pickup Order</h3>
+  <table>
+    <tr><th>Actor cycle</th><td>Customer places takeaway order in customer portal -> order has no table -> kitchen receives order through KDS flow -> kitchen marks ready -> cashier records pickup payment -> paid receipt PDF -> print job completed -> customer receives takeaway product.</td></tr>
+    <tr><th>Expected real shop behavior</th><td>Takeaway restaurant can accept customer-facing pickup orders without using a dining table.</td></tr>
+    <tr><th>What happened</th><td>Customer order had <code>table_id = null</code>. KDS, cashier payment, receipt PDF, and print job completed. No table remained occupied.</td></tr>
+    <tr><th>Result</th><td class="pass">Pass and preferable path for pure takeaway.</td></tr>
+    <tr><th>Readiness note</th><td>Online payment and order status notifications still need full production validation.</td></tr>
+  </table>
+
+  <h2>5. Role-by-Role Production Readiness</h2>
+  <table>
+    <tr>
+      <th>Role</th>
+      <th>What is ready</th>
+      <th>What is not fully ready</th>
+    </tr>
+    <tr>
+      <td>Waiter</td>
+      <td>Can create dine-in orders, add items, use notes/modifiers, send to KDS, move table, send ready orders to cashier, return/refund/change items with rules.</td>
+      <td>Needs mobile UI field testing, seat-level/coursing polish, rush-hour concurrent waiter validation, and clear exception flows.</td>
+    </tr>
+    <tr>
+      <td>Cashier</td>
+      <td>Can settle full and split payments, item-level payments, generate paid receipt, create/claim/complete print jobs, handle cashier-only takeaway at API level.</td>
+      <td>Needs no-table counter order path or virtual table cleanup, real terminal integration, cash drawer close/open procedure, receipt scope UX hardening.</td>
+    </tr>
+    <tr>
+      <td>Kitchen / Barista</td>
+      <td>Can receive KDS orders and mark items ready. KDS filtering hides refunded/canceled items and supports returned/remake logic.</td>
+      <td>Needs station routing, prep timers, bump-screen UX validation, physical kitchen display hardware testing, and production alerting for missed tickets.</td>
+    </tr>
+    <tr>
+      <td>Owner / Manager</td>
+      <td>Can see owner summary data, branch performance, payment mix, active tables, cashier queue, KDS backlog, low stock, date-range receipt, branch device settings, fiscal profile.</td>
+      <td>Needs final dashboard UI acceptance, scheduled reports, deeper payroll/tips, alerts, profit analytics, and multi-branch performance load testing.</td>
+    </tr>
+    <tr>
+      <td>Customer</td>
+      <td>Can authenticate by OTP, view restaurants/products, place takeaway orders, see orders/loyalty, and trigger pickup flow that avoids table dependency.</td>
+      <td>Needs online payment capture, notifications, delivery integrations, customer-facing receipt UX, and refunds/customer support flows.</td>
+    </tr>
+  </table>
+
+  <h2>6. Production Blockers and Fix Priority</h2>
+  <table>
+    <tr>
+      <th>Priority</th>
+      <th>Issue</th>
+      <th>Why it matters</th>
+      <th>Recommended action</th>
+    </tr>
+    <tr>
+      <td class="gap">P0</td>
+      <td>Staff takeaway orders require <code>table_id</code> and can leave virtual counter tables occupied after payment.</td>
+      <td>Drinks-only and takeaway-only shops should not manage fake tables. A stale occupied counter can confuse cashier workflow and reporting.</td>
+      <td>Add a staff counter/takeaway order endpoint that accepts <code>branch_id</code> without <code>table_id</code>, or update staff takeaway payment completion to release virtual tables consistently.</td>
+    </tr>
+    <tr>
+      <td class="gap">P0</td>
+      <td>Receipt scope is easy to misuse.</td>
+      <td>Default full receipt after a paid order can show 0.00 due. Cashiers usually expect a paid receipt showing purchased items and amount paid.</td>
+      <td>Cashier UI should call <code>scope=paid</code> for final receipts. Consider changing endpoint defaults after paid order, or expose explicit "Bill / Paid receipt / Reprint" buttons.</td>
+    </tr>
+    <tr>
+      <td class="gap">P0</td>
+      <td>No physical printer/card terminal validation in this run.</td>
+      <td>API job status is not the same as printed paper, opened drawer, or captured terminal payment.</td>
+      <td>Run field tests with actual receipt printer, kitchen printer/display, cash drawer, and payment terminal under normal, paper-out, network-loss, and retry cases.</td>
+    </tr>
+    <tr>
+      <td class="gap">P0</td>
+      <td>No load/concurrency proof.</td>
+      <td>Large cafes/restaurants fail differently under 50+ active tickets, multiple devices, print contention, and network jitter.</td>
+      <td>Add load tests for concurrent order creation, KDS updates, payments, receipt generation, and print job claiming.</td>
+    </tr>
+    <tr>
+      <td class="partial">P1</td>
+      <td>Offline is only partially proven.</td>
+      <td>Top systems document offline orders/payments/KDS behavior. This project has idempotency and sync metadata but not a fully validated offline mobile queue.</td>
+      <td>Define offline capability limits, persist local mobile actions, replay with conflict policy, and test internet outage recovery.</td>
+    </tr>
+    <tr>
+      <td class="partial">P1</td>
+      <td>Advanced restaurant modules are incomplete.</td>
+      <td>Reservations, waitlist, labor scheduling, payroll/tips, gift cards, marketing campaigns, kiosk, delivery marketplace, and deep loyalty are expected by top platforms.</td>
+      <td>Prioritize by target market. For small cafes/takeaway, fix counter flow and hardware first. For big restaurants, add reservations, labor, and advanced checks.</td>
+    </tr>
+    <tr>
+      <td class="partial">P1</td>
+      <td>UI acceptance testing is missing from this report.</td>
+      <td>Backend may pass while staff still struggle during service if screens are slow, unclear, or too many taps.</td>
+      <td>Run role-by-role Flutter and dashboard acceptance tests on real devices with the exact cycle in this report.</td>
+    </tr>
+  </table>
+
+  <h2>7. Readiness by Business Type</h2>
+  <table>
+    <tr>
+      <th>Business type</th>
+      <th>Readiness rating</th>
+      <th>Reason</th>
+      <th>Go-live condition</th>
+    </tr>
+    <tr>
+      <td>Small cafe dine-in</td>
+      <td class="partial">Pilot ready</td>
+      <td>Core waiter/KDS/cashier/receipt/table release flow passed.</td>
+      <td>Validate mobile UI and physical printer/card/cash drawer.</td>
+    </tr>
+    <tr>
+      <td>Big cafe</td>
+      <td class="partial">Staging ready, not full production</td>
+      <td>Split tender and KDS passed, but high concurrency and multiple printers/devices were not load-tested.</td>
+      <td>Run rush-hour load and device contention tests.</td>
+    </tr>
+    <tr>
+      <td>Drinks-only shop</td>
+      <td class="partial">Needs counter-flow fix</td>
+      <td>Cashier-only ring/pay/receipt/print passed, but staff takeaway needs a table and leaves virtual counter occupied.</td>
+      <td>Implement no-table counter order or virtual counter cleanup.</td>
+    </tr>
+    <tr>
+      <td>Only takeaway cafe</td>
+      <td class="partial">Works with caveat</td>
+      <td>KDS/barista and cashier flow passed. Staff-created takeaway table issue remains.</td>
+      <td>Use customer/takeaway path or fix staff takeaway endpoint.</td>
+    </tr>
+    <tr>
+      <td>Small restaurant dine-in</td>
+      <td class="partial">Pilot ready</td>
+      <td>Waiter, kitchen, cashier, payment, receipt, and table release passed.</td>
+      <td>Field test hardware and UI with actual staff.</td>
+    </tr>
+    <tr>
+      <td>Big restaurant</td>
+      <td class="partial">Staging ready, not full production</td>
+      <td>Table move and split tender passed. Missing load, seat-level, reservations, labor/tips, and advanced service workflows.</td>
+      <td>Add load tests and advanced table-service modules before broad deployment.</td>
+    </tr>
+    <tr>
+      <td>Only takeaway restaurant</td>
+      <td class="pass">Best current fit if using customer/order-without-table path</td>
+      <td>Customer-created takeaway order without table passed through KDS, cashier payment, receipt, and print queue.</td>
+      <td>Add online payment/status notifications and hardware validation.</td>
+    </tr>
+  </table>
+
+  <h2>8. Recommended Next Engineering Steps</h2>
+  <ol>
+    <li><strong>Fix counter/takeaway order model:</strong> allow staff cashier order creation without table_id, or explicitly support virtual counters and release them after payment for takeaway/drinks flows.</li>
+    <li><strong>Harden receipt UX:</strong> make final receipt use paid scope by default after payment, keep bill/remaining-due scope separate, and add clear reprint behavior.</li>
+    <li><strong>Run hardware field test:</strong> real receipt printer, kitchen printer/display, cash drawer, card terminal, failed printer, paper-out, disconnected device, duplicate claim, retry, and printed audit trail.</li>
+    <li><strong>Add load tests:</strong> concurrent 50, 100, and 250 ticket simulations with KDS updates, payments, receipts, and print jobs.</li>
+    <li><strong>Run role UI acceptance:</strong> waiter, cashier, kitchen, owner, and customer apps on real devices, using the seven scenario scripts above.</li>
+    <li><strong>Define offline policy:</strong> what can happen offline, what cannot, how risk is shown to staff, how conflicts are replayed, and how failed payments are reconciled.</li>
+    <li><strong>Prioritize modules by target segment:</strong> for small cafe/takeaway, finish counter flow and hardware; for big restaurants, add reservations, labor/tips, seat/coursing, and manager approvals.</li>
+  </ol>
+
+  <h2>9. Source Links</h2>
+  <ul>
+    <li>Toast Restaurant POS: <a href="https://pos.toasttab.com/restaurant-pos">https://pos.toasttab.com/restaurant-pos</a></li>
+    <li>Toast Offline Mode: <a href="https://support.toasttab.com/en/article/Using-Toast-in-Offline-Mode">https://support.toasttab.com/en/article/Using-Toast-in-Offline-Mode</a></li>
+    <li>Square for Restaurants: <a href="https://squareup.com/us/en/point-of-sale/restaurants?country_redirection=true">https://squareup.com/us/en/point-of-sale/restaurants</a></li>
+    <li>Square Offline Payments: <a href="https://squareup.com/help/us/en/article/7777-process-card-payments-with-offline-mode">https://squareup.com/help/us/en/article/7777-process-card-payments-with-offline-mode</a></li>
+    <li>Lightspeed Restaurant Features: <a href="https://www.lightspeedhq.com/pos/restaurant/features/">https://www.lightspeedhq.com/pos/restaurant/features/</a></li>
+    <li>Clover Food and Beverage POS: <a href="https://www.clover.com/pos-solutions/food-beverage">https://www.clover.com/pos-solutions/food-beverage</a></li>
+    <li>TouchBistro Platform: <a href="https://www.touchbistro.com/">https://www.touchbistro.com/</a></li>
+    <li>Oracle MICROS Simphony: <a href="https://www.oracle.com/food-beverage/restaurant-pos-systems/simphony-pos/">https://www.oracle.com/food-beverage/restaurant-pos-systems/simphony-pos/</a></li>
+    <li>NCR Aloha Overview: <a href="https://www.docs.ncr.com/restaurant/aloha-pos/about/overview">https://www.docs.ncr.com/restaurant/aloha-pos/about/overview</a></li>
+    <li>SpotOn Restaurant POS: <a href="https://www.spoton.com/restaurant-pos/">https://www.spoton.com/restaurant-pos/</a></li>
+    <li>Foodics Features: <a href="https://www.foodics.com/rms-features/">https://www.foodics.com/rms-features/</a></li>
+    <li>Loyverse Features: <a href="https://loyverse.com/features">https://loyverse.com/features</a></li>
+    <li>PAR Solutions: <a href="https://partech.com/solutions/">https://partech.com/solutions/</a></li>
+  </ul>
+
+  <h2>10. Local Evidence Files</h2>
+  <ul>
+    <li><code>tests/Feature/PosProductionScenarioTest.php</code> - added seven scenario production test.</li>
+    <li><code>app/Http/Controllers/Api/Mobile/OrderMobileController.php</code> - staff order, KDS send, send-to-cashier, payment, receipt generation.</li>
+    <li><code>app/Http/Controllers/Api/Mobile/KDSController.php</code> - KDS active orders and item status updates.</li>
+    <li><code>app/Http/Controllers/Api/PrintJobController.php</code> - print job store, claim, update.</li>
+    <li><code>app/Http/Controllers/Api/Customer/CustomerPortalController.php</code> - customer takeaway checkout without table.</li>
+    <li><code>app/Http/Controllers/Api/OwnerDashboardController.php</code> - owner summary, payment mix, branch performance, KDS backlog, cashier queue.</li>
+  </ul>
+
+  <p class="small muted">Report generated from local code inspection, automated test execution, and official/vendor POS source research on June 9, 2026.</p>
+</body>
+</html>

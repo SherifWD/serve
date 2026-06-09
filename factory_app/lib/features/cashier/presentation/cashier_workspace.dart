@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -5,6 +7,8 @@ import 'package:printing/printing.dart';
 
 import '../../../core/models/app_models.dart';
 import '../../../core/widgets/state_views.dart';
+import '../../auth/providers/auth_providers.dart';
+import '../../suite/data/realtime_service.dart';
 import '../../suite/data/suite_repository.dart';
 
 class CashierWorkspacePage extends ConsumerStatefulWidget {
@@ -17,6 +21,8 @@ class CashierWorkspacePage extends ConsumerStatefulWidget {
 
 class _CashierWorkspacePageState extends ConsumerState<CashierWorkspacePage> {
   late Future<List<StaffOrderSnapshot>> _future;
+  Timer? _liveRefreshTimer;
+  RealtimeSubscription? _realtimeSubscription;
   StaffOrderSnapshot? _selectedOrder;
   List<_PaymentDraft> _drafts = [];
   int _selectedDraftIndex = 0;
@@ -26,6 +32,49 @@ class _CashierWorkspacePageState extends ConsumerState<CashierWorkspacePage> {
   void initState() {
     super.initState();
     _future = _loadOrders();
+    _connectRealtime();
+    _liveRefreshTimer = Timer.periodic(
+      const Duration(seconds: 4),
+      (_) {
+        if (mounted) {
+          _refreshOrders(background: true);
+        }
+      },
+    );
+  }
+
+  Future<void> _connectRealtime() async {
+    final subscription =
+        await ref.read(realtimeServiceProvider).subscribeToBranch(
+              surface: 'cashier',
+              onEvent: () => _refreshOrders(background: true),
+            );
+    if (!mounted) {
+      await subscription?.close();
+      return;
+    }
+    _realtimeSubscription = subscription;
+  }
+
+  Future<void> _refreshOrders({bool background = false}) async {
+    final future = _loadOrders();
+    if (background) {
+      try {
+        final orders = await future;
+        if (!mounted) return;
+        setState(() {
+          _future = Future.value(orders);
+        });
+      } catch (_) {
+        // Keep the current payment workspace during short LAN/server outages.
+      }
+      return;
+    }
+
+    setState(() {
+      _future = future;
+    });
+    await _future;
   }
 
   Future<List<StaffOrderSnapshot>> _loadOrders() async {
@@ -116,6 +165,8 @@ class _CashierWorkspacePageState extends ConsumerState<CashierWorkspacePage> {
 
   @override
   void dispose() {
+    _realtimeSubscription?.close();
+    _liveRefreshTimer?.cancel();
     for (final draft in _drafts) {
       draft.amountController.dispose();
     }
@@ -313,8 +364,55 @@ class _CashierWorkspacePageState extends ConsumerState<CashierWorkspacePage> {
         _selectedOrder = null;
         _selectedItemIds.clear();
         _resetDrafts();
-        _future = _loadOrders();
       });
+      await _refreshOrders();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(e.toString())));
+    }
+  }
+
+  Future<void> _openCounterSale() async {
+    final branchId = ref.read(currentSessionProvider)?.branchId;
+    if (branchId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Select a branch before counter sale.')),
+      );
+      return;
+    }
+
+    try {
+      final menu = await ref.read(suiteRepositoryProvider).fetchMenu();
+      if (!mounted) return;
+
+      final draft = await showModalBottomSheet<_CounterSaleDraft>(
+        context: context,
+        isScrollControlled: true,
+        builder: (context) => _CounterSaleSheet(menu: menu),
+      );
+
+      if (draft == null || !mounted) return;
+
+      final order = await ref.read(suiteRepositoryProvider).createOrder(
+            branchId: branchId,
+            orderType: 'takeaway',
+            sendToCashier: true,
+            customerName: draft.customerName,
+            customerPhone: draft.customerPhone,
+            items: draft.items,
+          );
+
+      if (!mounted) return;
+      setState(() {
+        _selectedOrder = order;
+        _selectedItemIds.clear();
+        _resetDrafts();
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Counter order #${order.id} ready to settle')),
+      );
+      await _refreshOrders();
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context)
@@ -333,19 +431,29 @@ class _CashierWorkspacePageState extends ConsumerState<CashierWorkspacePage> {
         if (snapshot.hasError) {
           return ErrorView(
             message: snapshot.error.toString(),
-            onRetry: () => setState(() {
-              _future = _loadOrders();
-            }),
+            onRetry: _refreshOrders,
           );
         }
 
         final orders = snapshot.data!;
         if (orders.isEmpty) {
-          return const EmptyView(
-            title: 'No cashier queue',
-            description:
-                'Orders sent from waiter and fully prepared by kitchen will appear here for settlement.',
-            icon: Icons.point_of_sale_outlined,
+          return ListView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            children: [
+              _CashierHeader(
+                pendingCount: 0,
+                dueNow: 0,
+                averageTicket: 0,
+                onCounterSale: _openCounterSale,
+              ),
+              const SizedBox(height: 16),
+              const EmptyView(
+                title: 'No cashier queue',
+                description:
+                    'Orders sent from waiter and fully prepared by kitchen will appear here for settlement.',
+                icon: Icons.point_of_sale_outlined,
+              ),
+            ],
           );
         }
 
@@ -359,18 +467,13 @@ class _CashierWorkspacePageState extends ConsumerState<CashierWorkspacePage> {
         final medium = width > 940;
 
         return RefreshIndicator(
-          onRefresh: () async {
-            setState(() {
-              _future = _loadOrders();
-            });
-            await _future;
-          },
+          onRefresh: _refreshOrders,
           child: ListView(
             physics: const AlwaysScrollableScrollPhysics(),
             children: [
-              _CashierHeader(
-                pendingCount: orders.length,
-                dueNow: orders.fold<double>(
+	              _CashierHeader(
+	                pendingCount: orders.length,
+	                dueNow: orders.fold<double>(
                   0,
                   (sum, order) => sum + order.outstandingAmount,
                 ),
@@ -379,9 +482,10 @@ class _CashierWorkspacePageState extends ConsumerState<CashierWorkspacePage> {
                     : orders.fold<double>(
                           0,
                           (sum, order) => sum + order.total,
-                        ) /
-                        orders.length,
-              ),
+	                        ) /
+	                        orders.length,
+	                onCounterSale: _openCounterSale,
+	              ),
               const SizedBox(height: 16),
               if (wide)
                 Row(
@@ -524,11 +628,13 @@ class _CashierHeader extends StatelessWidget {
     required this.pendingCount,
     required this.dueNow,
     required this.averageTicket,
+    required this.onCounterSale,
   });
 
   final int pendingCount;
   final double dueNow;
   final double averageTicket;
+  final VoidCallback onCounterSale;
 
   @override
   Widget build(BuildContext context) {
@@ -558,14 +664,344 @@ class _CashierHeader extends StatelessWidget {
             label: 'Due now',
             value: currency.format(dueNow),
           ),
-          _HeaderMetric(
-            label: 'Avg ticket',
-            value: currency.format(averageTicket),
-          ),
-        ],
+	          _HeaderMetric(
+	            label: 'Avg ticket',
+	            value: currency.format(averageTicket),
+	          ),
+	          FilledButton.icon(
+	            onPressed: onCounterSale,
+	            icon: const Icon(Icons.add_shopping_cart_outlined),
+	            label: const Text('Counter sale'),
+	          ),
+	        ],
+	      ),
+    );
+  }
+}
+
+class _CounterSaleSheet extends StatefulWidget {
+  const _CounterSaleSheet({required this.menu});
+
+  final List<MenuCategoryData> menu;
+
+  @override
+  State<_CounterSaleSheet> createState() => _CounterSaleSheetState();
+}
+
+class _CounterSaleSheetState extends State<_CounterSaleSheet> {
+  final _customerNameController = TextEditingController();
+  final _customerPhoneController = TextEditingController();
+  final _searchController = TextEditingController();
+  final Map<int, _CounterCartLine> _cart = <int, _CounterCartLine>{};
+  String _search = '';
+
+  @override
+  void dispose() {
+    _customerNameController.dispose();
+    _customerPhoneController.dispose();
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  List<(MenuCategoryData, MenuProduct)> get _products {
+    final query = _search.trim().toLowerCase();
+    return [
+      for (final category in widget.menu)
+        for (final product in category.products)
+          if (query.isEmpty ||
+              product.name.toLowerCase().contains(query) ||
+              category.name.toLowerCase().contains(query))
+            (category, product),
+    ];
+  }
+
+  double get _cartTotal => _cart.values.fold<double>(
+        0,
+        (sum, line) => sum + (line.product.price * line.quantity),
+      );
+
+  void _addProduct(MenuCategoryData category, MenuProduct product) {
+    setState(() {
+      final existing = _cart[product.id];
+      if (existing == null) {
+        _cart[product.id] = _CounterCartLine(
+          category: category,
+          product: product,
+          quantity: 1,
+        );
+      } else {
+        existing.quantity += 1;
+      }
+    });
+  }
+
+  void _changeQuantity(MenuProduct product, int delta) {
+    setState(() {
+      final line = _cart[product.id];
+      if (line == null) return;
+      line.quantity += delta;
+      if (line.quantity <= 0) {
+        _cart.remove(product.id);
+      }
+    });
+  }
+
+  void _submit() {
+    if (_cart.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Add at least one item.')),
+      );
+      return;
+    }
+
+    Navigator.of(context).pop(
+      _CounterSaleDraft(
+        customerName: _customerNameController.text.trim(),
+        customerPhone: _customerPhoneController.text.trim(),
+        items: _cart.values
+            .map((line) => {
+                  'product_id': line.product.id,
+                  'quantity': line.quantity,
+                })
+            .toList(growable: false),
       ),
     );
   }
+
+  @override
+  Widget build(BuildContext context) {
+    final currency = NumberFormat.currency(symbol: 'USD ');
+    final products = _products;
+
+    return SafeArea(
+      child: DraggableScrollableSheet(
+        expand: false,
+        initialChildSize: 0.88,
+        minChildSize: 0.45,
+        maxChildSize: 0.96,
+        builder: (context, scrollController) {
+          return Padding(
+            padding: const EdgeInsets.fromLTRB(18, 12, 18, 18),
+            child: ListView(
+              controller: scrollController,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        'Counter sale',
+                        style: Theme.of(context)
+                            .textTheme
+                            .headlineSmall
+                            ?.copyWith(fontWeight: FontWeight.w900),
+                      ),
+                    ),
+                    IconButton(
+                      tooltip: 'Close',
+                      onPressed: () => Navigator.of(context).pop(),
+                      icon: const Icon(Icons.close),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _customerNameController,
+                        decoration: const InputDecoration(
+                          labelText: 'Customer name',
+                          prefixIcon: Icon(Icons.person_outline),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: TextField(
+                        controller: _customerPhoneController,
+                        keyboardType: TextInputType.phone,
+                        decoration: const InputDecoration(
+                          labelText: 'Phone',
+                          prefixIcon: Icon(Icons.phone_outlined),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: _searchController,
+                  onChanged: (value) => setState(() => _search = value),
+                  decoration: const InputDecoration(
+                    labelText: 'Search menu',
+                    prefixIcon: Icon(Icons.search),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Wrap(
+                  spacing: 10,
+                  runSpacing: 10,
+                  children: [
+                    for (final entry in products)
+                      _CounterProductButton(
+                        category: entry.$1,
+                        product: entry.$2,
+                        currency: currency,
+                        onTap: () => _addProduct(entry.$1, entry.$2),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                Text(
+                  'Cart',
+                  style: Theme.of(context)
+                      .textTheme
+                      .titleLarge
+                      ?.copyWith(fontWeight: FontWeight.w900),
+                ),
+                const SizedBox(height: 10),
+                if (_cart.isEmpty)
+                  const Text('No items selected.')
+                else
+                  for (final line in _cart.values)
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: Text(line.product.name),
+                      subtitle: Text(line.category.name),
+                      trailing: Wrap(
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        spacing: 8,
+                        children: [
+                          IconButton.filledTonal(
+                            tooltip: 'Decrease',
+                            onPressed: () => _changeQuantity(line.product, -1),
+                            icon: const Icon(Icons.remove),
+                          ),
+                          Text(
+                            '${line.quantity}',
+                            style: const TextStyle(fontWeight: FontWeight.w800),
+                          ),
+                          IconButton.filledTonal(
+                            tooltip: 'Increase',
+                            onPressed: () => _changeQuantity(line.product, 1),
+                            icon: const Icon(Icons.add),
+                          ),
+                          SizedBox(
+                            width: 86,
+                            child: Text(
+                              currency.format(line.product.price * line.quantity),
+                              textAlign: TextAlign.end,
+                              overflow: TextOverflow.ellipsis,
+                              style:
+                                  const TextStyle(fontWeight: FontWeight.w800),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        currency.format(_cartTotal),
+                        style: Theme.of(context)
+                            .textTheme
+                            .headlineSmall
+                            ?.copyWith(fontWeight: FontWeight.w900),
+                      ),
+                    ),
+                    FilledButton.icon(
+                      onPressed: _cart.isEmpty ? null : _submit,
+                      icon: const Icon(Icons.point_of_sale_outlined),
+                      label: const Text('Send to cashier'),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _CounterProductButton extends StatelessWidget {
+  const _CounterProductButton({
+    required this.category,
+    required this.product,
+    required this.currency,
+    required this.onTap,
+  });
+
+  final MenuCategoryData category;
+  final MenuProduct product;
+  final NumberFormat currency;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 220,
+      child: OutlinedButton(
+        onPressed: onTap,
+        style: OutlinedButton.styleFrom(
+          alignment: Alignment.centerLeft,
+          padding: const EdgeInsets.all(12),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.add_circle_outline),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    product.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontWeight: FontWeight.w800),
+                  ),
+                  Text(
+                    '${category.name} • ${currency.format(product.price)}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _CounterCartLine {
+  _CounterCartLine({
+    required this.category,
+    required this.product,
+    required this.quantity,
+  });
+
+  final MenuCategoryData category;
+  final MenuProduct product;
+  int quantity;
+}
+
+class _CounterSaleDraft {
+  const _CounterSaleDraft({
+    required this.customerName,
+    required this.customerPhone,
+    required this.items,
+  });
+
+  final String customerName;
+  final String customerPhone;
+  final List<Map<String, dynamic>> items;
 }
 
 class _QueuePanel extends StatelessWidget {

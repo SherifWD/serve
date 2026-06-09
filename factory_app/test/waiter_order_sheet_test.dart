@@ -226,8 +226,11 @@ class _WaiterOrderRepository extends SuiteRepository {
   }
 
   @override
-  Future<void> createOrder({
-    required int tableId,
+  Future<StaffOrderSnapshot> createOrder({
+    int? tableId,
+    int? branchId,
+    String orderType = 'dine-in',
+    bool sendToCashier = false,
     required List<Map<String, dynamic>> items,
     String? customerName,
     String? customerPhone,
@@ -240,5 +243,15 @@ class _WaiterOrderRepository extends SuiteRepository {
       'customer_phone': customerPhone,
       'customer_email': customerEmail,
     });
+    return const StaffOrderSnapshot(
+      id: 99,
+      total: 180,
+      status: 'pending',
+      paymentStatus: 'unpaid',
+      orderType: 'dine-in',
+      items: [],
+      payments: [],
+      tableName: 'T1',
+    );
   }
 }

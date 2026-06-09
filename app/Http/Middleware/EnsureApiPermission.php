@@ -35,6 +35,8 @@ class EnsureApiPermission
         'billing' => ['view' => 'settings.view', 'manage' => 'settings.manage'],
         'payment-providers' => ['view' => 'settings.view', 'manage' => 'settings.manage'],
         'print-jobs' => ['view' => 'orders.view', 'manage' => 'orders.manage'],
+        'marketing-inquiries' => ['view' => 'settings.view', 'manage' => 'settings.manage'],
+        'data-exports' => ['view' => 'settings.view', 'manage' => 'settings.manage'],
         'support' => ['view' => 'settings.view', 'manage' => 'settings.manage'],
     ];
 

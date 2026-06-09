@@ -153,8 +153,11 @@ class SuiteRepository {
         .toList(growable: false);
   }
 
-  Future<void> createOrder({
-    required int tableId,
+  Future<StaffOrderSnapshot> createOrder({
+    int? tableId,
+    int? branchId,
+    String orderType = 'dine-in',
+    bool sendToCashier = false,
     required List<Map<String, dynamic>> items,
     String? customerName,
     String? customerPhone,
@@ -163,7 +166,10 @@ class SuiteRepository {
     final response = await _dio.post(
       '/mobile/orders',
       data: {
-        'table_id': tableId,
+        if (tableId != null) 'table_id': tableId,
+        if (branchId != null) 'branch_id': branchId,
+        'order_type': orderType,
+        if (sendToCashier) 'send_to_cashier': true,
         if (customerName != null && customerName.isNotEmpty)
           'customer_name': customerName,
         if (customerPhone != null && customerPhone.isNotEmpty)
@@ -175,6 +181,7 @@ class SuiteRepository {
       options: _mutationOptions('create-order'),
     );
     _throwIfNeeded(response);
+    return StaffOrderSnapshot.fromJson(_map(_map(response.data)['order']));
   }
 
   Future<void> sendToKds(int orderId) async {
@@ -368,6 +375,41 @@ class SuiteRepository {
     );
   }
 
+  Future<DataExportDocument> generateDataExport({
+    required String dataset,
+    int? branchId,
+    String? startDate,
+    String? endDate,
+  }) async {
+    final response = await _dio.get<List<int>>(
+      '/data-exports/$dataset',
+      queryParameters: {
+        if (branchId != null) 'branch_id': branchId,
+        if (startDate != null) 'from_date': startDate,
+        if (endDate != null) 'to_date': endDate,
+      },
+      options: Options(
+        responseType: ResponseType.bytes,
+        headers: const {'Accept': 'text/csv'},
+      ),
+    );
+
+    if ((response.statusCode ?? 500) >= 400) {
+      throw SuiteException(
+        'Data export failed with status ${response.statusCode}',
+      );
+    }
+
+    return DataExportDocument(
+      bytes: Uint8List.fromList(response.data ?? const []),
+      filename: _filenameFromDisposition(
+        response.headers.value('content-disposition'),
+        fallback: 'janova-$dataset.csv',
+      ),
+      mimeType: response.headers.value('content-type') ?? 'text/csv',
+    );
+  }
+
   Future<OwnerSummary> fetchOwnerSummary({
     int? branchId,
     String? preset,
@@ -448,4 +490,16 @@ class ReceiptDocument {
 
   final Uint8List bytes;
   final String filename;
+}
+
+class DataExportDocument {
+  const DataExportDocument({
+    required this.bytes,
+    required this.filename,
+    required this.mimeType,
+  });
+
+  final Uint8List bytes;
+  final String filename;
+  final String mimeType;
 }

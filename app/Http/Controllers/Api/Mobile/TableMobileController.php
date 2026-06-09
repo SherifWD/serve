@@ -4,6 +4,9 @@ namespace App\Http\Controllers\Api\Mobile;
 
 use App\Enums\OrderStatus;
 use App\Enums\TableStatus;
+use App\Events\BranchOrderUpdated;
+use App\Events\KDSItemStatusUpdated;
+use App\Events\OrderReadyForCashier;
 use App\Http\Controllers\Controller;
 use App\Models\Branch;
 use App\Models\Order;
@@ -293,8 +296,8 @@ class TableMobileController extends Controller
         $order->table->update(['status' => TableStatus::CASHIER]);
     }
 
-    // (optional) broadcast to waiter & cashier UIs
-    // event(new \App\Events\OrderReadyForCashier($order));
+    event(new OrderReadyForCashier($order->fresh(['table', 'customer', 'items.product', 'payments'])));
+    event(new BranchOrderUpdated($order, 'order.sent_to_cashier'));
 
     return response()->json(['ok' => true]);
 }
@@ -328,7 +331,8 @@ public function batchSendToCashier(Request $request)
                 $order->table->update(['status' => TableStatus::CASHIER]);
             }
             $ok[] = $id;
-            // event(new \App\Events\OrderReadyForCashier($order));
+            event(new OrderReadyForCashier($order->fresh(['table', 'customer', 'items.product', 'payments'])));
+            event(new BranchOrderUpdated($order, 'order.sent_to_cashier'));
         } else {
             $failed[] = $id;
         }
@@ -344,7 +348,7 @@ public function batchSendToCashier(Request $request)
     public function reopenOrder(Request $request, $orderId)
     {
         $order = Order::with('table')->findOrFail($orderId);
-        if ($authResponse = $this->ensureBranchAccessible($request, (int) $order->table->branch_id)) {
+        if ($authResponse = $this->ensureBranchAccessible($request, (int) $order->branch_id)) {
             return $authResponse;
         }
         if (!in_array($order->status, [OrderStatus::CASHIER, OrderStatus::PAID], true)) {
@@ -356,7 +360,7 @@ public function batchSendToCashier(Request $request)
         }
         $order->save();
 
-        $order->table->update(['status' => TableStatus::OCCUPIED]);
+        $order->table?->update(['status' => TableStatus::OCCUPIED]);
 
         return response()->json(['order' => $order], 200);
     }
@@ -384,7 +388,7 @@ public function batchSendToCashier(Request $request)
     $item  = OrderItem::with(['order.table','product','answers','modifiers'])->findOrFail($orderItemId);
     $order = $item->order;
 
-    if ($authResponse = $this->ensureBranchAccessible($request, (int) $order->table->branch_id)) {
+    if ($authResponse = $this->ensureBranchAccessible($request, (int) $order->branch_id)) {
         return $authResponse;
     }
 
@@ -489,7 +493,7 @@ public function batchSendToCashier(Request $request)
                 'user_id' => $userId,
             ]);
 
-            // event(new \App\Events\KDSItemStatusUpdated($item));
+            event(new KDSItemStatusUpdated($item->fresh(['order.table', 'product', 'modifiers.modifier'])));
         } elseif (in_array($action, ['refund','cancel'], true)) {
             $statusWord = $action === 'refund' ? 'refunded' : 'canceled';
             $modQty = $qty ?? (int)$item->quantity;
@@ -540,7 +544,8 @@ public function batchSendToCashier(Request $request)
                 ]);
 
                 // notify KDS to remove split row quickly
-                // event(new \App\Events\KDSItemStatusUpdated($modItem));
+                event(new KDSItemStatusUpdated($modItem->fresh(['order.table', 'product', 'modifiers.modifier'])));
+                event(new KDSItemStatusUpdated($item->fresh(['order.table', 'product', 'modifiers.modifier'])));
 
             } else {
                 // FULL
@@ -563,7 +568,7 @@ public function batchSendToCashier(Request $request)
                     'user_id' => $userId,
                 ]);
 
-                // event(new \App\Events\KDSItemStatusUpdated($item));
+                event(new KDSItemStatusUpdated($item->fresh(['order.table', 'product', 'modifiers.modifier'])));
             }
 
         } elseif ($action === 'change') {
@@ -591,11 +596,12 @@ public function batchSendToCashier(Request $request)
             ]);
 
             // tell the KDS that quantities changed
-            // event(new \App\Events\KDSItemStatusUpdated($item));
+            event(new KDSItemStatusUpdated($item->fresh(['order.table', 'product', 'modifiers.modifier'])));
         }
 
         // Recompute and return fresh totals
         $order = \App\Services\Orders\RecalculateOrder::run($order);
+        event(new BranchOrderUpdated($order->fresh(['table', 'customer', 'items.product', 'payments']), 'order.item_updated'));
 
         return response()->json([
             'items' => $order->items()->with('product')->get(),
@@ -611,7 +617,7 @@ public function batchSendToCashier(Request $request)
     {
         $item = OrderItem::with('order.table')->findOrFail($orderItemId);
 
-        if ($authResponse = $this->ensureBranchAccessible($request, (int) $item->order->table->branch_id)) {
+        if ($authResponse = $this->ensureBranchAccessible($request, (int) $item->order->branch_id)) {
             return $authResponse;
         }
 

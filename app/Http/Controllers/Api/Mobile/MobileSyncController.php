@@ -61,8 +61,9 @@ class MobileSyncController extends Controller
             'server_time' => now()->toISOString(),
             'branch_id' => $branchId,
             'surface' => $data['surface'] ?? null,
+            'realtime' => $this->realtimeConfig($request, $branchId),
             'polling' => [
-                'mode' => config('broadcasting.default') === 'reverb' ? 'broadcast-preferred' : 'polling',
+                'mode' => in_array(config('broadcasting.default'), ['reverb', 'pusher'], true) ? 'broadcast-preferred' : 'polling',
                 'tables_seconds' => 5,
                 'orders_seconds' => 5,
                 'kds_seconds' => 3,
@@ -121,6 +122,44 @@ class MobileSyncController extends Controller
                     ->get(),
             ],
         ]);
+    }
+
+    private function realtimeConfig(Request $request, int $branchId): array
+    {
+        $driver = (string) config('broadcasting.default', 'log');
+        $connection = config("broadcasting.connections.$driver", []);
+        $options = $connection['options'] ?? [];
+        $enabled = in_array($driver, ['reverb', 'pusher'], true);
+        $scheme = (string) ($options['scheme'] ?? ($request->isSecure() ? 'https' : 'http'));
+        $host = (string) ($options['host'] ?? $request->getHost());
+        $port = (int) ($options['port'] ?? ($scheme === 'https' ? 443 : 80));
+
+        return [
+            'enabled' => $enabled,
+            'driver' => $driver,
+            'broadcaster' => $driver === 'reverb' ? 'pusher' : $driver,
+            'auth_endpoint' => '/broadcasting/auth',
+            'channel' => 'private-branch.'.$branchId,
+            'events' => [
+                'order.created',
+                'order.updated',
+                'order.sent_to_kds',
+                'kds.item_status_updated',
+                'order.ready_for_cashier',
+                'order.sent_to_cashier',
+                'order.payment_updated',
+                'order.paid',
+                'order.item_updated',
+            ],
+            'key' => $connection['key'] ?? null,
+            'host' => $host,
+            'ws_host' => $host,
+            'ws_port' => $scheme === 'https' ? 80 : $port,
+            'wss_port' => $scheme === 'https' ? $port : 443,
+            'scheme' => $scheme,
+            'force_tls' => $scheme === 'https',
+            'cluster' => $driver === 'pusher' ? config('broadcasting.connections.pusher.options.cluster') : null,
+        ];
     }
 
     public function heartbeat(Request $request)

@@ -1,0 +1,527 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Janova POS Winning Modifications Checklist - 2026-06-09</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #172033;
+      --muted: #5d6678;
+      --line: #d8dee9;
+      --panel: #ffffff;
+      --soft: #f5f7fb;
+      --done: #0f766e;
+      --wait: #9a3412;
+      --risk: #b91c1c;
+      --brand: #1d4ed8;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      color: var(--ink);
+      background: #eef2f7;
+      line-height: 1.52;
+    }
+    main {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 28px 18px 60px;
+    }
+    header {
+      background: #0f172a;
+      color: #ffffff;
+      padding: 28px;
+      border-radius: 8px;
+      margin-bottom: 18px;
+    }
+    h1, h2, h3 { margin: 0; }
+    h1 { font-size: 30px; line-height: 1.15; }
+    h2 { font-size: 22px; margin-top: 30px; margin-bottom: 12px; }
+    h3 { font-size: 17px; margin-top: 18px; margin-bottom: 8px; }
+    p { margin: 8px 0; }
+    a { color: var(--brand); }
+    .subtitle { color: #cbd5e1; max-width: 900px; }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+      margin: 16px 0;
+    }
+    .card, section {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 16px;
+    }
+    section { margin-top: 16px; }
+    .metric {
+      font-size: 24px;
+      font-weight: 700;
+    }
+    .label { color: var(--muted); font-size: 13px; text-transform: uppercase; letter-spacing: 0.04em; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+      background: #ffffff;
+    }
+    th, td {
+      border: 1px solid var(--line);
+      padding: 9px 10px;
+      vertical-align: top;
+      text-align: left;
+      font-size: 14px;
+    }
+    th {
+      background: #e9eef8;
+      font-weight: 700;
+    }
+    ul { margin: 8px 0 0 20px; padding: 0; }
+    li { margin: 5px 0; }
+    code {
+      background: #edf2f7;
+      border: 1px solid #d7dee9;
+      padding: 1px 4px;
+      border-radius: 4px;
+      font-size: 13px;
+    }
+    .status {
+      display: inline-block;
+      min-width: 86px;
+      text-align: center;
+      border-radius: 999px;
+      padding: 3px 8px;
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .done { background: #d1fae5; color: var(--done); }
+    .wait { background: #ffedd5; color: var(--wait); }
+    .risk { background: #fee2e2; color: var(--risk); }
+    .note {
+      background: var(--soft);
+      border-left: 4px solid var(--brand);
+      padding: 10px 12px;
+      margin-top: 10px;
+    }
+    .checkline {
+      display: grid;
+      grid-template-columns: 22px 1fr;
+      gap: 8px;
+      align-items: start;
+      margin: 7px 0;
+    }
+    .checkline input { margin-top: 3px; }
+    .two {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+    @media (max-width: 860px) {
+      .grid, .two { grid-template-columns: 1fr; }
+      main { padding: 14px 10px 38px; }
+      header { padding: 20px; }
+      h1 { font-size: 25px; }
+      table { display: block; overflow-x: auto; }
+    }
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Janova POS Winning Modifications Checklist</h1>
+    <p class="subtitle">Generated on 2026-06-09 after the POS competition gap analysis, backend edits, Flutter staff-app edits, automated tests, and live smoke testing against the local Laravel API and Chrome Flutter targets.</p>
+  </header>
+
+  <div class="grid">
+    <div class="card">
+      <div class="label">Code readiness added</div>
+      <div class="metric">Counter + Export</div>
+      <p>Cashier no-table sales and owner CSV exports are now implemented in backend and Flutter staff app.</p>
+    </div>
+    <div class="card">
+      <div class="label">Live smoke status</div>
+      <div class="metric">Passed</div>
+      <p>Created no-table takeaway, paid it, generated PDF receipt, and downloaded CSV export.</p>
+    </div>
+    <div class="card">
+      <div class="label">Broad production verdict</div>
+      <div class="metric">Pilot-ready</div>
+      <p>Ready for controlled cafe/restaurant pilots, not yet ready to claim full Toast/Square/Clover replacement everywhere.</p>
+    </div>
+  </div>
+
+  <section>
+    <h2>Executive Checklist</h2>
+    <div class="checkline"><input type="checkbox" checked disabled><div>Fix fake-table dependency for cashier-only takeaway, drinks, and counter-service shops.</div></div>
+    <div class="checkline"><input type="checkbox" checked disabled><div>Add backend support for no-table takeaway/delivery orders using <code>branch_id</code> and <code>order_type</code>.</div></div>
+    <div class="checkline"><input type="checkbox" checked disabled><div>Add <code>send_to_cashier</code> so cashier-created orders can enter payment flow immediately.</div></div>
+    <div class="checkline"><input type="checkbox" checked disabled><div>Add Flutter cashier counter-sale workflow with menu search, customer fields, cart quantity controls, submit, and queue refresh.</div></div>
+    <div class="checkline"><input type="checkbox" checked disabled><div>Add secured merchant CSV export endpoint and Flutter owner export button/dialog.</div></div>
+    <div class="checkline"><input type="checkbox" checked disabled><div>Run real API cycle: sale, payment, receipt PDF, and owner export.</div></div>
+    <div class="checkline"><input type="checkbox" disabled><div>Certify physical printers, cash drawers, tablets, and payment terminals in a lab.</div></div>
+    <div class="checkline"><input type="checkbox" disabled><div>Add true offline mode with local order/payment/print queue and conflict handling.</div></div>
+    <div class="checkline"><input type="checkbox" disabled><div>Add migration importers for Toast, Square, Clover, Foodics, spreadsheets, and common CSV exports.</div></div>
+    <div class="checkline"><input type="checkbox" disabled><div>Publish pricing, support SLA, hardware policy, payment policy, and data ownership pages.</div></div>
+  </section>
+
+  <section>
+    <h2>Finished Steps</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Area</th>
+          <th>What changed</th>
+          <th>Why it helps win</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Backend order model flow</td>
+          <td>No-table staff orders now support <code>branch_id</code>, <code>order_type=takeaway</code>, and nullable <code>table_id</code>.</td>
+          <td>Only-takeaway restaurants, drinks shops, and counter cafes do not need fake tables.</td>
+          <td><span class="status done">Done</span></td>
+        </tr>
+        <tr>
+          <td>Cashier shortcut</td>
+          <td><code>send_to_cashier</code> creates a no-table order directly in cashier state when payment should happen immediately.</td>
+          <td>Matches the real cycle: cashier enters item, prints/charges receipt, receives payment, hands product to customer.</td>
+          <td><span class="status done">Done</span></td>
+        </tr>
+        <tr>
+          <td>Flutter cashier</td>
+          <td>Added <code>Counter sale</code> action, menu loader, search, customer name/phone, cart controls, quantity edits, and submit.</td>
+          <td>Cashier-only shops can operate without waiter, table, or kitchen screens.</td>
+          <td><span class="status done">Done</span></td>
+        </tr>
+        <tr>
+          <td>Data ownership</td>
+          <td>Added secured CSV export for products, customers, orders, payments, receipts, and inventory items.</td>
+          <td>Directly attacks lock-in complaints. Owners can prove data is portable.</td>
+          <td><span class="status done">Done</span></td>
+        </tr>
+        <tr>
+          <td>Flutter owner</td>
+          <td>Added <code>Export CSV</code> control with dataset dialog and browser download on web.</td>
+          <td>Owner can self-serve exports instead of asking support or being trapped.</td>
+          <td><span class="status done">Done</span></td>
+        </tr>
+        <tr>
+          <td>Production scenarios</td>
+          <td>Scenario tests cover small cafe, big cafe split tender, drinks-only cashier takeaway, takeaway cafe with KDS, small restaurant, big restaurant table move, and customer takeaway pickup.</td>
+          <td>Turns the sales claim into tested operational proof.</td>
+          <td><span class="status done">Done</span></td>
+        </tr>
+        <tr>
+          <td>Receipts and print lifecycle</td>
+          <td>Tests prove receipt PDF generation plus print job queue, claim, and printed status.</td>
+          <td>Supports the cashier cycle expected by cafes and restaurants.</td>
+          <td><span class="status done">Done</span></td>
+        </tr>
+        <tr>
+          <td>Cross-branch safety</td>
+          <td>No-table access and receipt/payment access use branch/restaurant scope instead of table-only assumptions.</td>
+          <td>Protects multi-branch operators and owner reporting.</td>
+          <td><span class="status done">Done</span></td>
+        </tr>
+        <tr>
+          <td>Demo branch data</td>
+          <td>Local demo stock was replenished for Janova branches 6 and 7 so live Flutter menu testing can show products.</td>
+          <td>A demo branch with empty stock hides the menu and weakens sales demos even when the code is correct.</td>
+          <td><span class="status done">Done</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>Live Test Results</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Test</th>
+          <th>Evidence</th>
+          <th>Result</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Laravel API health</td>
+          <td><code>GET http://127.0.0.1:8000/api/health</code> returned HTTP 200.</td>
+          <td><span class="status done">Passed</span></td>
+        </tr>
+        <tr>
+          <td>Cashier Flutter target</td>
+          <td><code>flutter run -d chrome -t lib/main_cashier.dart --dart-define=API_BASE_URL=http://127.0.0.1:8000/api</code> launched in Chrome.</td>
+          <td><span class="status done">Passed</span></td>
+        </tr>
+        <tr>
+          <td>Owner Flutter target</td>
+          <td><code>flutter run -d chrome --web-port=57120 -t lib/main_owner.dart --dart-define=API_BASE_URL=http://127.0.0.1:8000/api</code> launched in Chrome.</td>
+          <td><span class="status done">Passed</span></td>
+        </tr>
+        <tr>
+          <td>Cashier-only no-table sale</td>
+          <td>Cashier branch 6 sold <code>Brownie Skillet</code> as order <code>#25</code>. Response had <code>status=cashier</code>, <code>table_id=null</code>, and <code>total=8.00</code>.</td>
+          <td><span class="status done">Passed</span></td>
+        </tr>
+        <tr>
+          <td>Payment</td>
+          <td>Cash payment for order <code>#25</code> returned <code>payment_status=paid</code> and order <code>status=paid</code>.</td>
+          <td><span class="status done">Passed</span></td>
+        </tr>
+        <tr>
+          <td>Receipt</td>
+          <td>Paid receipt returned HTTP 200, <code>application/pdf</code>, 249694 bytes, and PDF magic <code>25504446</code>.</td>
+          <td><span class="status done">Passed</span></td>
+        </tr>
+        <tr>
+          <td>Owner export</td>
+          <td>Product CSV export returned HTTP 200, <code>text/csv; charset=UTF-8</code>, 5222 bytes, with expected product columns.</td>
+          <td><span class="status done">Passed</span></td>
+        </tr>
+      </tbody>
+    </table>
+    <div class="note">Live UI click automation is still not present in the repo. Current live proof is browser launch plus real API workflow. Add Flutter integration tests before claiming fully automated UI production readiness.</div>
+  </section>
+
+  <section>
+    <h2>Scenario Coverage</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Scenario</th>
+          <th>Actors</th>
+          <th>Expected real-life cycle</th>
+          <th>Current proof</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Small cafe dine-in</td>
+          <td>Waiter, kitchen/barista, cashier, customer</td>
+          <td>Waiter opens table, adds item, kitchen marks ready, cashier receives payment, receipt prints, table reopens.</td>
+          <td><span class="status done">Automated</span></td>
+        </tr>
+        <tr>
+          <td>Big cafe split tender</td>
+          <td>Waiter, kitchen/barista, cashier, customer</td>
+          <td>Multiple items, split payment cash/card, paid receipt, print status completed.</td>
+          <td><span class="status done">Automated</span></td>
+        </tr>
+        <tr>
+          <td>Drinks-only shop</td>
+          <td>Cashier, customer</td>
+          <td>Cashier enters drink, sends directly to cashier state, takes payment, prints receipt, hands over drink.</td>
+          <td><span class="status done">Automated + live</span></td>
+        </tr>
+        <tr>
+          <td>Takeaway cafe with kitchen</td>
+          <td>Cashier, kitchen/barista, customer</td>
+          <td>Cashier creates takeaway order, kitchen/barista prepares, order reaches cashier, customer pays and receives receipt.</td>
+          <td><span class="status done">Automated</span></td>
+        </tr>
+        <tr>
+          <td>Small restaurant dine-in</td>
+          <td>Waiter, kitchen, cashier, owner, customer</td>
+          <td>Waiter table order, KDS ready, cashier payment, receipt print, owner can see/export records.</td>
+          <td><span class="status done">Automated</span></td>
+        </tr>
+        <tr>
+          <td>Big restaurant table move</td>
+          <td>Waiter, kitchen, cashier, owner, customer</td>
+          <td>Move active table, keep order and items, split tender, receipt, print job, table opens after payment.</td>
+          <td><span class="status done">Automated</span></td>
+        </tr>
+        <tr>
+          <td>Only takeaway restaurant</td>
+          <td>Customer, kitchen, cashier</td>
+          <td>Customer pickup order, kitchen ready, cashier charges pay-at-counter, receipt printed, no table used.</td>
+          <td><span class="status done">Automated</span></td>
+        </tr>
+        <tr>
+          <td>Owner export and audit</td>
+          <td>Owner</td>
+          <td>Owner exports products/orders/payments/receipts/inventory by branch and date range.</td>
+          <td><span class="status done">Backend + Flutter + live CSV</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>Winning Claims And Conditions</h2>
+    <div class="two">
+      <div class="card">
+        <h3>Safe claims now</h3>
+        <ul>
+          <li>Restaurant-first POS for cafes, takeaway shops, drinks shops, and dining rooms.</li>
+          <li>Supports waiter, kitchen/KDS, cashier, owner, and customer pickup flows.</li>
+          <li>Cashier-only counter sales work without fake tables.</li>
+          <li>Paid receipts and server print-job lifecycle are tested.</li>
+          <li>Owner CSV exports prove basic data portability.</li>
+          <li>Multi-branch scoping protects cashier and owner data boundaries.</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>Claims to avoid until gaps close</h3>
+        <ul>
+          <li>"Full Toast/Square/Clover replacement for every merchant."</li>
+          <li>"Offline like Toast or Square."</li>
+          <li>"Certified on all major printers, drawers, and terminals."</li>
+          <li>"One-day migration from any POS."</li>
+          <li>"Enterprise support SLA."</li>
+          <li>"Payment processing savings guaranteed."</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Still Not Finished</h2>
+    <h3>P0 - Needed before broad competitive marketing</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Gap</th>
+          <th>Why competitors win today</th>
+          <th>Winning condition</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Payment processor adapters and terminal capture</td>
+          <td>Toast, Square, Clover, Foodics, and Lightspeed sell integrated payments as a core promise.</td>
+          <td>Certified adapters, terminal references, settlement reconciliation, refunds, tips, and failure handling.</td>
+          <td><span class="status risk">Open</span></td>
+        </tr>
+        <tr>
+          <td>Physical printer, kitchen printer, and cash drawer lab</td>
+          <td>Competitors ship known hardware bundles and support scripts.</td>
+          <td>Documented supported devices, setup wizard, rush-hour print test, drawer open test, retry and failed-printer escalation.</td>
+          <td><span class="status risk">Open</span></td>
+        </tr>
+        <tr>
+          <td>Offline/local-first mode</td>
+          <td>Toast and Square sell outage survival as a major trust feature.</td>
+          <td>Local order queue, local payment queue where allowed, local print queue, sync replay, conflict handling, offline receipt numbering.</td>
+          <td><span class="status risk">Open</span></td>
+        </tr>
+        <tr>
+          <td>Migration importers</td>
+          <td>Merchants fear switching costs more than POS feature gaps.</td>
+          <td>Import templates and validation for products, categories, modifiers, customers, inventory, and opening balances from Toast/Square/Clover/Foodics/spreadsheets.</td>
+          <td><span class="status risk">Open</span></td>
+        </tr>
+        <tr>
+          <td>Commercial trust pages</td>
+          <td>Buyers compare total cost, support, cancellation, and hardware ownership before switching.</td>
+          <td>Public pricing, support SLA, payment policy, hardware ownership, cancellation, data export, and onboarding process.</td>
+          <td><span class="status risk">Open</span></td>
+        </tr>
+        <tr>
+          <td>Flutter integration tests</td>
+          <td>Widget/golden tests do not prove login, tap, submit, and download behavior end to end.</td>
+          <td>Integration tests for cashier counter sale, payment, receipt action, owner export, waiter order, KDS ready, and customer pickup.</td>
+          <td><span class="status wait">Partial</span></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h3>P1 - Needed after first paid pilots</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Work</th>
+          <th>Winning condition</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Cash drawer, till, shift close, cash variance, tips, service charge, and tip-out</td>
+          <td>Cashier and owner can close day confidently and reconcile staff cash.</td>
+          <td><span class="status risk">Open</span></td>
+        </tr>
+        <tr>
+          <td>Advanced kitchen routing</td>
+          <td>Station routing, coursing, rush throttling, modifiers on tickets, bump screen recovery.</td>
+          <td><span class="status wait">Partial</span></td>
+        </tr>
+        <tr>
+          <td>Online ordering payments and notifications</td>
+          <td>Pickup slots, delivery zones, online pay, SMS/email/WhatsApp notifications where allowed.</td>
+          <td><span class="status risk">Open</span></td>
+        </tr>
+        <tr>
+          <td>Loyalty, gift cards, and campaigns</td>
+          <td>Restaurant owner can retain customers and migrate marketing away from incumbent POS add-ons.</td>
+          <td><span class="status wait">Partial</span></td>
+        </tr>
+        <tr>
+          <td>Accounting, payroll, and marketplace integrations</td>
+          <td>Exports/webhooks/API for accountants, payroll, BI, delivery marketplaces, and partner apps.</td>
+          <td><span class="status risk">Open</span></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h3>P2 - Scale and sales operations</h3>
+    <ul>
+      <li>Security pack: backup policy, audit logs explainer, data retention, incident process, and compliance roadmap.</li>
+      <li>Sales calculator: compare processing, software, hardware lease, add-ons, support, and cancellation costs.</li>
+      <li>Implementation playbook: discovery checklist, menu build, staff training, go-live checklist, fallback plan.</li>
+      <li>Support operations: status page, escalation runbook, response times, device replacement process.</li>
+      <li>Competitive landing pages for Toast, Square, Clover, Foodics, Lightspeed, TouchBistro, and Loyverse switchers.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>Verification Commands</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Command</th>
+          <th>Expected result</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>php artisan test</code></td>
+          <td>All backend feature tests pass.</td>
+        </tr>
+        <tr>
+          <td><code>/Applications/Flutter/flutter/bin/flutter analyze --no-fatal-infos</code></td>
+          <td>No analyzer errors or warnings for the factory app.</td>
+        </tr>
+        <tr>
+          <td><code>/Applications/Flutter/flutter/bin/flutter test</code></td>
+          <td>Flutter widget and golden tests pass after expected UI golden updates.</td>
+        </tr>
+        <tr>
+          <td><code>flutter run -d chrome -t lib/main_cashier.dart --dart-define=API_BASE_URL=http://127.0.0.1:8000/api</code></td>
+          <td>Cashier app launches and can use the counter-sale workflow.</td>
+        </tr>
+        <tr>
+          <td><code>flutter run -d chrome -t lib/main_owner.dart --dart-define=API_BASE_URL=http://127.0.0.1:8000/api</code></td>
+          <td>Owner app launches and can download exports.</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>Related Reports</h2>
+    <ul>
+      <li><a href="sleft-pos-competitive-gap-analysis-2026-06-09.html">Sleft POS competitive gap analysis</a></li>
+      <li><a href="pos-production-readiness-comparison-2026-06-09.html">Worldwide POS production readiness comparison</a></li>
+      <li><a href="pos-winning-readiness-steps-2026-06-09.md">Winning readiness steps note</a></li>
+    </ul>
+  </section>
+</main>
+</body>
+</html>

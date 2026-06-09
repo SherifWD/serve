@@ -2,6 +2,8 @@
 
 namespace Tests\Feature;
 
+use App\Events\BranchOrderUpdated;
+use App\Events\OrderSentToKDS;
 use App\Models\AuditLog;
 use App\Models\BillingInvoice;
 use App\Models\Branch;
@@ -40,6 +42,7 @@ use Database\Seeders\DatabaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\File;
 use Illuminate\Testing\Fluent\AssertableJson;
 use Laravel\Sanctum\Sanctum;
@@ -116,6 +119,37 @@ class MobileApiRegressionTest extends TestCase
             ['pending'],
             $order->items()->pluck('kds_status')->unique()->values()->all(),
         );
+    }
+
+    public function test_send_to_kds_dispatches_branch_realtime_events(): void
+    {
+        Event::fake([OrderSentToKDS::class, BranchOrderUpdated::class]);
+
+        $order = Order::query()
+            ->with(['items', 'table'])
+            ->whereHas('table')
+            ->whereHas('items')
+            ->firstOrFail();
+
+        $order->forceFill([
+            'status' => 'pending',
+            'kds_sent_at' => null,
+        ])->save();
+        $order->items()->update([
+            'status' => 'pending',
+            'kds_status' => 'pending',
+            'kds_sent_at' => null,
+        ]);
+
+        Sanctum::actingAs($this->staffUserForBranch((int) $order->branch_id, 'waiter'));
+
+        $this->postJson("/api/mobile/orders/{$order->id}/send-to-kds")
+            ->assertOk()
+            ->assertJsonPath('ok', true);
+
+        Event::assertDispatched(OrderSentToKDS::class, fn (OrderSentToKDS $event) => (int) $event->order->id === (int) $order->id);
+        Event::assertDispatched(BranchOrderUpdated::class, fn (BranchOrderUpdated $event) => $event->event === 'order.sent_to_kds'
+            && (int) $event->order->id === (int) $order->id);
     }
 
     public function test_cross_branch_cashier_cannot_pay_a_foreign_order(): void
@@ -1883,10 +1917,12 @@ class MobileApiRegressionTest extends TestCase
         $this->getJson('/api/mobile/sync/state?surface=waiter')
             ->assertOk()
             ->assertJsonPath('branch_id', $branch->id)
-            ->assertJsonPath('polling.mode', config('broadcasting.default') === 'reverb' ? 'broadcast-preferred' : 'polling')
+            ->assertJsonPath('polling.mode', in_array(config('broadcasting.default'), ['reverb', 'pusher'], true) ? 'broadcast-preferred' : 'polling')
             ->assertJsonPath('offline.client_mutation_ids', true)
+            ->assertJsonPath('realtime.channel', 'private-branch.'.$branch->id)
             ->assertJsonStructure([
                 'server_time',
+                'realtime' => ['enabled', 'driver', 'broadcaster', 'auth_endpoint', 'channel', 'events'],
                 'polling' => ['tables_seconds', 'orders_seconds', 'kds_seconds', 'retry_backoff_seconds'],
                 'data' => ['tables', 'orders', 'products', 'inventory_alerts', 'devices'],
             ]);
@@ -2261,6 +2297,74 @@ class MobileApiRegressionTest extends TestCase
             'is_available' => true,
             'min_stock' => 1,
         ])->assertForbidden();
+    }
+
+    public function test_cashier_can_create_no_table_takeaway_order_for_counter_service(): void
+    {
+        $branch = Branch::query()
+            ->whereHas('users', fn ($query) => $query->where('email', 'like', 'cashier%@example.com'))
+            ->whereHas('products', fn ($query) => $query->where('is_available', true))
+            ->firstOrFail();
+        $product = Product::query()
+            ->where('branch_id', $branch->id)
+            ->where('is_available', true)
+            ->firstOrFail();
+        $this->ensureProductStockAvailable($product, (int) $branch->id);
+
+        Sanctum::actingAs($this->staffUserForBranch((int) $branch->id, 'cashier'));
+
+        $response = $this->postJson('/api/mobile/orders', [
+            'branch_id' => $branch->id,
+            'order_type' => 'takeaway',
+            'send_to_cashier' => true,
+            'customer_name' => 'Counter Guest',
+            'customer_phone' => '01099998888',
+            'items' => [
+                [
+                    'product_id' => $product->id,
+                    'quantity' => 1,
+                    'note' => 'No table counter sale',
+                ],
+            ],
+        ]);
+
+        $response
+            ->assertCreated()
+            ->assertJsonPath('order.branch_id', $branch->id)
+            ->assertJsonPath('order.table_id', null)
+            ->assertJsonPath('order.table', null)
+            ->assertJsonPath('order.order_type', 'takeaway')
+            ->assertJsonPath('order.status', 'cashier')
+            ->assertJsonPath('order.payment_status', 'unpaid');
+
+        $order = Order::query()->findOrFail($response->json('order.id'));
+        $this->assertNull($order->table_id);
+    }
+
+    public function test_owner_can_export_products_as_switching_csv(): void
+    {
+        $owner = User::query()
+            ->where('role', 'owner')
+            ->whereNotNull('restaurant_id')
+            ->firstOrFail();
+        $branch = Branch::query()
+            ->where('restaurant_id', $owner->restaurant_id)
+            ->whereHas('products')
+            ->firstOrFail();
+        $product = Product::query()
+            ->where('branch_id', $branch->id)
+            ->firstOrFail();
+
+        Sanctum::actingAs($owner);
+
+        $response = $this->get("/api/data-exports/products?branch_id={$branch->id}");
+        $response->assertOk();
+
+        $csv = $response->streamedContent();
+
+        $this->assertStringStartsWith('id,restaurant_id,restaurant_name,branch_id,branch_name', $csv);
+        $this->assertStringContainsString((string) $product->id, $csv);
+        $this->assertStringContainsString($product->name, $csv);
     }
 
     private function staffUserForBranch(int $branchId, string $prefix): User

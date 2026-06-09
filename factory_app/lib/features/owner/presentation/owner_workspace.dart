@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import 'package:printing/printing.dart';
 
 import '../../../core/models/app_models.dart';
+import '../../../core/platform/file_download.dart';
 import '../../../core/widgets/state_views.dart';
 import '../../suite/data/suite_repository.dart';
 
@@ -120,6 +121,40 @@ class _OwnerWorkspacePageState extends ConsumerState<OwnerWorkspacePage> {
     }
   }
 
+  Future<void> _exportData() async {
+    final dataset = await showDialog<_OwnerExportDataset>(
+      context: context,
+      builder: (context) => const _ExportDatasetDialog(),
+    );
+    if (dataset == null) return;
+
+    try {
+      final document = await ref.read(suiteRepositoryProvider).generateDataExport(
+            dataset: dataset.apiValue,
+            branchId: _selectedBranchId,
+            startDate: dataset.dateScoped ? _apiDate(_startDate) : null,
+            endDate: dataset.dateScoped ? _apiDate(_endDate) : null,
+          );
+      final downloaded = await downloadBytes(
+        bytes: document.bytes,
+        filename: document.filename,
+        mimeType: document.mimeType,
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(downloaded
+              ? 'Export downloaded: ${document.filename}'
+              : 'Export ready: ${document.filename}'),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(e.toString())));
+    }
+  }
+
   void _showBranchDetail(
     OwnerBranchDetail detail,
     NumberFormat currency,
@@ -210,6 +245,7 @@ class _OwnerWorkspacePageState extends ConsumerState<OwnerWorkspacePage> {
                   onPickStart: () => _pickDate(start: true),
                   onPickEnd: () => _pickDate(start: false),
                   onPrintReceipt: _printOwnerReceipt,
+                  onExportData: _exportData,
                 ),
                 const SizedBox(height: 16),
                 _OwnerKpiGrid(summary: summary, currency: currency),
@@ -301,6 +337,69 @@ enum _OwnerDatePreset {
   }
 }
 
+enum _OwnerExportDataset {
+  products('products', 'Products', false),
+  customers('customers', 'Customers', false),
+  orders('orders', 'Orders', true),
+  payments('payments', 'Payments', true),
+  receipts('receipts', 'Receipts', true),
+  inventoryItems('inventory-items', 'Inventory items', false);
+
+  const _OwnerExportDataset(this.apiValue, this.label, this.dateScoped);
+
+  final String apiValue;
+  final String label;
+  final bool dateScoped;
+}
+
+class _ExportDatasetDialog extends StatefulWidget {
+  const _ExportDatasetDialog();
+
+  @override
+  State<_ExportDatasetDialog> createState() => _ExportDatasetDialogState();
+}
+
+class _ExportDatasetDialogState extends State<_ExportDatasetDialog> {
+  _OwnerExportDataset _dataset = _OwnerExportDataset.orders;
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Export CSV'),
+      content: DropdownButtonFormField<_OwnerExportDataset>(
+        value: _dataset,
+        decoration: const InputDecoration(
+          labelText: 'Dataset',
+          prefixIcon: Icon(Icons.table_view_outlined),
+        ),
+        items: [
+          for (final dataset in _OwnerExportDataset.values)
+            DropdownMenuItem(
+              value: dataset,
+              child: Text(dataset.label),
+            ),
+        ],
+        onChanged: (value) {
+          if (value != null) {
+            setState(() => _dataset = value);
+          }
+        },
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+        FilledButton.icon(
+          onPressed: () => Navigator.of(context).pop(_dataset),
+          icon: const Icon(Icons.download_outlined),
+          label: const Text('Export'),
+        ),
+      ],
+    );
+  }
+}
+
 class _OwnerDateFilterBar extends StatelessWidget {
   const _OwnerDateFilterBar({
     required this.preset,
@@ -313,6 +412,7 @@ class _OwnerDateFilterBar extends StatelessWidget {
     required this.onPickStart,
     required this.onPickEnd,
     required this.onPrintReceipt,
+    required this.onExportData,
   });
 
   final _OwnerDatePreset preset;
@@ -325,6 +425,7 @@ class _OwnerDateFilterBar extends StatelessWidget {
   final VoidCallback onPickStart;
   final VoidCallback onPickEnd;
   final Future<void> Function() onPrintReceipt;
+  final Future<void> Function() onExportData;
 
   @override
   Widget build(BuildContext context) {
@@ -437,6 +538,12 @@ class _OwnerDateFilterBar extends StatelessWidget {
             onPressed: onPrintReceipt,
             icon: const Icon(Icons.print_outlined),
             label: const Text('Print date receipt'),
+          ),
+          OutlinedButton.icon(
+            onPressed: onExportData,
+            style: outlinedControlStyle,
+            icon: const Icon(Icons.download_outlined),
+            label: const Text('Export CSV'),
           ),
         ],
       ),
