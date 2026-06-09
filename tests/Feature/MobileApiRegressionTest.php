@@ -1216,6 +1216,8 @@ class MobileApiRegressionTest extends TestCase
         Sanctum::actingAs($admin);
 
         $this->postJson('/api/recipes', [
+            'name' => 'Regression Recipe',
+            'category' => 'Mains',
             'description' => 'Regression product recipe',
             'branch_id' => $branch->id,
             'ingredients' => [
@@ -1225,6 +1227,8 @@ class MobileApiRegressionTest extends TestCase
                 ],
             ],
         ])->assertCreated()
+            ->assertJsonPath('name', 'Regression Recipe')
+            ->assertJsonPath('category', 'Mains')
             ->assertJsonPath('description', 'Regression product recipe')
             ->assertJsonPath('branch_id', $branch->id)
             ->assertJsonPath('ingredients.0.id', $ingredient->id);
@@ -1232,6 +1236,9 @@ class MobileApiRegressionTest extends TestCase
         $recipe = Recipe::query()
             ->where('description', 'Regression product recipe')
             ->firstOrFail();
+
+        $this->assertSame('Regression Recipe', $recipe->name);
+        $this->assertSame('Mains', $recipe->category);
 
         $this->assertDatabaseHas('recipe_ingredients', [
             'recipe_id' => $recipe->id,
@@ -1275,6 +1282,8 @@ class MobileApiRegressionTest extends TestCase
 
         $ingredient = Ingredient::query()->firstOrFail();
         $recipeId = $this->postJson('/api/recipes', [
+            'name' => 'Regression Multi Branch Recipe',
+            'category' => 'Desserts',
             'description' => 'Regression multi branch recipe',
             'branch_id' => $branchIds[0],
             'branch_ids' => $branchIds,
@@ -1305,6 +1314,12 @@ class MobileApiRegressionTest extends TestCase
             ->where('name', 'Regression Multi Branch Product')
             ->whereIn('branch_id', $branchIds)
             ->count());
+        $this->assertSame(2, InventoryItem::query()
+            ->whereIn('branch_id', $branchIds)
+            ->whereIn('product_id', Product::query()
+                ->where('name', 'Regression Multi Branch Product')
+                ->pluck('id'))
+            ->count());
     }
 
     public function test_ingredient_stock_uses_minimum_units_distribution_and_additive_branch_updates(): void
@@ -1329,14 +1344,18 @@ class MobileApiRegressionTest extends TestCase
         $branchIds = $branches->pluck('id')->all();
         $ingredientId = $this->postJson('/api/ingredients', [
             'name' => 'Regression Sugar Unit Stock',
+            'category' => 'Spices',
             'unit' => 'g',
             'stock' => 2,
             'stock_unit' => 'kg',
+            'min_stock' => 250,
             'branch_ids' => $branchIds,
             'distribute_equally' => true,
         ])->assertCreated()
+            ->assertJsonPath('category', 'Spices')
             ->assertJsonPath('unit', 'g')
             ->assertJsonPath('stock', 2000)
+            ->assertJsonPath('min_stock', 250)
             ->json('id');
 
         $this->assertSame(2000.0, (float) Ingredient::query()->findOrFail($ingredientId)->stock);
@@ -1344,6 +1363,11 @@ class MobileApiRegressionTest extends TestCase
             ->where('ingredient_id', $ingredientId)
             ->whereIn('branch_id', $branchIds)
             ->sum('stock'));
+        $this->assertSame(2, InventoryItem::query()
+            ->where('ingredient_id', $ingredientId)
+            ->whereIn('branch_id', $branchIds)
+            ->where('min_stock', 250)
+            ->count());
 
         $branchStockBefore = (float) IngredientBranch::query()
             ->where('ingredient_id', $ingredientId)
@@ -1363,6 +1387,10 @@ class MobileApiRegressionTest extends TestCase
             ->value('stock');
 
         $this->assertSame($branchStockBefore + 2000.0, $branchStockAfter);
+        $this->assertSame($branchStockAfter, (float) InventoryItem::query()
+            ->where('ingredient_id', $ingredientId)
+            ->where('branch_id', $branchIds[0])
+            ->value('quantity'));
         $this->assertSame(4000.0, (float) Ingredient::query()->findOrFail($ingredientId)->stock);
 
         $this->postJson('/api/ingredients', [
@@ -1389,6 +1417,8 @@ class MobileApiRegressionTest extends TestCase
         Sanctum::actingAs($admin);
 
         $recipeId = $this->postJson('/api/recipes', [
+            'name' => 'Regression Converted Quantity',
+            'category' => 'Prep',
             'description' => 'Regression converted quantity recipe',
             'branch_id' => $branch->id,
             'ingredients' => [
@@ -1406,6 +1436,11 @@ class MobileApiRegressionTest extends TestCase
             'ingredient_id' => $ingredient->id,
             'quantity' => 20,
         ]);
+
+        $this->getJson("/api/ingredients/{$ingredient->id}")
+            ->assertOk()
+            ->assertJsonPath('recipes.0.name', 'Regression Converted Quantity')
+            ->assertJsonPath('recipes.0.category', 'Prep');
     }
 
     public function test_restaurant_owner_cannot_onboard_restaurants(): void

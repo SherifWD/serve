@@ -249,6 +249,7 @@
 import { ref, computed, onMounted } from 'vue'
 import axios from 'axios'
 import { API_BASE_URL } from '../lib/api'
+import { confirmDelete } from '../lib/confirmDelete'
 import OwnerLayout from '@/layouts/OwnerLayout.vue'
 
 const menus = ref([])
@@ -398,7 +399,7 @@ function resetFilters() {
 }
 
 async function deleteMenu(menu) {
-  if (!confirm(`Delete ${menu.name}?`)) return
+  if (!await confirmDelete(menu.name)) return
   const token = localStorage.getItem('token')
   await axios.delete(`${API_BASE_URL}/menus/${menu.id}`, {
     headers: { Authorization: `Bearer ${token}` }

@@ -141,62 +141,48 @@
         </v-toolbar>
         <v-divider />
         <v-form @submit.prevent="saveProduct">
-          <v-tabs v-model="tab" fixed-tabs color="primary" class="mb-2 mt-4">
-            <v-tab value="general">General Info</v-tab>
-            <v-tab value="recipe">Recipe</v-tab>
-          </v-tabs>
-          <v-window v-model="tab">
-            <!-- General Info Tab -->
-            <v-window-item value="general">
-              <div class="pa-6">
-              <v-text-field label="Name" v-model="drawerForm.name" required variant="outlined" color="primary" class="mb-4 rounded-xl" />
-              <v-select label="Category" :items="categoryItems" item-title="name" item-value="id" v-model="drawerForm.category_id" required variant="outlined" color="primary" class="mb-4 rounded-xl" :menu-props="{ contentClass: 'dashboard-select-menu' }" />
-              <v-select label="Branches" :items="branches" item-title="name" item-value="id" v-model="drawerForm.branch_ids" required multiple chips closable-chips variant="outlined" color="primary" class="mb-4 rounded-xl" :menu-props="{ contentClass: 'dashboard-select-menu' }" @update:model-value="onBranchChange" />
-              <v-text-field label="Price" v-model="drawerForm.price" type="number" required variant="outlined" color="primary" class="mb-4 rounded-xl" />
-              <v-text-field label="Minimum stock" v-model="drawerForm.min_stock" type="number" min="0" variant="outlined" color="primary" class="mb-4 rounded-xl" />
-              <v-switch label="Available" v-model="drawerForm.is_available" color="primary" inset class="mb-6" style="--v-switch-track-color: #2a9d8f;" />
+          <div class="pa-6">
+            <v-text-field label="Name" v-model="drawerForm.name" required variant="outlined" color="primary" class="mb-4 rounded-xl" />
+            <v-select label="Category" :items="categoryItems" item-title="name" item-value="id" v-model="drawerForm.category_id" required variant="outlined" color="primary" class="mb-4 rounded-xl" :menu-props="{ contentClass: 'dashboard-select-menu' }" />
+            <v-select label="Branches" :items="branchSelectItems" item-title="name" item-value="id" v-model="drawerForm.branch_ids" required multiple chips closable-chips variant="outlined" color="primary" class="mb-4 rounded-xl" :menu-props="{ contentClass: 'dashboard-select-menu' }" @update:model-value="onBranchChange" />
+            <v-text-field label="Price" v-model="drawerForm.price" type="number" required variant="outlined" color="primary" class="mb-4 rounded-xl" />
+            <v-text-field label="Minimum stock" v-model="drawerForm.min_stock" type="number" min="0" variant="outlined" color="primary" class="mb-4 rounded-xl" />
+            <v-switch label="Available" v-model="drawerForm.is_available" color="primary" inset class="mb-6" style="--v-switch-track-color: #2a9d8f;" />
+            <v-divider class="my-4" />
+            <v-select
+              label="Recipe"
+              :items="filteredRecipes"
+              :item-title="recipeTitle"
+              item-value="id"
+              v-model="drawerForm.recipe_id"
+              clearable
+              variant="outlined"
+              color="primary"
+              class="mb-4 rounded-xl"
+              :menu-props="{ contentClass: 'dashboard-select-menu' }"
+              @update:model-value="onRecipeChange"
+            />
+            <div v-if="selectedRecipe" class="recipe-preview pa-4 mb-4">
+              <div v-if="recipeDescription(selectedRecipe)" class="mb-2">
+                <span class="font-weight-bold" style="color:#2a9d8f;">Description:</span>
+                <span style="color:#333;">{{ recipeDescription(selectedRecipe) }}</span>
               </div>
-            </v-window-item>
-            <!-- Recipe Tab -->
-            <v-window-item value="recipe">
-              <div class="pa-6">
-              <v-select
-                label="Recipe"
-                :items="filteredRecipes"
-                :item-title="recipeTitle"
-                item-value="id"
-                v-model="drawerForm.recipe_id"
-                clearable
-                variant="outlined"
-                color="primary"
-                class="mb-4 rounded-xl"
-                :menu-props="{ contentClass: 'dashboard-select-menu' }"
-                @update:model-value="onRecipeChange"
-              />
-              <!-- Recipe preview below -->
-              <div v-if="selectedRecipe" class="recipe-preview pa-4 mb-4">
-                <div v-if="recipeDescription(selectedRecipe)" class="mb-2">
-                  <span class="font-weight-bold" style="color:#2a9d8f;">Description:</span>
-                  <span style="color:#333;">{{ recipeDescription(selectedRecipe) }}</span>
-                </div>
-                <div v-else-if="recipeIngredientSummary(selectedRecipe)" class="mb-2">
-                  <span class="font-weight-bold" style="color:#2a9d8f;">Recipe:</span>
-                  <span style="color:#333;">{{ recipeIngredientSummary(selectedRecipe) }}</span>
-                </div>
-                <div v-if="selectedRecipe.ingredients && selectedRecipe.ingredients.length">
-                  <span class="font-weight-bold" style="color:#2a9d8f;">Ingredients:</span>
-                  <div class="mt-2" style="display:flex;flex-wrap:wrap;gap:6px;">
-                    <v-chip v-for="(ing, idx) in selectedRecipe.ingredients" :key="idx" color="success" variant="elevated" class="ingredient-chip">
-                      <b>{{ ing.name }}</b>
-                      <span v-if="ing.pivot">&nbsp;— {{ ing.pivot.quantity }} {{ ing.unit || '' }}</span>
-                    </v-chip>
-                  </div>
-                </div>
-                <div v-else class="text-caption" style="color:#bbb;">No ingredients assigned to this recipe.</div>
+              <div v-else-if="recipeIngredientSummary(selectedRecipe)" class="mb-2">
+                <span class="font-weight-bold" style="color:#2a9d8f;">Recipe:</span>
+                <span style="color:#333;">{{ recipeIngredientSummary(selectedRecipe) }}</span>
               </div>
+              <div v-if="selectedRecipe.ingredients && selectedRecipe.ingredients.length">
+                <span class="font-weight-bold" style="color:#2a9d8f;">Ingredients:</span>
+                <div class="mt-2" style="display:flex;flex-wrap:wrap;gap:6px;">
+                  <v-chip v-for="(ing, idx) in selectedRecipe.ingredients" :key="idx" color="success" variant="elevated" class="ingredient-chip">
+                    <b>{{ ing.name }}</b>
+                    <span v-if="ing.pivot">&nbsp;— {{ ing.pivot.quantity }} {{ ing.unit || '' }}</span>
+                  </v-chip>
+                </div>
               </div>
-            </v-window-item>
-          </v-window>
+              <div v-else class="text-caption" style="color:#bbb;">No ingredients assigned to this recipe.</div>
+            </div>
+          </div>
 
           <div class="px-6 pb-6">
             <v-alert
@@ -288,6 +274,7 @@
 import { ref, computed, onMounted } from 'vue'
 import axios from 'axios'
 import { API_BASE_URL } from '../lib/api'
+import { confirmDelete } from '../lib/confirmDelete'
 import OwnerLayout from '@/layouts/OwnerLayout.vue'
 
 const products = ref([])
@@ -333,6 +320,14 @@ const availabilityItems = [
   { title: 'Unavailable', value: 'unavailable' },
   { title: 'Low stock', value: 'low_stock' },
 ]
+
+const ALL_BRANCHES_VALUE = '__all_branches__'
+
+const branchSelectItems = computed(() =>
+  branches.value.length > 1
+    ? [{ id: ALL_BRANCHES_VALUE, name: 'All branches' }, ...branches.value]
+    : branches.value
+)
 
 const recipeFilterItems = [
   { title: 'Has recipe', value: 'has_recipe' },
@@ -461,6 +456,9 @@ function openViewDrawer(product) {
 }
 
 function recipeTitle(recipe) {
+  const name = (recipe?.name ?? '').trim()
+  if (name) return name
+
   const description = recipeDescription(recipe)
   if (description) return description
 
@@ -487,11 +485,24 @@ function recipeIngredientSummary(recipe) {
 }
 
 function onBranchChange() {
+  drawerForm.value.branch_ids = normalizedSelectedBranchIds(drawerForm.value.branch_ids)
+
   if (!drawerForm.value.recipe_id) return
   const stillAvailable = filteredRecipes.value.some((recipe) =>
     Number(recipe.id) === Number(drawerForm.value.recipe_id)
   )
   if (!stillAvailable) drawerForm.value.recipe_id = null
+}
+
+function normalizedSelectedBranchIds(selected) {
+  const values = Array.isArray(selected) ? selected : []
+  if (values.includes(ALL_BRANCHES_VALUE)) {
+    return branches.value.map(branch => branch.id)
+  }
+
+  return values
+    .map(value => Number(value))
+    .filter(value => Number.isFinite(value) && value > 0)
 }
 
 function onRecipeChange() {
@@ -593,7 +604,7 @@ function errorMessage(error) {
 }
 
 async function deleteProduct(prod) {
-  if (!confirm(`Delete ${prod.name}?`)) return
+  if (!await confirmDelete(prod.name)) return
   const token = localStorage.getItem('token')
   await axios.delete(`${API_BASE_URL}/products/${prod.id}`, {
     headers: { Authorization: `Bearer ${token}` }

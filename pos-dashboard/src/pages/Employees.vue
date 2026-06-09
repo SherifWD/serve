@@ -165,6 +165,7 @@
 import { ref, computed, onMounted, nextTick, watch } from 'vue'
 import axios from 'axios'
 import { API_BASE_URL } from '../lib/api'
+import { confirmDelete } from '../lib/confirmDelete'
 import Chart from 'chart.js/auto'
 import OwnerLayout from '@/layouts/OwnerLayout.vue'
 
@@ -260,7 +261,7 @@ async function saveEmployee() {
 }
 
 async function deleteEmployee(emp) {
-  if (!confirm(`Delete ${emp.name}?`)) return
+  if (!await confirmDelete(emp.name)) return
   const token = localStorage.getItem('token')
   await axios.delete(`${API_BASE_URL}/employees/${emp.id}`, {
     headers: { Authorization: `Bearer ${token}` }

@@ -10,7 +10,7 @@
         <v-card-text>
           <v-text-field v-model="search" label="Search recipes..." prepend-inner-icon="mdi-magnify" clearable class="mb-4" />
           <v-row dense class="mb-4">
-            <v-col cols="12" md="4">
+            <v-col cols="12" md="3">
               <v-select
                 v-model="filters.branch_id"
                 :items="branches"
@@ -23,7 +23,17 @@
                 :menu-props="{ contentClass: 'dashboard-select-menu' }"
               />
             </v-col>
-            <v-col cols="12" md="4">
+            <v-col cols="12" md="3">
+              <v-select
+                v-model="filters.category"
+                :items="recipeCategoryItems"
+                label="Recipe category"
+                clearable
+                variant="outlined"
+                density="comfortable"
+              />
+            </v-col>
+            <v-col cols="12" md="3">
               <v-select
                 v-model="filters.ingredient_id"
                 :items="allIngredients"
@@ -36,7 +46,7 @@
                 :menu-props="{ contentClass: 'dashboard-select-menu' }"
               />
             </v-col>
-            <v-col cols="12" md="4" class="d-flex align-center">
+            <v-col cols="12" md="3" class="d-flex align-center">
               <v-btn variant="tonal" color="primary" class="rounded-pill" @click="resetFilters">
                 <v-icon start>mdi-filter-remove-outline</v-icon>Reset filters
               </v-btn>
@@ -122,7 +132,7 @@
           </v-alert>
           <v-select
             label="Branches"
-            :items="branches"
+            :items="branchSelectItems"
             :item-title="branchTitle"
             item-value="id"
             v-model="form.branch_ids"
@@ -134,7 +144,10 @@
             color="primary"
             class="mb-4"
             :menu-props="{ contentClass: 'dashboard-select-menu' }"
+            @update:model-value="onSelectedBranchesChange"
           />
+          <v-text-field label="Name" v-model="form.name" required variant="outlined" color="primary" class="mb-4" />
+          <v-combobox label="Category" v-model="form.category" :items="recipeCategoryItems" variant="outlined" color="primary" class="mb-4" clearable />
           <v-text-field label="Description" v-model="form.description" required variant="outlined" color="primary" class="mb-4" />
           <v-divider class="mb-3" />
           <h3 class="mb-2" style="color:#2a9d8f;">Ingredients</h3>
@@ -193,6 +206,7 @@
 import { ref, computed, onMounted } from 'vue'
 import axios from 'axios'
 import { API_BASE_URL } from '../lib/api'
+import { confirmDelete } from '../lib/confirmDelete'
 import OwnerLayout from '@/layouts/OwnerLayout.vue'
 
 const recipes = ref([])
@@ -205,22 +219,41 @@ const saving = ref(false)
 const formError = ref('')
 const filters = ref({
   branch_id: null,
+  category: null,
   ingredient_id: null,
 })
 
 const form = ref({
   id: null,
   branch_ids: [],
+  name: '',
+  category: '',
   description: '',
   ingredients: []
 })
 
 const headers = [
-  { title: 'Description', value: 'description', width: '30%' },
+  { title: 'Name', value: 'name', width: '20%' },
+  { title: 'Category', value: 'category', width: '15%' },
+  { title: 'Description', value: 'description', width: '25%' },
   { title: 'Branches', value: 'branches', width: '20%' },
-  { title: 'Ingredients', value: 'ingredients', width: '50%' },
-  { title: 'Actions', value: 'actions', sortable: false, width: '20%' }
+  { title: 'Ingredients', value: 'ingredients', width: '35%' },
+  { title: 'Actions', value: 'actions', sortable: false, width: '15%' }
 ]
+
+const ALL_BRANCHES_VALUE = '__all_branches__'
+const recipeCategoryPresets = ['Desserts', 'Mains', 'Sides', 'Sauces', 'Drinks', 'Prep', 'Other']
+
+const branchSelectItems = computed(() =>
+  branches.value.length > 1
+    ? [{ id: ALL_BRANCHES_VALUE, name: 'All branches' }, ...branches.value]
+    : branches.value
+)
+
+const recipeCategoryItems = computed(() => {
+  const values = [...recipeCategoryPresets, ...recipes.value.map(recipe => recipe.category).filter(Boolean)]
+  return [...new Set(values.map(value => value.trim()).filter(Boolean))].sort()
+})
 
 const filteredRecipes = computed(() => {
   const q = search.value.toLowerCase()
@@ -228,11 +261,13 @@ const filteredRecipes = computed(() => {
   return recipes.value.filter(recipe =>
     matchesRecipeSearch(recipe, q) &&
     (!filters.value.branch_id || recipeBranchIds(recipe).includes(Number(filters.value.branch_id))) &&
+    (!filters.value.category || recipe.category === filters.value.category) &&
     (!filters.value.ingredient_id || (recipe.ingredients ?? []).some(ingredient => Number(ingredient.ingredient_id) === Number(filters.value.ingredient_id)))
   )
 })
 
 const canSaveRecipe = computed(() => {
+  const hasName = Boolean(form.value.name.trim())
   const hasDescription = Boolean(form.value.description.trim())
   const hasBranch = form.value.branch_ids.length > 0
   const ingredientIds = form.value.ingredients.map((ingredient) => Number(ingredient.ingredient_id)).filter(Boolean)
@@ -241,7 +276,7 @@ const canSaveRecipe = computed(() => {
     Boolean(ingredient.ingredient_id) && Number(ingredient.quantity) > 0
   )
 
-  return hasDescription && hasBranch && ingredientsAreValid && noDuplicates
+  return hasName && hasDescription && hasBranch && ingredientsAreValid && noDuplicates
 })
 
 function ingredientUnit(ingredient_id) {
@@ -266,7 +301,9 @@ function branchTitle(branch) {
 function matchesRecipeSearch(recipe, query) {
   if (!query) return true
 
-  return (recipe.description || '').toLowerCase().includes(query) ||
+  return (recipe.name || '').toLowerCase().includes(query) ||
+    (recipe.category || '').toLowerCase().includes(query) ||
+    (recipe.description || '').toLowerCase().includes(query) ||
     recipeBranches(recipe).some(branch => branch.name.toLowerCase().includes(query)) ||
     (recipe.ingredients ?? []).some(ingredient => ingredient.name.toLowerCase().includes(query))
 }
@@ -275,6 +312,7 @@ function resetFilters() {
   search.value = ''
   filters.value = {
     branch_id: null,
+    category: null,
     ingredient_id: null,
   }
 }
@@ -298,7 +336,8 @@ async function fetchRecipes() {
     ingredients: r.ingredients?.map(ri => ({
       ingredient_id: ri.id,
       name: ri.name,
-      quantity: ri.pivot?.quantity
+      quantity: ri.pivot?.quantity,
+      unit: ri.unit,
     })) ?? []
   }))
 }
@@ -325,7 +364,7 @@ function openAddDrawer() {
   isEditing.value = false
   formError.value = ''
   const defaultBranch = defaultBranchId()
-  form.value = { id: null, branch_ids: defaultBranch ? [defaultBranch] : [], description: '', ingredients: [] }
+  form.value = { id: null, branch_ids: defaultBranch ? [defaultBranch] : [], name: '', category: '', description: '', ingredients: [] }
   drawer.value = true
 }
 function openEditDrawer(item) {
@@ -335,6 +374,8 @@ function openEditDrawer(item) {
   form.value = {
     id: item.id,
     branch_ids: recipeBranchIds(item),
+    name: item.name ?? '',
+    category: item.category ?? '',
     description: item.description,
     ingredients: (item.ingredients ?? []).map(ri => ({
       ingredient_id: ri.ingredient_id,
@@ -353,6 +394,20 @@ function addIngredient() {
 function onIngredientChange(ingredient) {
   ingredient.unit = ingredientUnit(ingredient.ingredient_id)
 }
+function onSelectedBranchesChange() {
+  form.value.branch_ids = normalizedSelectedBranchIds(form.value.branch_ids)
+}
+
+function normalizedSelectedBranchIds(selected) {
+  const values = Array.isArray(selected) ? selected : []
+  if (values.includes(ALL_BRANCHES_VALUE)) {
+    return branches.value.map(branch => branch.id)
+  }
+
+  return values
+    .map(value => Number(value))
+    .filter(value => Number.isFinite(value) && value > 0)
+}
 async function saveRecipe() {
   if (!canSaveRecipe.value) return
 
@@ -364,6 +419,8 @@ async function saveRecipe() {
   const method = isEditing.value ? 'put' : 'post'
 
   const payload = {
+    name: form.value.name.trim(),
+    category: (form.value.category ?? '').trim(),
     description: form.value.description.trim(),
     branch_id: form.value.branch_ids[0],
     branch_ids: form.value.branch_ids,
@@ -408,11 +465,13 @@ function errorMessage(error) {
   if (errors) return Object.values(errors).flat().join(' ')
   return error?.response?.data?.message || error?.response?.data?.error || 'Could not save this recipe.'
 }
-function deleteRecipe(item) {
-  if (!confirm(`Delete recipe "${item.description}"?`)) return
-  axios.delete(`${API_BASE_URL}/recipes/${item.id}`, {
+async function deleteRecipe(item) {
+  const label = item.name || item.description || `#${item.id}`
+  if (!await confirmDelete(`recipe "${label}"`)) return
+  await axios.delete(`${API_BASE_URL}/recipes/${item.id}`, {
     headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-  }).then(fetchRecipes)
+  })
+  fetchRecipes()
 }
 
 onMounted(() => {

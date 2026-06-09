@@ -134,161 +134,145 @@
         <v-divider />
 
         <v-form @submit.prevent="saveCategory">
-          <v-tabs v-model="tab" fixed-tabs color="primary" class="mt-4">
-            <v-tab value="general">General</v-tab>
-            <v-tab value="questions">Questions</v-tab>
-            <v-tab value="modifiers">Modifiers</v-tab>
-          </v-tabs>
+          <div class="pa-6">
+            <v-text-field
+              label="Name"
+              v-model="form.name"
+              required
+              variant="outlined"
+              color="primary"
+              class="mb-4 rounded-xl"
+              style="border-radius: 1.5rem;"
+            />
+            <v-select
+              label="Branches"
+              :items="branchSelectItems"
+              item-title="name"
+              item-value="id"
+              v-model="form.branch_ids"
+              required
+              multiple
+              chips
+              closable-chips
+              variant="outlined"
+              color="primary"
+              class="mb-4 rounded-xl"
+              style="border-radius: 1.5rem;"
+              :menu-props="{ contentClass: 'dashboard-select-menu' }"
+              @update:model-value="onSelectedBranchesChange"
+            />
+            <v-divider class="my-4" />
+            <div class="editor-heading">
+              <div>
+                <div class="text-subtitle-1 font-weight-bold">Waiter Questions</div>
+                <div class="text-caption">These choices appear when a waiter adds a product from this category.</div>
+              </div>
+              <v-btn color="primary" variant="tonal" type="button" @click="addQuestion">
+                <v-icon start>mdi-plus</v-icon>Question
+              </v-btn>
+            </div>
 
-          <v-window v-model="tab">
-            <v-window-item value="general">
-              <div class="pa-6">
+            <div v-if="!form.questions.length" class="empty-note">
+              No questions yet.
+            </div>
+
+            <div
+              v-for="(question, questionIndex) in form.questions"
+              :key="question.local_key"
+              class="editor-block"
+            >
+              <div class="editor-block-actions">
+                <v-btn
+                  icon
+                  color="red"
+                  variant="text"
+                  type="button"
+                  @click="removeQuestion(questionIndex)"
+                >
+                  <v-icon>mdi-delete</v-icon>
+                </v-btn>
+              </div>
+              <v-text-field
+                v-model="question.question"
+                label="Question"
+                variant="outlined"
+                color="primary"
+                class="mb-3"
+              />
+              <div class="choice-row" v-for="(choice, choiceIndex) in question.choices" :key="choice.local_key">
                 <v-text-field
-                  label="Name"
-                  v-model="form.name"
-                  required
+                  v-model="choice.choice"
+                  label="Choice"
                   variant="outlined"
                   color="primary"
-                  class="mb-4 rounded-xl"
-                  style="border-radius: 1.5rem;"
+                  density="comfortable"
+                  hide-details
                 />
-                <v-select
-                  label="Branches"
-                  :items="branches"
-                  item-title="name"
-                  item-value="id"
-                  v-model="form.branch_ids"
-                  required
-                  multiple
-                  chips
-                  closable-chips
-                  variant="outlined"
-                  color="primary"
-                  class="mb-4 rounded-xl"
-                  style="border-radius: 1.5rem;"
-                  :menu-props="{ contentClass: 'dashboard-select-menu' }"
-                />
-              </div>
-            </v-window-item>
-
-            <v-window-item value="questions">
-              <div class="pa-6">
-                <div class="editor-heading">
-                  <div>
-                    <div class="text-subtitle-1 font-weight-bold">Waiter Questions</div>
-                    <div class="text-caption">These choices appear when a waiter adds a product from this category.</div>
-                  </div>
-                  <v-btn color="primary" variant="tonal" type="button" @click="addQuestion">
-                    <v-icon start>mdi-plus</v-icon>Question
-                  </v-btn>
-                </div>
-
-                <div v-if="!form.questions.length" class="empty-note">
-                  No questions yet.
-                </div>
-
-                <div
-                  v-for="(question, questionIndex) in form.questions"
-                  :key="question.local_key"
-                  class="editor-block"
+                <v-btn
+                  icon
+                  color="red"
+                  variant="text"
+                  type="button"
+                  @click="removeChoice(questionIndex, choiceIndex)"
                 >
-                  <div class="editor-block-actions">
-                    <v-btn
-                      icon
-                      color="red"
-                      variant="text"
-                      type="button"
-                      @click="removeQuestion(questionIndex)"
-                    >
-                      <v-icon>mdi-delete</v-icon>
-                    </v-btn>
-                  </div>
-                  <v-text-field
-                    v-model="question.question"
-                    label="Question"
-                    variant="outlined"
-                    color="primary"
-                    class="mb-3"
-                  />
-                  <div class="choice-row" v-for="(choice, choiceIndex) in question.choices" :key="choice.local_key">
-                    <v-text-field
-                      v-model="choice.choice"
-                      label="Choice"
-                      variant="outlined"
-                      color="primary"
-                      density="comfortable"
-                      hide-details
-                    />
-                    <v-btn
-                      icon
-                      color="red"
-                      variant="text"
-                      type="button"
-                      @click="removeChoice(questionIndex, choiceIndex)"
-                    >
-                      <v-icon>mdi-close</v-icon>
-                    </v-btn>
-                  </div>
-                  <v-btn
-                    color="primary"
-                    variant="text"
-                    type="button"
-                    class="mt-3"
-                    @click="addChoice(questionIndex)"
-                  >
-                    <v-icon start>mdi-plus</v-icon>Add Choice
-                  </v-btn>
-                </div>
+                  <v-icon>mdi-close</v-icon>
+                </v-btn>
               </div>
-            </v-window-item>
+              <v-btn
+                color="primary"
+                variant="text"
+                type="button"
+                class="mt-3"
+                @click="addChoice(questionIndex)"
+              >
+                <v-icon start>mdi-plus</v-icon>Add Choice
+              </v-btn>
+            </div>
 
-            <v-window-item value="modifiers">
-              <div class="pa-6">
-                <div class="editor-heading">
-                  <div>
-                    <div class="text-subtitle-1 font-weight-bold">Category Modifiers</div>
-                    <div class="text-caption">These modifiers only show for products in this category.</div>
-                  </div>
-                  <v-btn color="primary" variant="tonal" type="button" @click="addModifier">
-                    <v-icon start>mdi-plus</v-icon>Modifier
-                  </v-btn>
-                </div>
-
-                <div v-if="!form.modifiers.length" class="empty-note">
-                  No category modifiers yet.
-                </div>
-
-                <div
-                  v-for="(modifier, index) in form.modifiers"
-                  :key="modifier.local_key"
-                  class="modifier-row"
-                >
-                  <v-text-field
-                    v-model="modifier.name"
-                    label="Modifier"
-                    variant="outlined"
-                    color="primary"
-                    density="comfortable"
-                    hide-details
-                  />
-                  <v-text-field
-                    v-model="modifier.price"
-                    label="Price"
-                    type="number"
-                    min="0"
-                    variant="outlined"
-                    color="primary"
-                    density="comfortable"
-                    hide-details
-                    class="modifier-price"
-                  />
-                  <v-btn icon color="red" variant="text" type="button" @click="removeModifier(index)">
-                    <v-icon>mdi-delete</v-icon>
-                  </v-btn>
-                </div>
+            <v-divider class="my-4" />
+            <div class="editor-heading">
+              <div>
+                <div class="text-subtitle-1 font-weight-bold">Category Modifiers</div>
+                <div class="text-caption">These modifiers only show for products in this category.</div>
               </div>
-            </v-window-item>
-          </v-window>
+              <v-btn color="primary" variant="tonal" type="button" @click="addModifier">
+                <v-icon start>mdi-plus</v-icon>Modifier
+              </v-btn>
+            </div>
+
+            <div v-if="!form.modifiers.length" class="empty-note">
+              No category modifiers yet.
+            </div>
+
+            <div
+              v-for="(modifier, index) in form.modifiers"
+              :key="modifier.local_key"
+              class="modifier-row"
+            >
+              <v-text-field
+                v-model="modifier.name"
+                label="Modifier"
+                variant="outlined"
+                color="primary"
+                density="comfortable"
+                hide-details
+              />
+              <v-text-field
+                v-model="modifier.price"
+                label="Price"
+                type="number"
+                min="0"
+                variant="outlined"
+                color="primary"
+                density="comfortable"
+                hide-details
+                class="modifier-price"
+              />
+              <v-btn icon color="red" variant="text" type="button" @click="removeModifier(index)">
+                <v-icon>mdi-delete</v-icon>
+              </v-btn>
+            </div>
+          </div>
 
           <div class="px-6 pb-6">
             <v-alert v-if="formError" type="error" variant="tonal" class="mb-4">
@@ -317,6 +301,7 @@
 import { ref, computed, onMounted } from 'vue'
 import axios from 'axios'
 import { API_BASE_URL } from '../lib/api'
+import { confirmDelete } from '../lib/confirmDelete'
 import OwnerLayout from '@/layouts/OwnerLayout.vue'
 
 const categories = ref([])
@@ -347,6 +332,14 @@ const presenceFilterItems = [
   { title: 'Configured', value: 'has' },
   { title: 'Not configured', value: 'none' },
 ]
+
+const ALL_BRANCHES_VALUE = '__all_branches__'
+
+const branchSelectItems = computed(() =>
+  branches.value.length > 1
+    ? [{ id: ALL_BRANCHES_VALUE, name: 'All branches' }, ...branches.value]
+    : branches.value
+)
 
 const filteredCategories = computed(() => {
   const q = search.value.toLowerCase()
@@ -426,7 +419,7 @@ async function saveCategory() {
 }
 
 async function deleteCategory(cat) {
-  if (!confirm(`Delete ${cat.name}?`)) return
+  if (!await confirmDelete(cat.name)) return
   const token = localStorage.getItem('token')
   await axios.delete(`${API_BASE_URL}/categories/${cat.id}`, {
     headers: { Authorization: `Bearer ${token}` }
@@ -456,6 +449,21 @@ function addModifier() {
 
 function removeModifier(index) {
   form.value.modifiers.splice(index, 1)
+}
+
+function onSelectedBranchesChange() {
+  form.value.branch_ids = normalizedSelectedBranchIds(form.value.branch_ids)
+}
+
+function normalizedSelectedBranchIds(selected) {
+  const values = Array.isArray(selected) ? selected : []
+  if (values.includes(ALL_BRANCHES_VALUE)) {
+    return branches.value.map(branch => branch.id)
+  }
+
+  return values
+    .map(value => Number(value))
+    .filter(value => Number.isFinite(value) && value > 0)
 }
 
 function questionCount(category) {

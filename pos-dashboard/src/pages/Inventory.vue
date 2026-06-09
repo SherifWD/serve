@@ -400,6 +400,7 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import axios from 'axios'
 import { API_BASE_URL } from '../lib/api'
+import { confirmDelete } from '../lib/confirmDelete'
 import OwnerLayout from '@/layouts/OwnerLayout.vue'
 
 const inventoryItems = ref([])
@@ -668,7 +669,7 @@ async function saveInventoryItem() {
 }
 
 async function deleteInventoryItem(item) {
-  if (!confirm(`Delete ${item.ingredient ? item.ingredient.name : item.product?.name || 'item'}?`)) return
+  if (!await confirmDelete(item.ingredient ? item.ingredient.name : item.product?.name || 'item')) return
   const token = localStorage.getItem('token')
   await axios.delete(`${API_BASE_URL}/inventory-items/${item.id}`, {
     headers: { Authorization: `Bearer ${token}` }

@@ -233,6 +233,7 @@
 import { ref, computed, onMounted } from 'vue'
 import axios from 'axios'
 import { API_BASE_URL } from '../lib/api'
+import { confirmDelete } from '../lib/confirmDelete'
 import OwnerLayout from '@/layouts/OwnerLayout.vue'
 
 const suppliers = ref([])
@@ -336,7 +337,7 @@ async function saveSupplier() {
 }
 
 async function deleteSupplier(supplier) {
-  if (!confirm(`Delete ${supplier.name}?`)) return
+  if (!await confirmDelete(supplier.name)) return
   const token = localStorage.getItem('token')
   await axios.delete(`${API_BASE_URL}/suppliers/${supplier.id}`, {
     headers: { Authorization: `Bearer ${token}` }

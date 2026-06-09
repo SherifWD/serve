@@ -12,7 +12,7 @@
         <v-card-text>
           <v-text-field v-model="search" label="Search ingredients..." prepend-inner-icon="mdi-magnify" clearable class="mb-4" />
           <v-row dense class="mb-4">
-            <v-col cols="12" sm="6" lg="3">
+            <v-col cols="12" sm="6" lg="2">
               <v-select
                 v-model="filters.branch_id"
                 :items="branches"
@@ -27,6 +27,16 @@
             </v-col>
             <v-col cols="12" sm="6" lg="3">
               <v-select
+                v-model="filters.category"
+                :items="ingredientCategoryItems"
+                label="Ingredient category"
+                clearable
+                variant="outlined"
+                density="comfortable"
+              />
+            </v-col>
+            <v-col cols="12" sm="6" lg="2">
+              <v-select
                 v-model="filters.unit"
                 :items="unitItems"
                 label="Unit"
@@ -35,7 +45,7 @@
                 density="comfortable"
               />
             </v-col>
-            <v-col cols="12" sm="6" lg="3">
+            <v-col cols="12" sm="6" lg="2">
               <v-select
                 v-model="filters.stock"
                 :items="stockFilterItems"
@@ -73,6 +83,20 @@
                 </v-chip>
               </div>
             </template>
+            <template #item.recipes="{ item }">
+              <div class="d-flex flex-wrap ga-1">
+                <v-chip
+                  v-for="recipe in item.recipes ?? []"
+                  :key="recipe.id"
+                  color="success"
+                  size="small"
+                  variant="tonal"
+                >
+                  {{ recipeTitle(recipe) }}
+                </v-chip>
+                <span v-if="!(item.recipes && item.recipes.length)" class="text-caption">—</span>
+              </div>
+            </template>
             <template #item.actions="{ item }">
               <v-btn icon color="accent" class="rounded-xl" @click="openEditDrawer(item)"><v-icon>mdi-pencil</v-icon></v-btn>
               <v-btn icon color="red" class="rounded-xl" @click="deleteIngredient(item)"><v-icon>mdi-delete</v-icon></v-btn>
@@ -100,213 +124,200 @@
           <v-btn icon @click="drawer = false"><v-icon color="black">mdi-close</v-icon></v-btn>
         </v-toolbar>
         <v-divider />
-        <v-tabs v-model="tab" fixed-tabs color="primary" class="mb-2 mt-4">
-          <v-tab value="general">General Info</v-tab>
-          <v-tab value="branches">Branches/Stock</v-tab>
-          <v-tab value="recipes">Recipe Assignments</v-tab>
-        </v-tabs>
-        <v-window v-model="tab">
-          <!-- General Info Tab -->
-          <v-window-item value="general">
-            <v-form class="pa-6">
-              <v-text-field label="Name" v-model="form.name" required variant="outlined" color="primary" class="mb-4" />
-              <v-select label="Minimum Unit" v-model="form.unit" :items="minimumUnitItems" required variant="outlined" color="primary" class="mb-4" @update:model-value="onBaseUnitChange" />
-              <div class="stock-row">
-                <v-text-field
-                  label="Global Stock"
-                  v-model="form.stock"
-                  type="number"
-                  min="0"
-                  variant="outlined"
-                  color="primary"
-                  class="mb-4"
-                  :error="!!globalStockError"
-                  :error-messages="globalStockError"
-                  @blur="onGlobalStockChange"
-                  @input="onGlobalStockChange"
-                />
-                <v-select
-                  label="Unit"
-                  v-model="form.stock_unit"
-                  :items="quantityUnitItems(form.unit)"
-                  variant="outlined"
-                  color="primary"
-                  class="mb-4 stock-unit"
-                  @update:model-value="onGlobalStockChange"
-                />
-              </div>
-              <v-switch
-                v-model="form.distribute_equally"
-                label="Equal distribution across selected branches"
-                color="primary"
-                inset
-                class="mb-4"
-                @update:model-value="applyEqualDistribution"
-              />
-              <v-alert v-if="globalStockError" type="error" variant="outlined" class="mb-2">
-                {{ globalStockError }}
-              </v-alert>
-              <v-btn
-                color="primary"
-                @click="saveIngredient"
-                block
-                class="rounded-pill mt-2"
-                :loading="saving"
-                :disabled="!!globalStockError"
+        <v-form class="pa-6" @submit.prevent="saveIngredient">
+          <v-text-field label="Name" v-model="form.name" required variant="outlined" color="primary" class="mb-4" />
+          <v-combobox label="Category" v-model="form.category" :items="ingredientCategoryItems" variant="outlined" color="primary" class="mb-4" clearable />
+          <v-select label="Minimum Unit" v-model="form.unit" :items="minimumUnitItems" required variant="outlined" color="primary" class="mb-4" @update:model-value="onBaseUnitChange" />
+          <v-text-field label="Minimum Stock" v-model="form.min_stock" type="number" min="0" variant="outlined" color="primary" class="mb-4" />
+          <div class="stock-row">
+            <v-text-field
+              label="Global Stock"
+              v-model="form.stock"
+              type="number"
+              min="0"
+              variant="outlined"
+              color="primary"
+              class="mb-4"
+              :error="!!globalStockError"
+              :error-messages="globalStockError"
+              @blur="onGlobalStockChange"
+              @input="onGlobalStockChange"
+            />
+            <v-select
+              label="Unit"
+              v-model="form.stock_unit"
+              :items="quantityUnitItems(form.unit)"
+              variant="outlined"
+              color="primary"
+              class="mb-4 stock-unit"
+              @update:model-value="onGlobalStockChange"
+            />
+          </div>
+          <v-switch
+            v-model="form.distribute_equally"
+            label="Equal distribution across selected branches"
+            color="primary"
+            inset
+            class="mb-4"
+            @update:model-value="applyEqualDistribution"
+          />
+          <v-alert v-if="globalStockError" type="error" variant="outlined" class="mb-2">
+            {{ globalStockError }}
+          </v-alert>
+
+          <v-divider class="my-4" />
+          <div v-if="form.stock">
+            <span class="text-caption" style="color:#d32f2f;">
+              Total branch stock: <b>{{ branchStockSum }}</b> / <b>{{ globalStockBase }}</b> {{ form.unit }}
+              <span v-if="branchStockError" style="color:#d32f2f; margin-left: 1em;">{{ branchStockError }}</span>
+            </span>
+          </div>
+          <v-select
+            label="Branches"
+            v-model="form.branch_ids"
+            :items="branchSelectItems"
+            item-title="name"
+            item-value="id"
+            multiple
+            chips
+            closable-chips
+            clearable
+            variant="outlined"
+            color="primary"
+            class="mb-4"
+            @update:model-value="onSelectedBranchesChange"
+          />
+          <v-select
+            label="Add to Branch"
+            v-model="branchIngredient.branch_id"
+            :items="branches"
+            item-title="name"
+            item-value="id"
+            clearable
+            variant="outlined"
+            color="primary"
+            class="mb-2"
+          />
+          <v-text-field
+            label="Stock for Branch"
+            v-model="branchIngredient.stock"
+            type="number"
+            min="0"
+            variant="outlined"
+            color="primary"
+            class="mb-2"
+            :disabled="!branchIngredient.branch_id"
+          />
+          <v-select
+            label="Unit"
+            v-model="branchIngredient.unit"
+            :items="quantityUnitItems(form.unit)"
+            variant="outlined"
+            color="primary"
+            class="mb-2"
+            :disabled="!branchIngredient.branch_id"
+          />
+          <v-alert v-if="branchStockError" type="error" variant="outlined" class="mb-2">
+            {{ branchStockError }}
+          </v-alert>
+          <v-btn color="primary" type="button" class="mb-3" :disabled="!branchIngredient.branch_id" @click="addBranchStock">Add Branch Stock</v-btn>
+          <v-list two-line>
+            <v-list-item v-for="ib in form.ingredient_branches ?? []" :key="ib.branch_id">
+              <v-list-item-title>{{ branchName(ib.branch_id) }}</v-list-item-title>
+              <v-list-item-subtitle>Stock: {{ ib.stock }} {{ form.unit }}</v-list-item-subtitle>
+              <template #append>
+                <v-btn icon color="red" @click="removeBranchStock(ib.branch_id)">
+                  <v-icon>mdi-delete</v-icon>
+                </v-btn>
+              </template>
+            </v-list-item>
+            <div v-if="!(form.ingredient_branches && form.ingredient_branches.length)" class="text-caption mt-3">No branches assigned yet.</div>
+          </v-list>
+
+          <v-divider class="my-4" />
+          <div v-if="form.stock">
+            <span class="text-caption" style="color:#d32f2f;">
+              Assigned to recipes: <b>{{ recipeQtySum }}</b> / <b>{{ globalStockBase }}</b> {{ form.unit }}
+              <span v-if="recipeQtyError" style="color:#d32f2f; margin-left: 1em;">{{ recipeQtyError }}</span>
+            </span>
+          </div>
+          <v-select
+            label="Assign to Recipe"
+            v-model="recipeIngredient.recipe_id"
+            :items="recipes"
+            :item-title="recipeTitle"
+            item-value="id"
+            clearable
+            variant="outlined"
+            color="primary"
+            class="mb-2"
+            :menu-props="{ contentClass: 'dashboard-select-menu' }"
+          />
+          <div v-if="selectedRecipe" class="recipe-preview pa-4 mb-4">
+            <div class="font-weight-bold mb-2" style="color:#2a9d8f;">
+              {{ recipeTitle(selectedRecipe) }}
+            </div>
+            <div v-if="selectedRecipe.ingredients && selectedRecipe.ingredients.length" class="ingredient-list">
+              <v-chip
+                v-for="ingredient in selectedRecipe.ingredients"
+                :key="ingredient.id"
+                color="success"
+                variant="elevated"
+                size="small"
               >
-                <v-icon start>mdi-check</v-icon>{{ isEditing ? 'Update' : 'Add' }}
-              </v-btn>
-            </v-form>
-          </v-window-item>
-          <!-- Branches/Stock Tab -->
-          <v-window-item value="branches">
-            <v-form class="pa-6">
-              <div v-if="form.stock">
-                <span class="text-caption" style="color:#d32f2f;">
-                  Total branch stock: <b>{{ branchStockSum }}</b> / <b>{{ globalStockBase }}</b> {{ form.unit }}
-                  <span v-if="branchStockError" style="color:#d32f2f; margin-left: 1em;">{{ branchStockError }}</span>
-                </span>
-              </div>
-              <v-select
-                label="Branches"
-                v-model="form.branch_ids"
-                :items="branches"
-                item-title="name"
-                item-value="id"
-                multiple
-                chips
-                closable-chips
-                clearable
-                variant="outlined"
-                color="primary"
-                class="mb-4"
-                @update:model-value="onSelectedBranchesChange"
-              />
-              <v-select
-                label="Add to Branch"
-                v-model="branchIngredient.branch_id"
-                :items="branches"
-                item-title="name"
-                item-value="id"
-                clearable
-                variant="outlined"
-                color="primary"
-                class="mb-2"
-              />
-              <v-text-field
-                label="Stock for Branch"
-                v-model="branchIngredient.stock"
-                type="number"
-                min="0"
-                variant="outlined"
-                color="primary"
-                class="mb-2"
-                :disabled="!branchIngredient.branch_id"
-              />
-              <v-select
-                label="Unit"
-                v-model="branchIngredient.unit"
-                :items="quantityUnitItems(form.unit)"
-                variant="outlined"
-                color="primary"
-                class="mb-2"
-                :disabled="!branchIngredient.branch_id"
-              />
-              <v-alert v-if="branchStockError" type="error" variant="outlined" class="mb-2">
-                {{ branchStockError }}
-              </v-alert>
-              <v-btn color="primary" type="button" class="mb-3" :disabled="!branchIngredient.branch_id" @click="addBranchStock">Add Branch Stock</v-btn>
-              <v-list two-line>
-                <v-list-item v-for="ib in form.ingredient_branches ?? []" :key="ib.branch_id">
-                  <v-list-item-title>{{ branchName(ib.branch_id) }}</v-list-item-title>
-                  <v-list-item-subtitle>Stock: {{ ib.stock }} {{ form.unit }}</v-list-item-subtitle>
-                  <template #append>
-                    <v-btn icon color="red" @click="removeBranchStock(ib.branch_id)">
-                      <v-icon>mdi-delete</v-icon>
-                    </v-btn>
-                  </template>
-                </v-list-item>
-                <div v-if="!(form.ingredient_branches && form.ingredient_branches.length)" class="text-caption mt-3">No branches assigned yet.</div>
-              </v-list>
-            </v-form>
-          </v-window-item>
-          <!-- Recipes Tab -->
-          <v-window-item value="recipes">
-            <v-form class="pa-6">
-              <div v-if="form.stock">
-                <span class="text-caption" style="color:#d32f2f;">
-                  Assigned to recipes: <b>{{ recipeQtySum }}</b> / <b>{{ globalStockBase }}</b> {{ form.unit }}
-                  <span v-if="recipeQtyError" style="color:#d32f2f; margin-left: 1em;">{{ recipeQtyError }}</span>
-                </span>
-              </div>
-              <v-select
-                label="Assign to Recipe"
-                v-model="recipeIngredient.recipe_id"
-                :items="recipes"
-                :item-title="recipeTitle"
-                item-value="id"
-                clearable
-                variant="outlined"
-                color="primary"
-                class="mb-2"
-                :menu-props="{ contentClass: 'dashboard-select-menu' }"
-              />
-              <div v-if="selectedRecipe" class="recipe-preview pa-4 mb-4">
-                <div class="font-weight-bold mb-2" style="color:#2a9d8f;">
-                  {{ recipeTitle(selectedRecipe) }}
-                </div>
-                <div v-if="selectedRecipe.ingredients && selectedRecipe.ingredients.length" class="ingredient-list">
-                  <v-chip
-                    v-for="ingredient in selectedRecipe.ingredients"
-                    :key="ingredient.id"
-                    color="success"
-                    variant="elevated"
-                    size="small"
-                  >
-                    <b>{{ ingredient.name }}</b>
-                    <span v-if="ingredient.pivot">&nbsp;- {{ ingredient.pivot.quantity }} {{ ingredient.unit || '' }}</span>
-                  </v-chip>
-                </div>
-                <div v-else class="text-caption" style="color:#64748b;">No ingredients assigned to this recipe.</div>
-              </div>
-              <v-text-field
-                label="Quantity"
-                v-model="recipeIngredient.quantity"
-                type="number"
-                min="0"
-                variant="outlined"
-                color="primary"
-                class="mb-2"
-                :disabled="!recipeIngredient.recipe_id"
-              />
-              <v-select
-                label="Unit"
-                v-model="recipeIngredient.unit"
-                :items="quantityUnitItems(form.unit)"
-                variant="outlined"
-                color="primary"
-                class="mb-2"
-                :disabled="!recipeIngredient.recipe_id"
-              />
-              <v-alert v-if="recipeQtyError" type="error" variant="outlined" class="mb-2">
-                {{ recipeQtyError }}
-              </v-alert>
-              <v-btn color="primary" type="button" class="mb-3" :disabled="!recipeIngredient.recipe_id" @click="addRecipeIngredient">Add/Update Recipe</v-btn>
-              <v-list two-line>
-                <v-list-item v-for="ri in form.recipe_ingredients ?? []" :key="ri.recipe_id">
-                  <v-list-item-title>{{ recipeName(ri.recipe_id) }}</v-list-item-title>
-                  <v-list-item-subtitle>Qty: {{ ri.quantity }} {{ form.unit }}</v-list-item-subtitle>
-                  <template #append>
-                    <v-btn icon color="red" @click="removeRecipeIngredient(ri.recipe_id)">
-                      <v-icon>mdi-delete</v-icon>
-                    </v-btn>
-                  </template>
-                </v-list-item>
-                <div v-if="!(form.recipe_ingredients && form.recipe_ingredients.length)" class="text-caption mt-3">No recipe assignments yet.</div>
-              </v-list>
-            </v-form>
-          </v-window-item>
-        </v-window>
+                <b>{{ ingredient.name }}</b>
+                <span v-if="ingredient.pivot">&nbsp;- {{ ingredient.pivot.quantity }} {{ ingredient.unit || '' }}</span>
+              </v-chip>
+            </div>
+            <div v-else class="text-caption" style="color:#64748b;">No ingredients assigned to this recipe.</div>
+          </div>
+          <v-text-field
+            label="Quantity"
+            v-model="recipeIngredient.quantity"
+            type="number"
+            min="0"
+            variant="outlined"
+            color="primary"
+            class="mb-2"
+            :disabled="!recipeIngredient.recipe_id"
+          />
+          <v-select
+            label="Unit"
+            v-model="recipeIngredient.unit"
+            :items="quantityUnitItems(form.unit)"
+            variant="outlined"
+            color="primary"
+            class="mb-2"
+            :disabled="!recipeIngredient.recipe_id"
+          />
+          <v-alert v-if="recipeQtyError" type="error" variant="outlined" class="mb-2">
+            {{ recipeQtyError }}
+          </v-alert>
+          <v-btn color="primary" type="button" class="mb-3" :disabled="!recipeIngredient.recipe_id" @click="addRecipeIngredient">Add/Update Recipe</v-btn>
+          <v-list two-line>
+            <v-list-item v-for="ri in form.recipe_ingredients ?? []" :key="ri.recipe_id">
+              <v-list-item-title>{{ recipeName(ri.recipe_id) }}</v-list-item-title>
+              <v-list-item-subtitle>Qty: {{ ri.quantity }} {{ form.unit }}</v-list-item-subtitle>
+              <template #append>
+                <v-btn icon color="red" @click="removeRecipeIngredient(ri.recipe_id)">
+                  <v-icon>mdi-delete</v-icon>
+                </v-btn>
+              </template>
+            </v-list-item>
+            <div v-if="!(form.recipe_ingredients && form.recipe_ingredients.length)" class="text-caption mt-3">No recipe assignments yet.</div>
+          </v-list>
+
+          <v-btn
+            color="primary"
+            type="submit"
+            block
+            class="rounded-pill mt-4"
+            :loading="saving"
+            :disabled="!!globalStockError"
+          >
+            <v-icon start>mdi-check</v-icon>{{ isEditing ? 'Update' : 'Add' }}
+          </v-btn>
+        </v-form>
       </v-navigation-drawer>
     </v-container>
   </OwnerLayout>
@@ -316,6 +327,7 @@
 import { ref, computed, onMounted } from 'vue'
 import axios from 'axios'
 import { API_BASE_URL } from '../lib/api'
+import { confirmDelete } from '../lib/confirmDelete'
 import OwnerLayout from '@/layouts/OwnerLayout.vue'
 
 const ingredients = ref([])
@@ -328,6 +340,7 @@ const tab = ref('general')
 const saving = ref(false)
 const filters = ref({
   branch_id: null,
+  category: null,
   unit: null,
   stock: null,
 })
@@ -340,6 +353,7 @@ const form = ref({
   id: null,
   name: '',
   unit: '',
+  min_stock: 0,
   stock_unit: '',
   stock: 0,
   branch_ids: [],
@@ -353,18 +367,33 @@ const recipeIngredient = ref({ recipe_id: null, quantity: '', unit: '' })
 
 const headers = [
   { title: 'Name', value: 'name' },
+  { title: 'Category', value: 'category' },
   { title: 'Unit', value: 'unit' },
   { title: 'Global Stock', value: 'stock' },
   { title: 'Branches', value: 'branches', sortable: false },
+  { title: 'Recipes', value: 'recipes', sortable: false },
   { title: 'Minimum Stock', value: 'min_stock' },
   { title: 'Actions', value: 'actions', sortable: false }
 ]
 
+const ALL_BRANCHES_VALUE = '__all_branches__'
 const minimumUnitItems = ['g', 'ml', 'pc']
+const ingredientCategoryPresets = ['Vegetables', 'Fruit', 'Spices', 'Meat', 'Seafood', 'Dairy', 'Bakery', 'Grains', 'Beverages', 'Other']
+
+const branchSelectItems = computed(() =>
+  branches.value.length > 1
+    ? [{ id: ALL_BRANCHES_VALUE, name: 'All branches' }, ...branches.value]
+    : branches.value
+)
 
 const unitItems = computed(() =>
   [...new Set(ingredients.value.map(ingredient => ingredient.unit).filter(Boolean))].sort()
 )
+
+const ingredientCategoryItems = computed(() => {
+  const values = [...ingredientCategoryPresets, ...ingredients.value.map(ingredient => ingredient.category).filter(Boolean)]
+  return [...new Set(values.map(value => value.trim()).filter(Boolean))].sort()
+})
 
 const stockFilterItems = [
   { title: 'Low stock', value: 'low' },
@@ -377,6 +406,7 @@ const filteredIngredients = computed(() => {
 
   return ingredients.value.filter(ingredient =>
     matchesIngredientSearch(ingredient, q) &&
+    (!filters.value.category || ingredient.category === filters.value.category) &&
     (!filters.value.unit || ingredient.unit === filters.value.unit) &&
     matchesIngredientBranchFilter(ingredient) &&
     matchesIngredientStockFilter(ingredient)
@@ -387,6 +417,7 @@ function matchesIngredientSearch(ingredient, query) {
   if (!query) return true
 
   return ingredient.name.toLowerCase().includes(query) ||
+    (ingredient.category ?? '').toLowerCase().includes(query) ||
     ingredient.unit.toLowerCase().includes(query) ||
     (ingredient.ingredient_branches ?? []).some(stock => branchName(stock.branch_id).toLowerCase().includes(query))
 }
@@ -413,6 +444,7 @@ function resetFilters() {
   search.value = ''
   filters.value = {
     branch_id: null,
+    category: null,
     unit: null,
     stock: null,
   }
@@ -432,6 +464,9 @@ const selectedRecipe = computed(() => {
 })
 
 function recipeTitle(recipe) {
+  const name = (recipe?.name ?? '').trim()
+  if (name) return name
+
   const description = (recipe?.description ?? '').trim()
   if (description) return description
 
@@ -520,6 +555,7 @@ function onBaseUnitChange() {
 }
 
 function onSelectedBranchesChange() {
+  form.value.branch_ids = normalizedSelectedBranchIds(form.value.branch_ids)
   form.value.ingredient_branches = (form.value.ingredient_branches ?? [])
     .filter(stock => form.value.branch_ids.map(Number).includes(Number(stock.branch_id)))
 
@@ -532,6 +568,17 @@ function onSelectedBranchesChange() {
 
   if (form.value.distribute_equally) applyEqualDistribution()
   validateGlobalStock()
+}
+
+function normalizedSelectedBranchIds(selected) {
+  const values = Array.isArray(selected) ? selected : []
+  if (values.includes(ALL_BRANCHES_VALUE)) {
+    return branches.value.map(branch => branch.id)
+  }
+
+  return values
+    .map(value => Number(value))
+    .filter(value => Number.isFinite(value) && value > 0)
 }
 
 function applyEqualDistribution() {
@@ -583,7 +630,9 @@ function openAddDrawer() {
   form.value = {
     id: null,
     name: '',
+    category: '',
     unit: 'g',
+    min_stock: 0,
     stock_unit: 'g',
     stock: 0,
     branch_ids: branches.value.length === 1 ? [branches.value[0].id] : [],
@@ -607,7 +656,7 @@ function openEditDrawer(item) {
     branch_ids: (item.ingredient_branches ?? []).map(stock => stock.branch_id),
     distribute_equally: false,
     ingredient_branches: item.ingredient_branches ?? [],
-    recipe_ingredients: item.recipe_ingredients ?? [],
+    recipe_ingredients: ingredientRecipeAssignments(item),
   }
   branchIngredient.value = { branch_id: null, stock: 0, unit: form.value.unit }
   recipeIngredient.value = { recipe_id: null, quantity: '', unit: form.value.unit }
@@ -617,11 +666,31 @@ function openEditDrawer(item) {
   validateGlobalStock()
   drawer.value = true
 }
-function deleteIngredient(item) {
-  if (!confirm(`Delete ingredient "${item.name}"?`)) return
-  axios.delete(`${API_BASE_URL}/ingredients/${item.id}`, {
+
+function ingredientRecipeAssignments(item) {
+  if (Array.isArray(item.recipe_ingredients) && item.recipe_ingredients.length) {
+    return item.recipe_ingredients.map(row => ({
+      recipe_id: row.recipe_id,
+      quantity: row.quantity,
+    }))
+  }
+
+  return (item.recipes ?? []).map(recipe => ({
+    recipe_id: recipe.id,
+    quantity: recipe.pivot?.quantity ?? 0,
+  }))
+}
+async function deleteIngredient(item) {
+  const recipeNames = (item.recipes ?? []).map(recipeTitle).filter(Boolean)
+  const text = recipeNames.length
+    ? `This ingredient is assigned to these recipes:\n\n- ${recipeNames.join('\n- ')}\n\nDeleting it will remove it from those recipes.`
+    : `This will permanently delete ingredient "${item.name}".`
+
+  if (!await confirmDelete(`ingredient "${item.name}"`, { text })) return
+  await axios.delete(`${API_BASE_URL}/ingredients/${item.id}`, {
     headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-  }).then(fetchIngredients)
+  })
+  fetchIngredients()
 }
 
 // Prevent branch stocks sum from exceeding global stock

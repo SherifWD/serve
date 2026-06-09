@@ -49,24 +49,26 @@ class ProductStockService
         $messages = [];
         $hasRecipeIngredients = $product->recipe && $product->recipe->ingredients->isNotEmpty();
 
-        $productInventory = $this->productInventoryItem($product, $branchId, $lock);
-        if ($productInventory) {
-            $sources[] = [
-                'type' => 'inventory_item',
-                'model' => $productInventory,
-                'label' => $product->name,
-                'required' => (float) $quantity,
-                'available' => (float) $productInventory->quantity,
-            ];
-        }
-
         if ($hasRecipeIngredients) {
             foreach ($product->recipe->ingredients as $ingredient) {
                 $required = (float) $ingredient->pivot->quantity * $quantity;
                 $ingredientSources = $this->ingredientSources($ingredient, $branchId, $required, $lock);
                 $sources = array_merge($sources, $ingredientSources);
             }
-        } elseif (Schema::hasColumn('products', 'stock')) {
+        } else {
+            $productInventory = $this->productInventoryItem($product, $branchId, $lock);
+            if ($productInventory) {
+                $sources[] = [
+                    'type' => 'inventory_item',
+                    'model' => $productInventory,
+                    'label' => $product->name,
+                    'required' => (float) $quantity,
+                    'available' => (float) $productInventory->quantity,
+                ];
+            }
+        }
+
+        if (!$hasRecipeIngredients && Schema::hasColumn('products', 'stock')) {
             $trackedProduct = $lock
                 ? Product::query()->whereKey($product->id)->lockForUpdate()->firstOrFail()
                 : $product;

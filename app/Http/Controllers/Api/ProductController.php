@@ -9,6 +9,7 @@ use App\Models\Ingredient;
 use App\Models\Product;
 use App\Models\Recipe;
 use App\Models\RecipeIngredient;
+use App\Services\Inventory\CatalogInventorySync;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -56,6 +57,7 @@ class ProductController extends Controller
             isset($data['branch_id']) ? (int) $data['branch_id'] : null,
         );
         $this->ensureCategoryCanBeUsed($request, (int) $data['category_id']);
+        $category = Category::query()->findOrFail((int) $data['category_id']);
 
         $recipeId = $data['recipe_id'] ?? null;
         unset($data['recipe_id'], $data['branch_ids'], $data['branch_id'], $data['recipe']);
@@ -67,12 +69,16 @@ class ProductController extends Controller
             $data['image'] = $request->file('image')->store('product_images', 'public');
         }
 
-        $products = DB::transaction(function () use ($request, $data, $branchIds, $recipeId) {
+        $mapCategoryToBranch = count($branchIds) > 1;
+        $products = DB::transaction(function () use ($request, $data, $branchIds, $recipeId, $category, $mapCategoryToBranch) {
             $created = collect();
 
             foreach ($branchIds as $branchId) {
                 $product = Product::create(array_merge($data, [
                     'branch_id' => $branchId,
+                    'category_id' => $mapCategoryToBranch
+                        ? $this->categoryIdForBranch($category, (int) $branchId)
+                        : (int) $category->id,
                     'sku' => $this->uniqueSku(),
                 ]));
 
@@ -82,6 +88,7 @@ class ProductController extends Controller
                     $this->syncInlineRecipe($request, $product);
                 }
 
+                app(CatalogInventorySync::class)->syncProduct($product);
                 $created->push($product);
             }
 
@@ -128,6 +135,9 @@ class ProductController extends Controller
         if (array_key_exists('category_id', $data)) {
             $this->ensureCategoryCanBeUsed($request, (int) $data['category_id']);
         }
+        $category = array_key_exists('category_id', $data)
+            ? Category::query()->findOrFail((int) $data['category_id'])
+            : $product->category;
         if (array_key_exists('is_available', $data)) {
             $data['is_available'] = (int) $request->boolean('is_available');
         }
@@ -148,7 +158,8 @@ class ProductController extends Controller
 
         $groupId = $product->branch_group_id ?: (string) Str::uuid();
 
-        DB::transaction(function () use ($request, $product, $data, $branchIds, $recipeId, $groupId) {
+        $mapCategoryToBranch = count($branchIds) > 1;
+        DB::transaction(function () use ($request, $product, $data, $branchIds, $recipeId, $groupId, $category, $mapCategoryToBranch) {
             if (! $product->branch_group_id) {
                 $product->branch_group_id = $groupId;
                 $product->save();
@@ -169,13 +180,22 @@ class ProductController extends Controller
                     }
                 }
 
-                $target->fill($data);
+                $targetData = $data;
+                if ($category) {
+                    $targetData['category_id'] = $this->categoryIdForBranch($category, (int) $branchId);
+                    if (! $mapCategoryToBranch) {
+                        $targetData['category_id'] = (int) $category->id;
+                    }
+                }
+
+                $target->fill($targetData);
                 if (! $target->sku) {
                     $target->sku = $this->uniqueSku();
                 }
                 $target->branch_group_id = $groupId;
                 $target->branch_id = $branchId;
                 $target->save();
+                app(CatalogInventorySync::class)->syncProduct($target);
 
                 if ($request->has('recipe_id')) {
                     $this->assignExistingRecipe($request, $target, $recipeId);
@@ -335,6 +355,45 @@ class ProductController extends Controller
         } while (Product::where('sku', $sku)->exists());
 
         return $sku;
+    }
+
+    private function categoryIdForBranch(Category $category, int $branchId): int
+    {
+        if ($category->branch_id === null || (int) $category->branch_id === $branchId) {
+            return (int) $category->id;
+        }
+
+        $groupId = $category->branch_group_id;
+        if (! $groupId) {
+            $groupId = (string) Str::uuid();
+            $category->branch_group_id = $groupId;
+            $category->save();
+        }
+
+        $sibling = Category::query()
+            ->where('branch_id', $branchId)
+            ->where(function ($query) use ($category, $groupId) {
+                $query->where('branch_group_id', $groupId)
+                    ->orWhereRaw('LOWER(name) = ?', [mb_strtolower(trim($category->name))]);
+            })
+            ->first();
+
+        if ($sibling) {
+            if (! $sibling->branch_group_id) {
+                $sibling->branch_group_id = $groupId;
+                $sibling->save();
+            }
+
+            return (int) $sibling->id;
+        }
+
+        $copy = Category::create([
+            'name' => $category->name,
+            'branch_id' => $branchId,
+            'branch_group_id' => $groupId,
+        ]);
+
+        return (int) $copy->id;
     }
 
     private function groupForDashboard(Collection $products): Collection

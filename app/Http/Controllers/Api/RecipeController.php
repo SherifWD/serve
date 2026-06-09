@@ -24,7 +24,7 @@ class RecipeController extends Controller
             'ingredients' => function ($query) {
                 $query->select('ingredients.id', 'name', 'unit');
             },
-        ])->get(['id', 'description', 'branch_id', 'branch_group_id']);
+        ])->get(['id', 'name', 'description', 'category', 'branch_id', 'branch_group_id']);
 
         return response()->json($this->groupForDashboard($recipes)->values());
     }
@@ -45,7 +45,9 @@ class RecipeController extends Controller
     public function store(Request $request)
     {
         $data = $request->validate([
+            'name' => 'nullable|string|max:255',
             'description' => 'required|string',
+            'category' => 'nullable|string|max:255',
             'branch_id' => 'nullable|integer|exists:branches,id',
             'branch_ids' => 'nullable|array',
             'branch_ids.*' => 'integer|exists:branches,id',
@@ -68,7 +70,9 @@ class RecipeController extends Controller
 
             foreach ($branchIds as $branchId) {
                 $recipe = Recipe::create([
+                    'name' => $this->normalizedOptionalString($data['name'] ?? null),
                     'description' => $data['description'],
+                    'category' => $this->normalizedOptionalString($data['category'] ?? null),
                     'branch_id' => $branchId,
                     'branch_group_id' => $groupId,
                 ]);
@@ -87,7 +91,9 @@ class RecipeController extends Controller
     {
         $recipe = $this->branchScoped($request, Recipe::query())->findOrFail($id);
         $data = $request->validate([
+            'name' => 'sometimes|nullable|string|max:255',
             'description' => 'sometimes|required|string',
+            'category' => 'sometimes|nullable|string|max:255',
             'branch_id' => 'nullable|integer|exists:branches,id',
             'branch_ids' => 'nullable|array',
             'branch_ids.*' => 'integer|exists:branches,id',
@@ -130,6 +136,12 @@ class RecipeController extends Controller
 
                 if (isset($data['description'])) {
                     $target->description = $data['description'];
+                }
+                if (array_key_exists('name', $data)) {
+                    $target->name = $this->normalizedOptionalString($data['name']);
+                }
+                if (array_key_exists('category', $data)) {
+                    $target->category = $this->normalizedOptionalString($data['category']);
                 }
                 $target->branch_id = $branchId;
                 $target->branch_group_id = $groupId;
@@ -181,6 +193,13 @@ class RecipeController extends Controller
     private function syncIngredients(Recipe $recipe, array $ingredients): void
     {
         $recipe->ingredients()->sync($ingredients);
+    }
+
+    private function normalizedOptionalString(?string $value): ?string
+    {
+        $value = trim((string) $value);
+
+        return $value === '' ? null : $value;
     }
 
     private function groupForDashboard(Collection $recipes): Collection

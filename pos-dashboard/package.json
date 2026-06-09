@@ -17,6 +17,7 @@
     "chart.js": "^4.5.0",
     "pinia": "^3.0.3",
     "puppeteer-core": "^24.40.0",
+    "sweetalert2": "^11.26.25",
     "vue": "^3.5.17",
     "vue-router": "^4.5.1",
     "vue3-apexcharts": "1.8.0",

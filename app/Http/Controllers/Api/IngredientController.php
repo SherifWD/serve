@@ -6,8 +6,10 @@ use App\Http\Controllers\Api\Concerns\EnforcesTenantAccess;
 use App\Http\Controllers\Controller;
 use App\Models\Ingredient;
 use App\Models\IngredientBranch;
+use App\Models\InventoryItem;
 use App\Models\Recipe;
 use App\Models\RecipeIngredient;
+use App\Services\Inventory\CatalogInventorySync;
 use App\Support\IngredientUnits;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -22,7 +24,7 @@ class IngredientController extends Controller
         $ingredients = $this->ingredientQuery($request)->with([
             'ingredientBranches' => fn ($query) => $this->scopeIngredientBranches($request, $query),
             'ingredientBranches.branch:id,name',
-            'recipes:id,description',
+            'recipes:id,name,description,category',
         ])->get();
 
         return response()->json($ingredients);
@@ -33,7 +35,7 @@ class IngredientController extends Controller
         $ingredient = $this->ingredientQuery($request)->with([
             'ingredientBranches' => fn ($query) => $this->scopeIngredientBranches($request, $query),
             'ingredientBranches.branch:id,name',
-            'recipes:id,description',
+            'recipes:id,name,description,category',
         ])->findOrFail($id);
 
         return response()->json($ingredient);
@@ -45,17 +47,22 @@ class IngredientController extends Controller
         $name = trim($data['name']);
         $minimumUnit = IngredientUnits::minimumUnit($data['unit']);
         $stock = $this->convertQuantity((float) ($data['stock'] ?? 0), $data['stock_unit'] ?? $data['unit'], $minimumUnit);
+        $minStock = $this->convertQuantity((float) ($data['min_stock'] ?? 0), $data['min_stock_unit'] ?? $minimumUnit, $minimumUnit);
 
         $this->ensureUniqueIngredientName($name);
         $branchStocks = $this->normalizedBranchStocks($request, $data, $minimumUnit, $stock);
         $recipeRows = $this->normalizedRecipeRows($request, $data, $minimumUnit);
         $this->ensureBranchStockFitsGlobal($stock, $branchStocks);
 
-        $ingredient = DB::transaction(function () use ($request, $name, $minimumUnit, $stock, $branchStocks, $recipeRows) {
+        $category = $this->normalizedOptionalString($data['category'] ?? null);
+
+        $ingredient = DB::transaction(function () use ($request, $name, $category, $minimumUnit, $stock, $minStock, $branchStocks, $recipeRows) {
             $ingredient = Ingredient::create([
                 'name' => $name,
+                'category' => $category,
                 'unit' => $minimumUnit,
                 'stock' => $stock,
+                'min_stock' => $minStock,
             ]);
 
             $this->syncBranchStocks($request, $ingredient, $branchStocks);
@@ -64,7 +71,7 @@ class IngredientController extends Controller
             return $ingredient;
         });
 
-        return response()->json($ingredient->load(['ingredientBranches.branch', 'recipes:id,description']), 201);
+        return response()->json($ingredient->load(['ingredientBranches.branch', 'recipes:id,name,description,category']), 201);
     }
 
     public function update(Request $request, $id)
@@ -74,24 +81,29 @@ class IngredientController extends Controller
         $name = trim($data['name']);
         $minimumUnit = IngredientUnits::minimumUnit($data['unit']);
         $stock = $this->convertQuantity((float) ($data['stock'] ?? 0), $data['stock_unit'] ?? $data['unit'], $minimumUnit);
+        $minStock = $this->convertQuantity((float) ($data['min_stock'] ?? 0), $data['min_stock_unit'] ?? $minimumUnit, $minimumUnit);
+
+        $category = $this->normalizedOptionalString($data['category'] ?? null);
 
         $this->ensureUniqueIngredientName($name, (int) $ingredient->id);
         $branchStocks = $this->normalizedBranchStocks($request, $data, $minimumUnit, $stock);
         $recipeRows = $this->normalizedRecipeRows($request, $data, $minimumUnit);
         $this->ensureBranchStockFitsGlobal($stock, $branchStocks);
 
-        DB::transaction(function () use ($request, $ingredient, $name, $minimumUnit, $stock, $branchStocks, $recipeRows) {
+        DB::transaction(function () use ($request, $ingredient, $name, $category, $minimumUnit, $stock, $minStock, $branchStocks, $recipeRows) {
             $ingredient->update([
                 'name' => $name,
+                'category' => $category,
                 'unit' => $minimumUnit,
                 'stock' => $stock,
+                'min_stock' => $minStock,
             ]);
 
             $this->syncBranchStocks($request, $ingredient, $branchStocks);
             $this->syncRecipeRows($request, $ingredient, $recipeRows);
         });
 
-        return response()->json($ingredient->load(['ingredientBranches.branch', 'recipes:id,description']));
+        return response()->json($ingredient->load(['ingredientBranches.branch', 'recipes:id,name,description,category']));
     }
 
     public function destroy(Request $request, $id)
@@ -139,6 +151,8 @@ class IngredientController extends Controller
             $lockedIngredient->stock = round(max((float) $lockedIngredient->stock + $addition, $totalAssigned), 3);
             $lockedIngredient->save();
 
+            app(CatalogInventorySync::class)->syncIngredientBranch($lockedIngredient, (int) $data['branch_id'], $nextStock);
+
             return $branchStock;
         });
 
@@ -149,9 +163,12 @@ class IngredientController extends Controller
     {
         return $request->validate([
             'name' => 'required|string|max:255',
+            'category' => 'nullable|string|max:255',
             'unit' => 'required|string|max:50',
             'stock' => 'nullable|numeric|min:0',
             'stock_unit' => 'nullable|string|max:50',
+            'min_stock' => 'nullable|numeric|min:0',
+            'min_stock_unit' => 'nullable|string|max:50',
             'restaurant_id' => 'nullable|integer|exists:restaurants,id',
             'branch_ids' => 'nullable|array',
             'branch_ids.*' => 'integer|exists:branches,id',
@@ -181,6 +198,13 @@ class IngredientController extends Controller
                 'name' => 'Ingredient names must be unique.',
             ]);
         }
+    }
+
+    private function normalizedOptionalString(?string $value): ?string
+    {
+        $value = trim((string) $value);
+
+        return $value === '' ? null : $value;
     }
 
     private function normalizedBranchStocks(Request $request, array $data, string $minimumUnit, float $stock): array
@@ -281,6 +305,7 @@ class IngredientController extends Controller
 
     private function syncBranchStocks(Request $request, Ingredient $ingredient, array $branchStocks): void
     {
+        $inventorySync = app(CatalogInventorySync::class);
         $branchIds = collect($branchStocks)->pluck('branch_id')->map(fn ($id) => (int) $id)->all();
         $deleteQuery = IngredientBranch::query()->where('ingredient_id', $ingredient->id);
         $accessibleBranchIds = $this->accessibleBranchIds($request);
@@ -293,7 +318,18 @@ class IngredientController extends Controller
             $deleteQuery->whereNotIn('branch_id', $branchIds);
         }
 
+        $deletedBranchIds = (clone $deleteQuery)
+            ->pluck('branch_id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
+
         $deleteQuery->delete();
+        if ($deletedBranchIds) {
+            InventoryItem::query()
+                ->where('ingredient_id', $ingredient->id)
+                ->whereIn('branch_id', $deletedBranchIds)
+                ->delete();
+        }
 
         foreach ($branchStocks as $stock) {
             IngredientBranch::updateOrCreate([
@@ -302,6 +338,8 @@ class IngredientController extends Controller
             ], [
                 'stock' => $stock['stock'],
             ]);
+
+            $inventorySync->syncIngredientBranch($ingredient, (int) $stock['branch_id'], (float) $stock['stock']);
         }
     }
 
