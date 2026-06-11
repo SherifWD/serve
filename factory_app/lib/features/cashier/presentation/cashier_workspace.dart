@@ -4,8 +4,10 @@ import 'package:intl/intl.dart';
 import 'package:printing/printing.dart';
 
 import '../../../core/models/app_models.dart';
+import '../../../core/widgets/manual_refresh_header.dart';
 import '../../../core/widgets/state_views.dart';
 import '../../auth/providers/auth_providers.dart';
+import '../../suite/data/realtime_service.dart';
 import '../../suite/data/suite_repository.dart';
 
 class CashierWorkspacePage extends ConsumerStatefulWidget {
@@ -18,6 +20,9 @@ class CashierWorkspacePage extends ConsumerStatefulWidget {
 
 class _CashierWorkspacePageState extends ConsumerState<CashierWorkspacePage> {
   late Future<List<StaffOrderSnapshot>> _future;
+  DateTime? _lastUpdatedAt;
+  bool _hasUpdates = false;
+  RealtimeSubscription? _realtimeSubscription;
   StaffOrderSnapshot? _selectedOrder;
   List<_PaymentDraft> _drafts = [];
   int _selectedDraftIndex = 0;
@@ -27,6 +32,23 @@ class _CashierWorkspacePageState extends ConsumerState<CashierWorkspacePage> {
   void initState() {
     super.initState();
     _future = _loadOrders();
+    _connectRealtime();
+  }
+
+  Future<void> _connectRealtime() async {
+    final subscription =
+        await ref.read(realtimeServiceProvider).subscribeToBranch(
+              surface: 'cashier',
+              onEvent: () {
+                if (!mounted) return;
+                setState(() => _hasUpdates = true);
+              },
+            );
+    if (!mounted) {
+      await subscription?.close();
+      return;
+    }
+    _realtimeSubscription = subscription;
   }
 
   Future<void> _refreshOrders() async {
@@ -66,6 +88,12 @@ class _CashierWorkspacePageState extends ConsumerState<CashierWorkspacePage> {
       _selectedOrder = cashierOrders.first;
       _selectedItemIds.clear();
       _resetDrafts();
+    }
+    if (mounted) {
+      setState(() {
+        _lastUpdatedAt = DateTime.now();
+        _hasUpdates = false;
+      });
     }
     return cashierOrders;
   }
@@ -125,6 +153,7 @@ class _CashierWorkspacePageState extends ConsumerState<CashierWorkspacePage> {
 
   @override
   void dispose() {
+    _realtimeSubscription?.close();
     for (final draft in _drafts) {
       draft.amountController.dispose();
     }
@@ -394,24 +423,38 @@ class _CashierWorkspacePageState extends ConsumerState<CashierWorkspacePage> {
         }
 
         final orders = snapshot.data!;
+        final refreshHeader = ManualRefreshHeader(
+          title: 'Cashier queue',
+          subtitle: 'Manual refresh keeps settlement work stable.',
+          icon: Icons.point_of_sale_outlined,
+          lastUpdatedAt: _lastUpdatedAt,
+          hasUpdates: _hasUpdates,
+          onRefresh: _refreshOrders,
+        );
+
         if (orders.isEmpty) {
-          return ListView(
-            physics: const AlwaysScrollableScrollPhysics(),
-            children: [
-              _CashierHeader(
-                pendingCount: 0,
-                dueNow: 0,
-                averageTicket: 0,
-                onCounterSale: _openCounterSale,
-              ),
-              const SizedBox(height: 16),
-              const EmptyView(
-                title: 'No cashier queue',
-                description:
-                    'Orders sent from waiter and fully prepared by kitchen will appear here for settlement.',
-                icon: Icons.point_of_sale_outlined,
-              ),
-            ],
+          return RefreshIndicator(
+            onRefresh: _refreshOrders,
+            child: ListView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              children: [
+                refreshHeader,
+                const SizedBox(height: 16),
+                _CashierHeader(
+                  pendingCount: 0,
+                  dueNow: 0,
+                  averageTicket: 0,
+                  onCounterSale: _openCounterSale,
+                ),
+                const SizedBox(height: 16),
+                const EmptyView(
+                  title: 'No cashier queue',
+                  description:
+                      'Orders sent from waiter and fully prepared by kitchen will appear here for settlement.',
+                  icon: Icons.point_of_sale_outlined,
+                ),
+              ],
+            ),
           );
         }
 
@@ -429,6 +472,8 @@ class _CashierWorkspacePageState extends ConsumerState<CashierWorkspacePage> {
           child: ListView(
             physics: const AlwaysScrollableScrollPhysics(),
             children: [
+              refreshHeader,
+              const SizedBox(height: 16),
 	              _CashierHeader(
 	                pendingCount: orders.length,
 	                dueNow: orders.fold<double>(

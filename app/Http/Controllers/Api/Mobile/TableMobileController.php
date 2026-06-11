@@ -12,6 +12,7 @@ use App\Models\Branch;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Table;
+use App\Support\BranchOperationProfile;
 use App\Services\Inventory\ProductStockService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -80,7 +81,7 @@ class TableMobileController extends Controller
     {
         return [
             'orders' => fn($q) => $this->activeOrders($q)
-                ->select('id','branch_id','table_id','customer_id','order_type','status','payment_status','subtotal','tax','discount','discount_type','total','coupon_code','order_date','kds_sent_at')
+                ->select('id','branch_id','table_id','customer_id','employee_id','order_type','status','payment_status','subtotal','tax','discount','discount_type','total','coupon_code','order_date','kds_sent_at')
                 ->latest('id'),
             'orders.items' => fn($q) => $q->select(
                 'id','order_id','product_id','quantity','price','total',
@@ -88,6 +89,8 @@ class TableMobileController extends Controller
             ),
             'orders.payments:id,order_id,method,amount,item_ids,scope',
             'orders.customer:id,name,phone',
+            'orders.employee:id,user_id,name',
+            'orders.employee.user:id,name',
             'orders.items.product:id,name,image',
             'orders.items.answers.choice.question',
             'orders.items.modifiers.modifier',
@@ -128,6 +131,36 @@ class TableMobileController extends Controller
         $table->setAttribute('service_status', $serviceStatus);
         $table->setAttribute('active_order_status', $order?->status);
         $table->setAttribute('active_payment_status', $order?->payment_status);
+        $table->setAttribute('active_waiter_user_id', $order?->employee?->user_id);
+        $table->setAttribute(
+            'active_waiter_name',
+            $order?->employee?->name ?: $order?->employee?->user?->name,
+        );
+    }
+
+    private function operationProfileForRequest(Request $request): ?array
+    {
+        $user = $request->user();
+
+        if ($user?->branch_id) {
+            $branch = Branch::query()
+                ->with('restaurant:id,name,kind')
+                ->find($user->branch_id);
+
+            return $branch ? BranchOperationProfile::forBranch($branch) : null;
+        }
+
+        if ($user?->restaurant_id) {
+            $branch = Branch::query()
+                ->with('restaurant:id,name,kind')
+                ->where('restaurant_id', $user->restaurant_id)
+                ->orderBy('id')
+                ->first();
+
+            return $branch ? BranchOperationProfile::forBranch($branch) : null;
+        }
+
+        return null;
     }
 
     private function tableMatchesStatus(Table $table, string $filter): bool
@@ -162,7 +195,12 @@ class TableMobileController extends Controller
                 ->values();
         }
 
-        return response()->json(['data' => $tables]);
+        return response()->json([
+            'data' => $tables,
+            'meta' => [
+                'operation_profile' => $this->operationProfileForRequest($request),
+            ],
+        ]);
     }
 
    public function show(Request $request, $id)
@@ -173,7 +211,12 @@ class TableMobileController extends Controller
 
     $this->hydrateTableState($table);
 
-    return response()->json(['data' => $table]);
+    return response()->json([
+        'data' => $table,
+        'meta' => [
+            'operation_profile' => $this->operationProfileForRequest($request),
+        ],
+    ]);
 }
 
 
@@ -203,6 +246,7 @@ class TableMobileController extends Controller
             }
 
             $sourceCustomerId = $orders->pluck('customer_id')->filter()->first();
+            $sourceEmployeeId = $orders->pluck('employee_id')->filter()->first();
             $sourceKdsSentAt = $orders->pluck('kds_sent_at')->filter()->sort()->first();
 
             // Ensure a target open order
@@ -216,6 +260,7 @@ class TableMobileController extends Controller
                     'branch_id' => $to->branch_id,
                     'table_id'  => $to->id,
                     'customer_id' => $sourceCustomerId,
+                    'employee_id' => $sourceEmployeeId,
                     'order_type'=> 'dine-in',
                     'status'    => OrderStatus::PENDING,
                     'subtotal'  => 0,
@@ -226,6 +271,11 @@ class TableMobileController extends Controller
                 ]);
             } elseif (!$target->customer_id && $sourceCustomerId) {
                 $target->customer_id = $sourceCustomerId;
+                $target->save();
+            }
+
+            if (!$target->employee_id && $sourceEmployeeId) {
+                $target->employee_id = $sourceEmployeeId;
                 $target->save();
             }
 

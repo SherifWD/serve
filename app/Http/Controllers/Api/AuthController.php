@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use App\Models\User;
+use App\Support\BranchOperationProfile;
 use Illuminate\Support\Facades\Log;
 
 class AuthController extends Controller
@@ -21,7 +22,7 @@ class AuthController extends Controller
             'type' => 'nullable|string|exists:types,name',
         ]);
 
-        $user = User::with(['types', 'roles.permissions', 'branch:id,name,restaurant_id', 'restaurant:id,name,kind'])
+        $user = User::with(['types', 'roles.permissions', 'branch:id,name,restaurant_id,operation_mode,operation_label,operation_features', 'restaurant:id,name,kind'])
             ->where('email', $request->email)
             ->first();
 
@@ -54,7 +55,7 @@ class AuthController extends Controller
     // Get current user (for profile/SPA boot)
     public function me(Request $request)
     {
-        $user = $request->user()->loadMissing(['types', 'roles.permissions', 'branch:id,name,restaurant_id', 'restaurant:id,name,kind']);
+        $user = $request->user()->loadMissing(['types', 'roles.permissions', 'branch:id,name,restaurant_id,operation_mode,operation_label,operation_features', 'restaurant:id,name,kind']);
 
         return response()->json($this->serializeUser($user));
     }
@@ -73,6 +74,7 @@ class AuthController extends Controller
                 'id' => $user->branch->id,
                 'name' => $user->branch->name,
                 'restaurant_id' => $user->branch->restaurant_id,
+                'operation_profile' => BranchOperationProfile::forBranch($user->branch),
             ] : null,
             'restaurant_id' => $user->restaurant_id,
             'restaurant' => $user->restaurant ? [

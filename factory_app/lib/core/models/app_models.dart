@@ -289,6 +289,73 @@ class RestaurantFeaturedItem {
   }
 }
 
+class OperationProfile {
+  const OperationProfile({
+    required this.mode,
+    required this.label,
+    this.usesTables = true,
+    this.cashierFirst = false,
+    this.kdsEnabled = true,
+    this.waiterTableOwnership = true,
+    this.showWaiterNames = false,
+    this.tableTransfer = true,
+    this.splitBills = true,
+    this.multiKdsStations = false,
+    this.stationCount = 1,
+    this.customerOrdering = true,
+  });
+
+  final String mode;
+  final String label;
+  final bool usesTables;
+  final bool cashierFirst;
+  final bool kdsEnabled;
+  final bool waiterTableOwnership;
+  final bool showWaiterNames;
+  final bool tableTransfer;
+  final bool splitBills;
+  final bool multiKdsStations;
+  final int stationCount;
+  final bool customerOrdering;
+
+  bool get isBigService =>
+      mode == 'big_restaurant' || showWaiterNames || waiterTableOwnership;
+
+  factory OperationProfile.fromJson(Map<String, dynamic> json) {
+    final features = jsonMap(json['features']);
+    return OperationProfile(
+      mode: jsonString(json['mode'], fallback: 'small_restaurant'),
+      label: jsonString(json['label'], fallback: 'Small restaurant'),
+      usesTables: jsonBool(features['uses_tables'], fallback: true),
+      cashierFirst: jsonBool(features['cashier_first']),
+      kdsEnabled: jsonBool(features['kds_enabled'], fallback: true),
+      waiterTableOwnership:
+          jsonBool(features['waiter_table_ownership'], fallback: true),
+      showWaiterNames: jsonBool(features['show_waiter_names']),
+      tableTransfer: jsonBool(features['table_transfer'], fallback: true),
+      splitBills: jsonBool(features['split_bills'], fallback: true),
+      multiKdsStations: jsonBool(features['multi_kds_stations']),
+      stationCount: jsonInt(features['station_count'], fallback: 1),
+      customerOrdering: jsonBool(features['customer_ordering'], fallback: true),
+    );
+  }
+
+  static const fallback = OperationProfile(
+    mode: 'small_restaurant',
+    label: 'Small restaurant',
+  );
+}
+
+class TableFloorBundle {
+  const TableFloorBundle({
+    required this.tables,
+    required this.operationProfile,
+  });
+
+  final List<TableOverview> tables;
+  final OperationProfile operationProfile;
+}
+
 class CustomerMenuItem {
   const CustomerMenuItem({
     required this.id,
@@ -807,6 +874,8 @@ class TableOverview {
     this.orderTotal = 0,
     this.itemCount = 0,
     this.customerName,
+    this.waiterUserId,
+    this.waiterName,
   });
 
   final int id;
@@ -820,9 +889,13 @@ class TableOverview {
   final double orderTotal;
   final int itemCount;
   final String? customerName;
+  final int? waiterUserId;
+  final String? waiterName;
 
   bool get isOccupied => orderId != null && serviceStatus != 'available';
   bool get isAvailable => !isOccupied;
+  bool isOpenedBy(int userId) => waiterUserId == userId;
+  bool get isUnassigned => isOccupied && waiterUserId == null;
 
   String get statusLabel {
     switch (serviceStatus) {
@@ -869,6 +942,8 @@ class TableOverview {
       orderTotal: jsonDouble(order['total']),
       itemCount: count,
       customerName: jsonNullableString(jsonMap(order['customer'])['name']),
+      waiterUserId: jsonNullableInt(json['active_waiter_user_id']),
+      waiterName: jsonNullableString(json['active_waiter_name']),
     );
   }
 }

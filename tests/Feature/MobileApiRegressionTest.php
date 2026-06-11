@@ -2544,6 +2544,99 @@ class MobileApiRegressionTest extends TestCase
         $this->assertNull($order->table_id);
     }
 
+    public function test_waiter_floor_exposes_table_owner_and_operation_profile(): void
+    {
+        $branch = Branch::query()
+            ->whereHas('users', fn ($query) => $query->where('email', 'like', 'waiter%@example.com'))
+            ->whereHas('products', fn ($query) => $query->where('is_available', true))
+            ->firstOrFail();
+        $waiter = $this->staffUserForBranch((int) $branch->id, 'waiter');
+        $employee = Employee::query()->updateOrCreate(
+            ['user_id' => $waiter->id, 'branch_id' => $branch->id],
+            [
+                'name' => $waiter->name,
+                'position' => 'waiter',
+                'base_salary' => 0,
+                'hired_at' => now()->toDateString(),
+            ],
+        );
+        $table = Table::query()->create([
+            'branch_id' => $branch->id,
+            'name' => 'Ownership Regression',
+            'status' => 'open',
+            'seats' => 4,
+        ]);
+        $product = Product::query()
+            ->where('branch_id', $branch->id)
+            ->where('is_available', true)
+            ->firstOrFail();
+        $this->ensureProductStockAvailable($product, (int) $branch->id);
+
+        Sanctum::actingAs(User::query()->where('email', 'admin@restaurant-suite.com')->firstOrFail());
+        $this->putJson("/api/branch-operation-settings/{$branch->id}", [
+            'operation_profile' => [
+                'mode' => 'big_restaurant',
+                'label' => 'Big restaurant',
+                'features' => [
+                    'uses_tables' => true,
+                    'cashier_first' => false,
+                    'kds_enabled' => true,
+                    'waiter_table_ownership' => true,
+                    'show_waiter_names' => true,
+                    'table_transfer' => true,
+                    'split_bills' => true,
+                    'multi_kds_stations' => true,
+                    'station_count' => 3,
+                    'customer_ordering' => true,
+                ],
+            ],
+            'cash_drawer' => [
+                'opening_balance' => 0,
+                'closing_balance' => null,
+                'is_open' => true,
+                'name' => 'Regression drawer',
+                'uuid' => "regression-drawer-{$branch->id}",
+                'printer_endpoint' => null,
+                'is_active' => true,
+            ],
+            'receipt_printer' => [
+                'name' => 'Regression printer',
+                'uuid' => "regression-printer-{$branch->id}",
+                'printer_profile' => 'epson-thermal',
+                'printer_paper_width_mm' => 80,
+                'printer_endpoint' => null,
+                'is_active' => true,
+            ],
+        ])->assertOk()
+            ->assertJsonPath('data.operation_profile.mode', 'big_restaurant')
+            ->assertJsonPath('data.operation_profile.features.show_waiter_names', true);
+
+        Sanctum::actingAs($waiter);
+        $this->postJson('/api/mobile/orders', [
+            'table_id' => $table->id,
+            'order_type' => 'dine-in',
+            'items' => [
+                [
+                    'product_id' => $product->id,
+                    'quantity' => 1,
+                    'note' => 'Ownership regression',
+                ],
+            ],
+        ])->assertCreated()
+            ->assertJsonPath('order.employee_id', $employee->id);
+
+        $response = $this->getJson('/api/mobile/tables')
+            ->assertOk()
+            ->assertJsonPath('meta.operation_profile.mode', 'big_restaurant')
+            ->assertJsonPath('meta.operation_profile.features.waiter_table_ownership', true);
+
+        $tablePayload = collect($response->json('data'))
+            ->firstWhere('id', $table->id);
+
+        $this->assertSame($waiter->id, $tablePayload['active_waiter_user_id']);
+        $this->assertSame($employee->name, $tablePayload['active_waiter_name']);
+    }
+
     public function test_owner_can_export_products_as_switching_csv(): void
     {
         $owner = User::query()

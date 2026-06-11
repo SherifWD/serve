@@ -3,7 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../../core/models/app_models.dart';
+import '../../../core/widgets/manual_refresh_header.dart';
 import '../../../core/widgets/state_views.dart';
+import '../../auth/providers/auth_providers.dart';
+import '../../suite/data/realtime_service.dart';
 import '../../suite/data/suite_repository.dart';
 import 'waiter_order_page.dart';
 
@@ -16,26 +19,65 @@ class WaiterWorkspacePage extends ConsumerStatefulWidget {
 }
 
 class _WaiterWorkspacePageState extends ConsumerState<WaiterWorkspacePage> {
-  late Future<List<TableOverview>> _tablesFuture;
+  late Future<TableFloorBundle> _floorFuture;
+  DateTime? _lastUpdatedAt;
+  bool _hasUpdates = false;
+  RealtimeSubscription? _realtimeSubscription;
 
   @override
   void initState() {
     super.initState();
-    _tablesFuture = ref.read(suiteRepositoryProvider).fetchTables();
+    _floorFuture = _loadFloor();
+    _connectRealtime();
+  }
+
+  Future<void> _connectRealtime() async {
+    final subscription =
+        await ref.read(realtimeServiceProvider).subscribeToBranch(
+              surface: 'waiter',
+              onEvent: () {
+                if (!mounted) return;
+                setState(() => _hasUpdates = true);
+              },
+            );
+    if (!mounted) {
+      await subscription?.close();
+      return;
+    }
+    _realtimeSubscription = subscription;
+  }
+
+  Future<TableFloorBundle> _loadFloor() async {
+    final bundle = await ref.read(suiteRepositoryProvider).fetchTableFloor();
+    if (mounted) {
+      setState(() {
+        _lastUpdatedAt = DateTime.now();
+        _hasUpdates = false;
+      });
+    }
+    return bundle;
   }
 
   Future<void> _refreshTables() async {
-    final future = ref.read(suiteRepositoryProvider).fetchTables();
+    final future = _loadFloor();
     setState(() {
-      _tablesFuture = future;
+      _floorFuture = future;
     });
-    await _tablesFuture;
+    await _floorFuture;
+  }
+
+  @override
+  void dispose() {
+    _realtimeSubscription?.close();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<List<TableOverview>>(
-      future: _tablesFuture,
+    final session = ref.watch(currentSessionProvider);
+
+    return FutureBuilder<TableFloorBundle>(
+      future: _floorFuture,
       builder: (context, tableSnapshot) {
         if (tableSnapshot.connectionState != ConnectionState.done) {
           return const LoadingView(label: 'Loading floor map...');
@@ -47,7 +89,8 @@ class _WaiterWorkspacePageState extends ConsumerState<WaiterWorkspacePage> {
           );
         }
 
-        final tables = tableSnapshot.data!;
+        final bundle = tableSnapshot.data!;
+        final tables = bundle.tables;
         final occupied = tables.where((table) => table.isOccupied).toList();
         final covers = occupied.fold<int>(0, (sum, table) => sum + table.seats);
         final liveSales = occupied.fold<double>(
@@ -59,6 +102,15 @@ class _WaiterWorkspacePageState extends ConsumerState<WaiterWorkspacePage> {
           child: ListView(
             physics: const AlwaysScrollableScrollPhysics(),
             children: [
+              ManualRefreshHeader(
+                title: 'Floor service',
+                subtitle: bundle.operationProfile.label,
+                icon: Icons.table_restaurant_outlined,
+                lastUpdatedAt: _lastUpdatedAt,
+                hasUpdates: _hasUpdates,
+                onRefresh: _refreshTables,
+              ),
+              const SizedBox(height: 16),
               _WaiterHero(
                 tableCount: tables.length,
                 activeChecks: occupied.length,
@@ -68,6 +120,8 @@ class _WaiterWorkspacePageState extends ConsumerState<WaiterWorkspacePage> {
               const SizedBox(height: 16),
               _FloorTab(
                 tables: tables,
+                operationProfile: bundle.operationProfile,
+                currentUserId: session?.id,
               ),
             ],
           ),
@@ -160,9 +214,13 @@ class _WaiterHero extends StatelessWidget {
 class _FloorTab extends StatefulWidget {
   const _FloorTab({
     required this.tables,
+    required this.operationProfile,
+    required this.currentUserId,
   });
 
   final List<TableOverview> tables;
+  final OperationProfile operationProfile;
+  final int? currentUserId;
 
   @override
   State<_FloorTab> createState() => _FloorTabState();
@@ -174,6 +232,11 @@ class _FloorTabState extends State<_FloorTab> {
   List<TableOverview> get _filteredTables {
     return widget.tables.where((table) {
       switch (_filter) {
+        case 'my':
+          return widget.currentUserId != null &&
+              table.isOpenedBy(widget.currentUserId!);
+        case 'unassigned':
+          return table.isUnassigned;
         case 'available':
           return table.isAvailable;
         case 'busy':
@@ -186,6 +249,9 @@ class _FloorTabState extends State<_FloorTab> {
           return table.serviceStatus == 'served';
         case 'cashier':
           return table.serviceStatus == 'cashier';
+        case 'needs_cashier':
+          return table.serviceStatus == 'ready' ||
+              table.serviceStatus == 'served';
         case 'returned':
           return table.serviceStatus == 'returned';
         default:
@@ -209,7 +275,27 @@ class _FloorTabState extends State<_FloorTab> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const _QuickActionStrip(),
+        _QuickActionStrip(
+          canMoveTables: widget.operationProfile.tableTransfer,
+          onOpenTable: () => _showTablePicker(
+            title: 'Open table',
+            emptyMessage: 'No open tables are available right now.',
+            tables: widget.tables
+                .where((table) => table.isAvailable)
+                .toList(growable: false),
+          ),
+          onMyTables: () => setState(() => _filter = 'my'),
+          onReady: () => setState(() => _filter = 'ready'),
+          onNeedsCashier: () => setState(() => _filter = 'needs_cashier'),
+          onReturned: () => setState(() => _filter = 'returned'),
+          onMoveTable: () => _showTablePicker(
+            title: 'Move table',
+            emptyMessage: 'No occupied tables are available to move.',
+            tables: widget.tables
+                .where((table) => table.isOccupied)
+                .toList(growable: false),
+          ),
+        ),
         const SizedBox(height: 16),
         _TableFilterStrip(
           value: _filter,
@@ -228,20 +314,102 @@ class _FloorTabState extends State<_FloorTab> {
           ),
           itemBuilder: (context, index) {
             final table = filteredTables[index];
-            return _TableTile(table: table);
+            return _TableTile(
+              table: table,
+              showWaiterName: widget.operationProfile.showWaiterNames,
+              currentUserId: widget.currentUserId,
+            );
           },
         ),
       ],
     );
   }
+
+  Future<void> _showTablePicker({
+    required String title,
+    required String emptyMessage,
+    required List<TableOverview> tables,
+  }) async {
+    if (tables.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(emptyMessage)),
+      );
+      return;
+    }
+
+    final selected = await showModalBottomSheet<TableOverview>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) {
+        return SafeArea(
+          child: ListView.separated(
+            shrinkWrap: true,
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 18),
+            itemCount: tables.length + 1,
+            separatorBuilder: (_, __) => const Divider(height: 1),
+            itemBuilder: (context, index) {
+              if (index == 0) {
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: Text(
+                    title,
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.w900,
+                        ),
+                  ),
+                );
+              }
+
+              final table = tables[index - 1];
+              return ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.table_restaurant_outlined),
+                title: Text(table.name),
+                subtitle: Text(
+                  table.isOccupied
+                      ? '${table.statusLabel} / ${table.itemCount} items'
+                      : '${table.seats} covers',
+                ),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => Navigator.of(context).pop(table),
+              );
+            },
+          ),
+        );
+      },
+    );
+
+    if (selected == null || !mounted) return;
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => WaiterOrderPage(table: selected),
+      ),
+    );
+  }
 }
 
 class _QuickActionStrip extends StatelessWidget {
-  const _QuickActionStrip();
+  const _QuickActionStrip({
+    required this.canMoveTables,
+    required this.onOpenTable,
+    required this.onMyTables,
+    required this.onReady,
+    required this.onNeedsCashier,
+    required this.onReturned,
+    required this.onMoveTable,
+  });
+
+  final bool canMoveTables;
+  final VoidCallback onOpenTable;
+  final VoidCallback onMyTables;
+  final VoidCallback onReady;
+  final VoidCallback onNeedsCashier;
+  final VoidCallback onReturned;
+  final VoidCallback onMoveTable;
 
   @override
   Widget build(BuildContext context) {
-    return const SingleChildScrollView(
+    return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: Row(
         children: [
@@ -249,30 +417,42 @@ class _QuickActionStrip extends StatelessWidget {
             icon: Icons.table_bar_outlined,
             label: 'Open table',
             caption: 'Start dine-in',
+            onTap: onOpenTable,
           ),
-          SizedBox(width: 10),
+          const SizedBox(width: 10),
           _QuickActionCard(
-            icon: Icons.person_add_alt_1_outlined,
-            label: 'Attach guest',
-            caption: 'Track loyalty',
+            icon: Icons.person_pin_circle_outlined,
+            label: 'My tables',
+            caption: 'Only mine',
+            onTap: onMyTables,
           ),
-          SizedBox(width: 10),
+          const SizedBox(width: 10),
           _QuickActionCard(
-            icon: Icons.tune_rounded,
-            label: 'Add modifiers',
-            caption: 'Adjust items',
+            icon: Icons.room_service_outlined,
+            label: 'Ready',
+            caption: 'Serve now',
+            onTap: onReady,
           ),
-          SizedBox(width: 10),
-          _QuickActionCard(
-            icon: Icons.soup_kitchen_outlined,
-            label: 'Send to kitchen',
-            caption: 'Start prep',
-          ),
-          SizedBox(width: 10),
+          const SizedBox(width: 10),
           _QuickActionCard(
             icon: Icons.point_of_sale_outlined,
-            label: 'Send to cashier',
-            caption: 'Close the check',
+            label: 'Needs cashier',
+            caption: 'Close checks',
+            onTap: onNeedsCashier,
+          ),
+          const SizedBox(width: 10),
+          _QuickActionCard(
+            icon: Icons.assignment_return_outlined,
+            label: 'Returned',
+            caption: 'Fix issues',
+            onTap: onReturned,
+          ),
+          const SizedBox(width: 10),
+          _QuickActionCard(
+            icon: Icons.swap_horiz,
+            label: 'Move table',
+            caption: canMoveTables ? 'Pick order' : 'Disabled by mode',
+            onTap: canMoveTables ? onMoveTable : null,
           ),
         ],
       ),
@@ -291,10 +471,13 @@ class _TableFilterStrip extends StatelessWidget {
 
   static const _filters = [
     ('all', 'All'),
+    ('my', 'My tables'),
+    ('unassigned', 'Unassigned'),
     ('busy', 'Busy'),
     ('available', 'Available'),
     ('kitchen', 'Kitchen'),
     ('ready', 'Ready'),
+    ('needs_cashier', 'Needs cashier'),
     ('served', 'Served'),
     ('cashier', 'Cashier'),
     ('returned', 'Returned'),
@@ -325,66 +508,98 @@ class _QuickActionCard extends StatelessWidget {
     required this.icon,
     required this.label,
     required this.caption,
+    required this.onTap,
   });
 
   final IconData icon;
   final String label;
   final String caption;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: 156,
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: const Color(0xFFE7DED2)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: const Color(0xFFFFE7D4),
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: Icon(icon, color: const Color(0xFFE86C2F)),
+    final enabled = onTap != null;
+
+    return Material(
+      color: enabled ? Colors.white : const Color(0xFFF3F4F6),
+      borderRadius: BorderRadius.circular(8),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(8),
+        child: Container(
+          width: 156,
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: const Color(0xFFE7DED2)),
           ),
-          const SizedBox(height: 12),
-          Text(
-            label,
-            style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                  fontWeight: FontWeight.w800,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: enabled
+                      ? const Color(0xFFFFE7D4)
+                      : const Color(0xFFE5E7EB),
+                  borderRadius: BorderRadius.circular(8),
                 ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            caption,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: const Color(0xFF6B7280),
+                child: Icon(
+                  icon,
+                  color: enabled
+                      ? const Color(0xFFE86C2F)
+                      : const Color(0xFF9CA3AF),
                 ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                label,
+                style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w800,
+                      color: enabled ? null : const Color(0xFF9CA3AF),
+                    ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                caption,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: enabled
+                          ? const Color(0xFF6B7280)
+                          : const Color(0xFF9CA3AF),
+                    ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
 }
 
 class _TableTile extends StatelessWidget {
-  const _TableTile({required this.table});
+  const _TableTile({
+    required this.table,
+    required this.showWaiterName,
+    required this.currentUserId,
+  });
 
   final TableOverview table;
+  final bool showWaiterName;
+  final int? currentUserId;
 
   @override
   Widget build(BuildContext context) {
     final currency = NumberFormat.currency(symbol: 'USD ');
     final statusColor = _tableStatusColor(table.serviceStatus);
+    final waiterLabel = table.waiterName == null
+        ? 'Unassigned'
+        : currentUserId != null && table.isOpenedBy(currentUserId!)
+            ? 'Mine / ${table.waiterName}'
+            : table.waiterName!;
 
     return InkWell(
-      borderRadius: BorderRadius.circular(26),
+      borderRadius: BorderRadius.circular(8),
       onTap: () => Navigator.of(context).push(
         MaterialPageRoute<void>(
           builder: (_) => WaiterOrderPage(table: table),
@@ -408,7 +623,7 @@ class _TableTile extends StatelessWidget {
                       color: table.isOccupied
                           ? statusColor.withValues(alpha: 0.18)
                           : const Color(0xFFE6F7F4),
-                      borderRadius: BorderRadius.circular(16),
+                      borderRadius: BorderRadius.circular(8),
                     ),
                     child: Icon(
                       Icons.table_restaurant_outlined,
@@ -461,6 +676,18 @@ class _TableTile extends StatelessWidget {
                               overflow: TextOverflow.ellipsis,
                               style: Theme.of(context).textTheme.bodySmall,
                             ),
+                            if (showWaiterName) ...[
+                              const SizedBox(height: 2),
+                              Text(
+                                waiterLabel,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .bodySmall
+                                    ?.copyWith(fontWeight: FontWeight.w800),
+                              ),
+                            ],
                           ],
                         )
                       : const Text('Tap to start dine-in'),
@@ -511,7 +738,7 @@ class _HeroMetric extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(8),
         border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
       ),
       child: Column(
@@ -552,7 +779,7 @@ class _MiniStatus extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Text(
         label,

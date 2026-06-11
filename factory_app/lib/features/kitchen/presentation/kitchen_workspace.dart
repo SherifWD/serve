@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/models/app_models.dart';
+import '../../../core/widgets/manual_refresh_header.dart';
 import '../../../core/widgets/state_views.dart';
+import '../../suite/data/realtime_service.dart';
 import '../../suite/data/suite_repository.dart';
 
 class KitchenWorkspacePage extends ConsumerStatefulWidget {
@@ -15,11 +17,31 @@ class KitchenWorkspacePage extends ConsumerStatefulWidget {
 
 class _KitchenWorkspacePageState extends ConsumerState<KitchenWorkspacePage> {
   late Future<List<KdsTicket>> _future;
+  DateTime? _lastUpdatedAt;
+  bool _hasUpdates = false;
+  RealtimeSubscription? _realtimeSubscription;
 
   @override
   void initState() {
     super.initState();
-    _future = ref.read(suiteRepositoryProvider).fetchKitchenBoard();
+    _future = _loadBoard();
+    _connectRealtime();
+  }
+
+  Future<void> _connectRealtime() async {
+    final subscription =
+        await ref.read(realtimeServiceProvider).subscribeToBranch(
+              surface: 'kitchen',
+              onEvent: () {
+                if (!mounted) return;
+                setState(() => _hasUpdates = true);
+              },
+            );
+    if (!mounted) {
+      await subscription?.close();
+      return;
+    }
+    _realtimeSubscription = subscription;
   }
 
   List<KdsTicket> _filterTickets(List<KdsTicket> tickets, String status) {
@@ -37,11 +59,28 @@ class _KitchenWorkspacePageState extends ConsumerState<KitchenWorkspacePage> {
   }
 
   Future<void> _refreshBoard() async {
-    final future = ref.read(suiteRepositoryProvider).fetchKitchenBoard();
+    final future = _loadBoard();
     setState(() {
       _future = future;
     });
     await _future;
+  }
+
+  Future<List<KdsTicket>> _loadBoard() async {
+    final tickets = await ref.read(suiteRepositoryProvider).fetchKitchenBoard();
+    if (mounted) {
+      setState(() {
+        _lastUpdatedAt = DateTime.now();
+        _hasUpdates = false;
+      });
+    }
+    return tickets;
+  }
+
+  @override
+  void dispose() {
+    _realtimeSubscription?.close();
+    super.dispose();
   }
 
   Future<void> _advanceTicket(KdsTicket ticket, String laneStatus) async {
@@ -301,6 +340,16 @@ class _KitchenWorkspacePageState extends ConsumerState<KitchenWorkspacePage> {
               padding: const EdgeInsets.all(16),
               physics: const AlwaysScrollableScrollPhysics(),
               children: [
+                ManualRefreshHeader(
+                  title: 'Kitchen board',
+                  subtitle: 'Refresh when the kitchen is ready to take updates.',
+                  icon: Icons.soup_kitchen_outlined,
+                  lastUpdatedAt: _lastUpdatedAt,
+                  hasUpdates: _hasUpdates,
+                  onRefresh: _refreshBoard,
+                  dark: true,
+                ),
+                const SizedBox(height: 16),
                 _KitchenHero(
                   queued: queuedTickets.length,
                   preparing: preparingTickets.length,

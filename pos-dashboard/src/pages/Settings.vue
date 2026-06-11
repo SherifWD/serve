@@ -209,13 +209,72 @@
                           <span v-if="branch.location">/ {{ branch.location }}</span>
                         </div>
                       </div>
-                      <v-chip
-                        :color="branch.cash_drawer.is_open ? 'success' : 'warning'"
-                        variant="tonal"
-                        size="small"
-                      >
-                        {{ branch.cash_drawer.is_open ? 'Drawer open' : 'Drawer closed' }}
-                      </v-chip>
+                      <div class="branch-chip-stack">
+                        <v-chip color="primary" variant="tonal" size="small">
+                          {{ branch.operation_profile.label }}
+                        </v-chip>
+                        <v-chip
+                          :color="branch.cash_drawer.is_open ? 'success' : 'warning'"
+                          variant="tonal"
+                          size="small"
+                        >
+                          {{ branch.cash_drawer.is_open ? 'Drawer open' : 'Drawer closed' }}
+                        </v-chip>
+                      </div>
+                    </div>
+
+                    <div class="setting-panel mb-4">
+                      <div class="panel-heading">
+                        <v-icon icon="mdi-store-settings-outline" color="primary" />
+                        <span>Business mode and workflow</span>
+                      </div>
+                      <v-row dense>
+                        <v-col cols="12" md="4">
+                          <v-select
+                            v-model="branch.operation_profile.mode"
+                            :items="operationModes"
+                            item-title="title"
+                            item-value="value"
+                            label="Operation preset"
+                            variant="outlined"
+                            density="compact"
+                            @update:model-value="applyOperationPreset(branch)"
+                          />
+                        </v-col>
+                        <v-col cols="12" md="4">
+                          <v-text-field
+                            v-model="branch.operation_profile.label"
+                            label="Staff-facing label"
+                            variant="outlined"
+                            density="compact"
+                          />
+                        </v-col>
+                        <v-col cols="12" md="4">
+                          <v-text-field
+                            v-model.number="branch.operation_profile.features.station_count"
+                            label="KDS stations"
+                            type="number"
+                            min="1"
+                            max="8"
+                            variant="outlined"
+                            density="compact"
+                            :disabled="!branch.operation_profile.features.multi_kds_stations"
+                          />
+                        </v-col>
+                      </v-row>
+                      <div class="feature-grid">
+                        <v-switch
+                          v-for="feature in operationFeatureOptions"
+                          :key="feature.key"
+                          v-model="branch.operation_profile.features[feature.key]"
+                          :label="feature.label"
+                          :hint="feature.hint"
+                          color="primary"
+                          density="compact"
+                          persistent-hint
+                          inset
+                        />
+                      </div>
                     </div>
 
                     <v-row>
@@ -462,6 +521,101 @@ const discoveryModes = [
   { title: 'Local only', value: 'local' },
   { title: 'Network only', value: 'network' },
 ]
+const operationPresets = {
+  drinks_only_cafe: {
+    label: 'Drinks-only cafe',
+    features: {
+      uses_tables: false,
+      cashier_first: true,
+      kds_enabled: false,
+      waiter_table_ownership: false,
+      show_waiter_names: false,
+      table_transfer: false,
+      split_bills: false,
+      multi_kds_stations: false,
+      station_count: 1,
+      customer_ordering: true,
+    },
+  },
+  cafe_with_barista: {
+    label: 'Cafe with barista',
+    features: {
+      uses_tables: false,
+      cashier_first: true,
+      kds_enabled: true,
+      waiter_table_ownership: false,
+      show_waiter_names: false,
+      table_transfer: false,
+      split_bills: true,
+      multi_kds_stations: false,
+      station_count: 1,
+      customer_ordering: true,
+    },
+  },
+  small_restaurant: {
+    label: 'Small restaurant',
+    features: {
+      uses_tables: true,
+      cashier_first: false,
+      kds_enabled: true,
+      waiter_table_ownership: true,
+      show_waiter_names: false,
+      table_transfer: true,
+      split_bills: true,
+      multi_kds_stations: false,
+      station_count: 1,
+      customer_ordering: true,
+    },
+  },
+  big_restaurant: {
+    label: 'Big restaurant',
+    features: {
+      uses_tables: true,
+      cashier_first: false,
+      kds_enabled: true,
+      waiter_table_ownership: true,
+      show_waiter_names: true,
+      table_transfer: true,
+      split_bills: true,
+      multi_kds_stations: true,
+      station_count: 3,
+      customer_ordering: true,
+    },
+  },
+  custom: {
+    label: 'Custom operation',
+    features: {
+      uses_tables: true,
+      cashier_first: false,
+      kds_enabled: true,
+      waiter_table_ownership: true,
+      show_waiter_names: true,
+      table_transfer: true,
+      split_bills: true,
+      multi_kds_stations: false,
+      station_count: 1,
+      customer_ordering: true,
+    },
+  },
+}
+const operationModes = [
+  { title: 'Drinks-only cafe / cashier first', value: 'drinks_only_cafe' },
+  { title: 'Cafe with barista KDS', value: 'cafe_with_barista' },
+  { title: 'Small restaurant', value: 'small_restaurant' },
+  { title: 'Big restaurant', value: 'big_restaurant' },
+  { title: 'Custom', value: 'custom' },
+]
+const operationFeatureOptions = [
+  { key: 'uses_tables', label: 'Use tables', hint: 'Show waiter table workflow.' },
+  { key: 'cashier_first', label: 'Cashier-first ordering', hint: 'Counter order starts at cashier.' },
+  { key: 'kds_enabled', label: 'Use kitchen display', hint: 'Send items to KDS/barista.' },
+  { key: 'waiter_table_ownership', label: 'Waiter owns opened tables', hint: 'Enable My tables and unassigned filters.' },
+  { key: 'show_waiter_names', label: 'Show waiter names', hint: 'Useful for large floors.' },
+  { key: 'table_transfer', label: 'Allow table moves', hint: 'Move active orders between tables.' },
+  { key: 'split_bills', label: 'Allow split bills', hint: 'Enable item/tender split workflows.' },
+  { key: 'multi_kds_stations', label: 'Multiple KDS stations', hint: 'Plan routing by bar/kitchen stations.' },
+  { key: 'customer_ordering', label: 'Customer ordering', hint: 'Allow pickup/QR style customer orders.' },
+]
 
 const scopeLabel = computed(() => {
   if (auth.user?.role === 'admin') return 'Platform admins can configure every Janova branch.'
@@ -554,6 +708,7 @@ function ensureSelection() {
 function normalizeBranch(branch) {
   return {
     ...branch,
+    operation_profile: normalizeOperationProfile(branch.operation_profile, branch.restaurant?.kind),
     cash_drawer: {
       opening_balance: 0,
       closing_balance: null,
@@ -573,6 +728,35 @@ function normalizeBranch(branch) {
       is_active: true,
       ...(branch.receipt_printer || {}),
     },
+  }
+}
+
+function defaultOperationMode(kind) {
+  return kind === 'cafe' ? 'cafe_with_barista' : 'small_restaurant'
+}
+
+function normalizeOperationProfile(profile = {}, kind = 'restaurant') {
+  const mode = operationPresets[profile.mode] ? profile.mode : defaultOperationMode(kind)
+  const preset = operationPresets[mode]
+
+  return {
+    mode,
+    label: profile.label || preset.label,
+    features: {
+      ...preset.features,
+      ...(profile.features || {}),
+      station_count: Math.min(8, Math.max(1, Number(profile.features?.station_count || preset.features.station_count || 1))),
+    },
+  }
+}
+
+function applyOperationPreset(branch) {
+  const mode = branch.operation_profile?.mode || defaultOperationMode(branch.restaurant?.kind)
+  const preset = operationPresets[mode] || operationPresets.custom
+  branch.operation_profile = {
+    mode,
+    label: preset.label,
+    features: { ...preset.features },
   }
 }
 
@@ -703,6 +887,22 @@ async function saveBranch(branch) {
   settingsSaved.value = ''
 
   const payload = {
+    operation_profile: {
+      mode: branch.operation_profile.mode,
+      label: cleanString(branch.operation_profile.label),
+      features: {
+        uses_tables: Boolean(branch.operation_profile.features.uses_tables),
+        cashier_first: Boolean(branch.operation_profile.features.cashier_first),
+        kds_enabled: Boolean(branch.operation_profile.features.kds_enabled),
+        waiter_table_ownership: Boolean(branch.operation_profile.features.waiter_table_ownership),
+        show_waiter_names: Boolean(branch.operation_profile.features.show_waiter_names),
+        table_transfer: Boolean(branch.operation_profile.features.table_transfer),
+        split_bills: Boolean(branch.operation_profile.features.split_bills),
+        multi_kds_stations: Boolean(branch.operation_profile.features.multi_kds_stations),
+        station_count: Math.min(8, Math.max(1, Number(branch.operation_profile.features.station_count || 1))),
+        customer_ordering: Boolean(branch.operation_profile.features.customer_ordering),
+      },
+    },
     cash_drawer: {
       opening_balance: Number(branch.cash_drawer.opening_balance || 0),
       closing_balance: branch.cash_drawer.closing_balance === '' || branch.cash_drawer.closing_balance === null
@@ -883,6 +1083,13 @@ onMounted(fetchBranchSettings)
   margin-bottom: 1rem;
 }
 
+.branch-chip-stack {
+  align-items: flex-end;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
 .branch-name {
   color: #f8fafc;
   font-size: 1.05rem;
@@ -901,6 +1108,12 @@ onMounted(fetchBranchSettings)
   border-radius: 8px;
   height: 100%;
   padding: 1rem;
+}
+
+.feature-grid {
+  display: grid;
+  gap: 0.25rem 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
 }
 
 .panel-heading {

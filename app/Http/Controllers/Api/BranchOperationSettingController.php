@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Branch;
 use App\Models\CashRegister;
 use App\Models\Device;
+use App\Support\BranchOperationProfile;
 use App\Support\HardwareValidation;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -68,6 +69,20 @@ class BranchOperationSettingController extends Controller
         }
 
         $data = $request->validate([
+            'operation_profile' => 'nullable|array',
+            'operation_profile.mode' => ['nullable', 'string', Rule::in(BranchOperationProfile::MODES)],
+            'operation_profile.label' => 'nullable|string|max:80',
+            'operation_profile.features' => 'nullable|array',
+            'operation_profile.features.uses_tables' => 'nullable|boolean',
+            'operation_profile.features.cashier_first' => 'nullable|boolean',
+            'operation_profile.features.kds_enabled' => 'nullable|boolean',
+            'operation_profile.features.waiter_table_ownership' => 'nullable|boolean',
+            'operation_profile.features.show_waiter_names' => 'nullable|boolean',
+            'operation_profile.features.table_transfer' => 'nullable|boolean',
+            'operation_profile.features.split_bills' => 'nullable|boolean',
+            'operation_profile.features.multi_kds_stations' => 'nullable|boolean',
+            'operation_profile.features.station_count' => 'nullable|integer|min:1|max:8',
+            'operation_profile.features.customer_ordering' => 'nullable|boolean',
             'cash_drawer' => 'required|array',
             'cash_drawer.opening_balance' => 'nullable|numeric|min:0|max:99999999.99',
             'cash_drawer.closing_balance' => 'nullable|numeric|min:0|max:99999999.99',
@@ -90,6 +105,21 @@ class BranchOperationSettingController extends Controller
         HardwareValidation::validatePrinterEndpoint($data['receipt_printer']['printer_endpoint'] ?? null, 'receipt_printer.printer_endpoint');
 
         DB::transaction(function () use ($branch, $data, $receiptPrinter, $cashDrawerDevice): void {
+            if (array_key_exists('operation_profile', $data)) {
+                $profile = $data['operation_profile'] ?? [];
+                $mode = $profile['mode'] ?? BranchOperationProfile::defaultModeForBranch($branch);
+                $features = array_merge(
+                    BranchOperationProfile::defaultsForMode($mode),
+                    $profile['features'] ?? [],
+                );
+
+                $branch->forceFill([
+                    'operation_mode' => $mode,
+                    'operation_label' => $profile['label'] ?? BranchOperationProfile::labelForMode($mode),
+                    'operation_features' => $features,
+                ])->save();
+            }
+
             $drawer = $data['cash_drawer'];
             CashRegister::query()->updateOrCreate(
                 ['branch_id' => $branch->id],
@@ -207,6 +237,7 @@ class BranchOperationSettingController extends Controller
                 'printer_endpoint' => $receiptPrinter?->printer_endpoint,
                 'is_active' => (bool) ($receiptPrinter?->is_active ?? true),
             ],
+            'operation_profile' => BranchOperationProfile::forBranch($branch),
         ];
     }
 

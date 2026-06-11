@@ -39,7 +39,7 @@ public function getActiveOrders(Request $request)
         ->whereNotNull('kds_sent_at')
         ->whereIn('status', ['pending','open','running','cashier']) // KDS shows active orders
         ->whereHas('items', $itemScope)         // only if it has visible items
-        ->with(['table','items' => $itemScope]) // but only those filtered items
+        ->with(['table','employee.user','items' => $itemScope]) // but only those filtered items
         ->orderBy('order_date', 'asc')
         ->get()
         ->map(function($o){
@@ -47,7 +47,7 @@ public function getActiveOrders(Request $request)
             return [
                 'id'         => $o->id,
                 'table_name' => optional($o->table)->name,
-                'waiter'     => optional($o->employee)->name ?? '', // if you have a relation
+                'waiter'     => optional($o->employee)->name ?: optional($o->employee?->user)->name ?: '',
                 'kds_sent_at'=> $o->kds_sent_at,
                 'created_at' => $o->created_at,
                 

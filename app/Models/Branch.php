@@ -11,6 +11,10 @@ class Branch extends Model
 
     protected $guarded = [];
 
+    protected $casts = [
+        'operation_features' => 'array',
+    ];
+
     public function restaurant()
     {
         return $this->belongsTo(Restaurant::class);

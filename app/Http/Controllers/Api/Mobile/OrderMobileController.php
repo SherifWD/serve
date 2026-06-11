@@ -9,6 +9,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Branch;
 use App\Models\CategoryAnswer;
 use App\Models\Customer;
+use App\Models\Employee;
 use App\Models\LoyaltyTransaction;
 use App\Models\Modifier;
 use App\Models\Order;
@@ -140,6 +141,23 @@ class OrderMobileController extends Controller
         });
     }
 
+    private function employeeIdForUser(Request $request, int $branchId): ?int
+    {
+        $user = $request->user();
+        if (! $user) {
+            return null;
+        }
+
+        return Employee::query()
+            ->where('user_id', $user->id)
+            ->where(function ($query) use ($branchId) {
+                $query->whereNull('branch_id')
+                    ->orWhere('branch_id', $branchId);
+            })
+            ->orderByRaw('branch_id = ? desc', [$branchId])
+            ->value('id');
+    }
+
     private function broadcastOrderChange(Order $order, string $event = 'order.updated'): void
     {
         event(new BranchOrderUpdated($order->fresh([
@@ -211,6 +229,7 @@ class OrderMobileController extends Controller
             'branch.restaurant',
             'table',
             'customer',
+            'employee.user',
             'items.product',
             'items.modifiers.modifier',
             'payments',
@@ -243,7 +262,7 @@ class OrderMobileController extends Controller
             $order->table->update(['status' => 'cashier']);
         }
 
-        event(new OrderReadyForCashier($order->fresh(['table', 'customer', 'items.product', 'payments'])));
+        event(new OrderReadyForCashier($order->fresh(['table', 'customer', 'employee.user', 'items.product', 'payments'])));
         $this->broadcastOrderChange($order, 'order.sent_to_cashier');
 
         return response()->json(['ok' => true]);
@@ -279,7 +298,7 @@ class OrderMobileController extends Controller
                     $order->table->update(['status' => 'cashier']);
                 }
                 $ok[] = $id;
-                event(new OrderReadyForCashier($order->fresh(['table', 'customer', 'items.product', 'payments'])));
+                event(new OrderReadyForCashier($order->fresh(['table', 'customer', 'employee.user', 'items.product', 'payments'])));
                 $this->broadcastOrderChange($order, 'order.sent_to_cashier');
             } else {
                 $failed[] = $id;
@@ -296,6 +315,7 @@ class OrderMobileController extends Controller
                 'branch.restaurant',
                 'table',
                 'customer',
+                'employee.user',
                 'items.product',
                 'items.answers.choice.question',
                 'items.modifiers.modifier',
@@ -357,6 +377,7 @@ class OrderMobileController extends Controller
                 'branch_id' => $branch->id,
                 'table_id' => $table?->id,
                 'customer_id' => $customer?->id,
+                'employee_id' => $this->employeeIdForUser($request, (int) $branch->id),
                 'order_type' => $orderType,
                 'status' => 'pending',
                 'subtotal' => 0,
@@ -530,7 +551,7 @@ class OrderMobileController extends Controller
 
             DB::commit();
 
-            $order->load(['branch.restaurant', 'table', 'customer', 'items.product', 'items.answers.choice.question', 'items.modifiers.modifier', 'payments']); // eager
+            $order->load(['branch.restaurant', 'table', 'customer', 'employee.user', 'items.product', 'items.answers.choice.question', 'items.modifiers.modifier', 'payments']); // eager
             $this->appendItemRuntimeState($order);
             $this->broadcastOrderChange($order, $openOrder ? 'order.updated' : 'order.created');
 
@@ -587,7 +608,7 @@ class OrderMobileController extends Controller
         }
 
         if ($updated > 0) {
-            event(new OrderSentToKDS($order->fresh(['table', 'customer', 'items.product', 'items.modifiers.modifier'])));
+            event(new OrderSentToKDS($order->fresh(['table', 'customer', 'employee.user', 'items.product', 'items.modifiers.modifier'])));
             $this->broadcastOrderChange($order, 'order.sent_to_kds');
         }
 

@@ -123,11 +123,21 @@ class SuiteRepository {
   }
 
   Future<List<TableOverview>> fetchTables() async {
+    return (await fetchTableFloor()).tables;
+  }
+
+  Future<TableFloorBundle> fetchTableFloor() async {
     final response = await _dio.get('/mobile/tables');
     _throwIfNeeded(response);
-    return _list(response.data, 'data')
-        .map(TableOverview.fromJson)
-        .toList(growable: false);
+    final payload = _map(response.data);
+    return TableFloorBundle(
+      tables: _list(response.data, 'data')
+          .map(TableOverview.fromJson)
+          .toList(growable: false),
+      operationProfile: OperationProfile.fromJson(
+        _map(_map(payload['meta'])['operation_profile']),
+      ),
+    );
   }
 
   Future<TableDetails> fetchTableDetails(int tableId) async {
