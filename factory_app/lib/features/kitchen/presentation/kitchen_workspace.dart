@@ -1,11 +1,8 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/models/app_models.dart';
 import '../../../core/widgets/state_views.dart';
-import '../../suite/data/realtime_service.dart';
 import '../../suite/data/suite_repository.dart';
 
 class KitchenWorkspacePage extends ConsumerStatefulWidget {
@@ -18,35 +15,11 @@ class KitchenWorkspacePage extends ConsumerStatefulWidget {
 
 class _KitchenWorkspacePageState extends ConsumerState<KitchenWorkspacePage> {
   late Future<List<KdsTicket>> _future;
-  Timer? _liveRefreshTimer;
-  RealtimeSubscription? _realtimeSubscription;
 
   @override
   void initState() {
     super.initState();
     _future = ref.read(suiteRepositoryProvider).fetchKitchenBoard();
-    _connectRealtime();
-    _liveRefreshTimer = Timer.periodic(
-      const Duration(seconds: 3),
-      (_) {
-        if (mounted) {
-          _refreshBoard(background: true);
-        }
-      },
-    );
-  }
-
-  Future<void> _connectRealtime() async {
-    final subscription =
-        await ref.read(realtimeServiceProvider).subscribeToBranch(
-              surface: 'kitchen',
-              onEvent: () => _refreshBoard(background: true),
-            );
-    if (!mounted) {
-      await subscription?.close();
-      return;
-    }
-    _realtimeSubscription = subscription;
   }
 
   List<KdsTicket> _filterTickets(List<KdsTicket> tickets, String status) {
@@ -63,32 +36,12 @@ class _KitchenWorkspacePageState extends ConsumerState<KitchenWorkspacePage> {
     );
   }
 
-  Future<void> _refreshBoard({bool background = false}) async {
+  Future<void> _refreshBoard() async {
     final future = ref.read(suiteRepositoryProvider).fetchKitchenBoard();
-    if (background) {
-      try {
-        final tickets = await future;
-        if (!mounted) return;
-        setState(() {
-          _future = Future.value(tickets);
-        });
-      } catch (_) {
-        // Keep the visible KDS board during temporary LAN/server outages.
-      }
-      return;
-    }
-
     setState(() {
       _future = future;
     });
     await _future;
-  }
-
-  @override
-  void dispose() {
-    _realtimeSubscription?.close();
-    _liveRefreshTimer?.cancel();
-    super.dispose();
   }
 
   Future<void> _advanceTicket(KdsTicket ticket, String laneStatus) async {

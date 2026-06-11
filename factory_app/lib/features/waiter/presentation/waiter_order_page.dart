@@ -702,6 +702,12 @@ class _OrderItemsCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final historicalItems =
+        items.where(_isHistoricalOrderItem).toList(growable: false);
+    final activeItems = items
+        .where((item) => !_isHistoricalOrderItem(item))
+        .toList(growable: false);
+
     if (items.isEmpty) {
       return const Card(
         child: SizedBox(
@@ -721,122 +727,251 @@ class _OrderItemsCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'Order items',
-              style: Theme.of(context)
-                  .textTheme
-                  .titleLarge
-                  ?.copyWith(fontWeight: FontWeight.w800),
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final title = Text(
+                  'Order items',
+                  style: Theme.of(context)
+                      .textTheme
+                      .titleLarge
+                      ?.copyWith(fontWeight: FontWeight.w800),
+                );
+                final historyButton = historicalItems.isEmpty
+                    ? null
+                    : OutlinedButton.icon(
+                        onPressed: () =>
+                            _showHistoricalItems(context, historicalItems),
+                        icon: const Icon(Icons.history_outlined),
+                        label: Text(
+                          'Returned/canceled (${historicalItems.length})',
+                        ),
+                      );
+
+                if (historyButton == null) return title;
+                if (constraints.maxWidth < 430) {
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      title,
+                      const SizedBox(height: 10),
+                      historyButton,
+                    ],
+                  );
+                }
+
+                return Row(
+                  children: [
+                    Expanded(child: title),
+                    historyButton,
+                  ],
+                );
+              },
             ),
             const SizedBox(height: 14),
-            for (final item in items)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 14),
-                child: Container(
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF8FAFC),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Row(
-                    children: [
-                      if (item.imageUrl != null) ...[
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(18),
-                          child: SizedBox(
-                            width: 72,
-                            height: 72,
-                            child: BrandedImage(
-                              label: item.name,
-                              imageUrl: item.imageUrl,
-                              kind: BrandedImageKind.dish,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                      ],
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              '${item.quantity}x ${item.name}',
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .titleMedium
-                                  ?.copyWith(fontWeight: FontWeight.w700),
-                            ),
-                            if (item.itemNote != null &&
-                                item.itemNote!.isNotEmpty) ...[
-                              const SizedBox(height: 4),
-                              Text(item.itemNote!),
-                            ],
-                            if (item.modifiers.isNotEmpty) ...[
-                              const SizedBox(height: 6),
-                              Wrap(
-                                spacing: 8,
-                                runSpacing: 8,
-                                children: [
-                                  for (final modifier in item.modifiers)
-                                    Chip(label: Text(modifier)),
-                                ],
-                              ),
-                            ],
-                            const SizedBox(height: 8),
-                            Wrap(
-                              spacing: 8,
-                              runSpacing: 8,
-                              children: [
-                                _OrderLineStatusChip(
-                                  label: item.kitchenStatusLabel,
-                                  color: _kitchenStatusColor(
-                                      item.kdsStatus ?? item.status),
-                                ),
-                                _OrderLineStatusChip(
-                                  label:
-                                      'Payment ${(item.paymentStatus ?? 'unpaid').toUpperCase()}',
-                                  color: item.isPaid
-                                      ? const Color(0xFF059669)
-                                      : const Color(0xFF6B7280),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                      Column(
-                        children: [
-                          IconButton(
-                            tooltip: 'Reduce quantity',
-                            onPressed: item.canReduceQuantity
-                                ? () => onDecrease(item)
-                                : null,
-                            icon: const Icon(Icons.remove_circle_outline),
-                          ),
-                          IconButton(
-                            tooltip: 'Refund item',
-                            onPressed:
-                                item.canRefund ? () => onRefund(item) : null,
-                            icon: const Icon(Icons.restart_alt_outlined),
-                          ),
-                          IconButton(
-                            tooltip: 'Return to kitchen',
-                            onPressed: item.canReturnToKitchen
-                                ? () => onReturnToKitchen(item)
-                                : null,
-                            icon: const Icon(Icons.soup_kitchen_outlined),
-                          ),
-                        ],
-                      ),
-                    ],
+            if (activeItems.isEmpty)
+              const SizedBox(
+                height: 220,
+                child: EmptyView(
+                  title: 'No active items',
+                  description:
+                      'Returned or canceled items are available from the history button.',
+                  icon: Icons.receipt_long_outlined,
+                ),
+              )
+            else
+              for (final item in activeItems)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 14),
+                  child: _OrderItemTile(
+                    item: item,
+                    onDecrease: onDecrease,
+                    onRefund: onRefund,
+                    onReturnToKitchen: onReturnToKitchen,
                   ),
                 ),
-              ),
           ],
         ),
       ),
     );
   }
+
+  void _showHistoricalItems(
+    BuildContext context,
+    List<OrderItemLine> historicalItems,
+  ) {
+    showDialog<void>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Returned or canceled items'),
+          content: ConstrainedBox(
+            constraints: const BoxConstraints(
+              maxWidth: 560,
+              maxHeight: 520,
+            ),
+            child: ListView.separated(
+              shrinkWrap: true,
+              itemCount: historicalItems.length,
+              separatorBuilder: (_, __) => const SizedBox(height: 12),
+              itemBuilder: (context, index) {
+                return _OrderItemTile(
+                  item: historicalItems[index],
+                  onDecrease: onDecrease,
+                  onRefund: onRefund,
+                  onReturnToKitchen: onReturnToKitchen,
+                  closeBeforeAction: true,
+                );
+              },
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Close'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _OrderItemTile extends StatelessWidget {
+  const _OrderItemTile({
+    required this.item,
+    required this.onDecrease,
+    required this.onRefund,
+    required this.onReturnToKitchen,
+    this.closeBeforeAction = false,
+  });
+
+  final OrderItemLine item;
+  final ValueChanged<OrderItemLine> onDecrease;
+  final ValueChanged<OrderItemLine> onRefund;
+  final ValueChanged<OrderItemLine> onReturnToKitchen;
+  final bool closeBeforeAction;
+
+  void _runAction(
+    BuildContext context,
+    ValueChanged<OrderItemLine> action,
+  ) {
+    if (closeBeforeAction) {
+      Navigator.of(context).pop();
+    }
+    action(item);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        children: [
+          if (item.imageUrl != null) ...[
+            ClipRRect(
+              borderRadius: BorderRadius.circular(18),
+              child: SizedBox(
+                width: 72,
+                height: 72,
+                child: BrandedImage(
+                  label: item.name,
+                  imageUrl: item.imageUrl,
+                  kind: BrandedImageKind.dish,
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+          ],
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '${item.quantity}x ${item.name}',
+                  style: Theme.of(context)
+                      .textTheme
+                      .titleMedium
+                      ?.copyWith(fontWeight: FontWeight.w700),
+                ),
+                if (item.itemNote != null && item.itemNote!.isNotEmpty) ...[
+                  const SizedBox(height: 4),
+                  Text(item.itemNote!),
+                ],
+                if (item.changeNote != null &&
+                    item.changeNote!.isNotEmpty) ...[
+                  const SizedBox(height: 4),
+                  Text(item.changeNote!),
+                ],
+                if (item.modifiers.isNotEmpty) ...[
+                  const SizedBox(height: 6),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      for (final modifier in item.modifiers)
+                        Chip(label: Text(modifier)),
+                    ],
+                  ),
+                ],
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    _OrderLineStatusChip(
+                      label: item.kitchenStatusLabel,
+                      color:
+                          _kitchenStatusColor(item.kdsStatus ?? item.status),
+                    ),
+                    _OrderLineStatusChip(
+                      label:
+                          'Payment ${(item.paymentStatus ?? 'unpaid').toUpperCase()}',
+                      color: item.isPaid
+                          ? const Color(0xFF059669)
+                          : const Color(0xFF6B7280),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          Column(
+            children: [
+              IconButton(
+                tooltip: 'Reduce quantity',
+                onPressed: item.canReduceQuantity
+                    ? () => _runAction(context, onDecrease)
+                    : null,
+                icon: const Icon(Icons.remove_circle_outline),
+              ),
+              IconButton(
+                tooltip: 'Refund item',
+                onPressed:
+                    item.canRefund ? () => _runAction(context, onRefund) : null,
+                icon: const Icon(Icons.restart_alt_outlined),
+              ),
+              IconButton(
+                tooltip: 'Return to kitchen',
+                onPressed: item.canReturnToKitchen
+                    ? () => _runAction(context, onReturnToKitchen)
+                    : null,
+                icon: const Icon(Icons.soup_kitchen_outlined),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+bool _isHistoricalOrderItem(OrderItemLine item) {
+  final kitchenStatus = item.kdsStatus ?? item.status;
+  return item.isVoided || kitchenStatus == 'returned';
 }
 
 class _OrderLineStatusChip extends StatelessWidget {

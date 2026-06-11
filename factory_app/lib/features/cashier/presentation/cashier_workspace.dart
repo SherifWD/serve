@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -8,7 +6,6 @@ import 'package:printing/printing.dart';
 import '../../../core/models/app_models.dart';
 import '../../../core/widgets/state_views.dart';
 import '../../auth/providers/auth_providers.dart';
-import '../../suite/data/realtime_service.dart';
 import '../../suite/data/suite_repository.dart';
 
 class CashierWorkspacePage extends ConsumerStatefulWidget {
@@ -21,8 +18,6 @@ class CashierWorkspacePage extends ConsumerStatefulWidget {
 
 class _CashierWorkspacePageState extends ConsumerState<CashierWorkspacePage> {
   late Future<List<StaffOrderSnapshot>> _future;
-  Timer? _liveRefreshTimer;
-  RealtimeSubscription? _realtimeSubscription;
   StaffOrderSnapshot? _selectedOrder;
   List<_PaymentDraft> _drafts = [];
   int _selectedDraftIndex = 0;
@@ -32,45 +27,10 @@ class _CashierWorkspacePageState extends ConsumerState<CashierWorkspacePage> {
   void initState() {
     super.initState();
     _future = _loadOrders();
-    _connectRealtime();
-    _liveRefreshTimer = Timer.periodic(
-      const Duration(seconds: 4),
-      (_) {
-        if (mounted) {
-          _refreshOrders(background: true);
-        }
-      },
-    );
   }
 
-  Future<void> _connectRealtime() async {
-    final subscription =
-        await ref.read(realtimeServiceProvider).subscribeToBranch(
-              surface: 'cashier',
-              onEvent: () => _refreshOrders(background: true),
-            );
-    if (!mounted) {
-      await subscription?.close();
-      return;
-    }
-    _realtimeSubscription = subscription;
-  }
-
-  Future<void> _refreshOrders({bool background = false}) async {
+  Future<void> _refreshOrders() async {
     final future = _loadOrders();
-    if (background) {
-      try {
-        final orders = await future;
-        if (!mounted) return;
-        setState(() {
-          _future = Future.value(orders);
-        });
-      } catch (_) {
-        // Keep the current payment workspace during short LAN/server outages.
-      }
-      return;
-    }
-
     setState(() {
       _future = future;
     });
@@ -165,8 +125,6 @@ class _CashierWorkspacePageState extends ConsumerState<CashierWorkspacePage> {
 
   @override
   void dispose() {
-    _realtimeSubscription?.close();
-    _liveRefreshTimer?.cancel();
     for (final draft in _drafts) {
       draft.amountController.dispose();
     }
