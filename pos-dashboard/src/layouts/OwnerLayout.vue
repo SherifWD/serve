@@ -171,7 +171,7 @@ const navSections = [
     title: 'Settings',
     items: [
       { to: '/marketing-inquiries', title: 'Marketing Leads', icon: 'mdi-bullhorn-outline', permission: 'settings.view' },
-      { to: '/settings', title: 'Settings', icon: 'mdi-cog-outline', permission: 'settings.view' },
+      { to: '/settings', title: 'Branch Setup', icon: 'mdi-store-cog-outline', permission: 'settings.view' },
     ],
   },
 ]

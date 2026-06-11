@@ -103,6 +103,14 @@
           <template #item.actions="{ item }">
             <div class="table-actions">
               <v-btn
+                v-if="auth.can('settings.view')"
+                size="small"
+                icon="mdi-store-cog-outline"
+                variant="text"
+                color="primary"
+                @click="openBranchSetup(item)"
+              />
+              <v-btn
                 v-if="auth.can('branches.manage')"
                 size="small"
                 icon="mdi-pencil-outline"
@@ -175,6 +183,7 @@
 
 <script setup>
 import { computed, onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import axios from 'axios'
 import OwnerLayout from '@/layouts/OwnerLayout.vue'
 import { API_BASE_URL } from '../lib/api'
@@ -182,6 +191,7 @@ import { missingField, showValidationAlert } from '../lib/validationAlert'
 import { useAuthStore } from '../store/auth'
 
 const auth = useAuthStore()
+const router = useRouter()
 
 const restaurants = ref([])
 const branches = ref([])
@@ -319,6 +329,16 @@ function branchHours(branch) {
   const closes = timeForInput(branch.closes_at)
   if (!opens && !closes) return 'Not set'
   return `${opens || 'Not set'} - ${closes || 'Not set'}`
+}
+
+function openBranchSetup(branch) {
+  router.push({
+    path: '/settings',
+    query: {
+      restaurant_id: branch.restaurant_id ?? branch.restaurant?.id,
+      branch_id: branch.id,
+    },
+  })
 }
 
 async function removeBranch(id) {

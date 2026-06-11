@@ -4,7 +4,7 @@
       <div class="settings-header mb-5">
         <div>
           <div class="eyebrow">Settings</div>
-          <h1>Branch Operations</h1>
+          <h1>Branch Setup</h1>
           <p>{{ scopeLabel }}</p>
         </div>
         <div class="header-actions">
@@ -50,7 +50,7 @@
           <v-card color="card" elevation="2" class="settings-card rounded-lg">
             <v-card-title class="d-flex align-center ga-3">
               <v-icon icon="mdi-store-cog-outline" color="primary" />
-              <span class="settings-title">Cash Drawers and Receipt Printers</span>
+              <span class="settings-title">Branch Type, KDS, Drawer, and Printer</span>
             </v-card-title>
             <v-progress-linear
               v-if="loadingBranchSettings"
@@ -67,7 +67,7 @@
                 <div class="target-panel mb-4">
                   <div class="panel-heading">
                     <v-icon icon="mdi-tune-variant" color="primary" />
-                    <span>Control target</span>
+                    <span>Venue and branch</span>
                   </div>
                   <v-row dense>
                     <v-col v-if="showRestaurantSelector" cols="12" md="6">
@@ -487,11 +487,13 @@
 <script setup>
 import axios from 'axios'
 import { computed, onMounted, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import OwnerLayout from '@/layouts/OwnerLayout.vue'
 import { API_BASE_URL } from '../lib/api'
 import { useAuthStore } from '../store/auth'
 
 const auth = useAuthStore()
+const route = useRoute()
 const apiBaseUrl = API_BASE_URL
 const branchSettings = ref([])
 const loadingBranchSettings = ref(false)
@@ -618,9 +620,9 @@ const operationFeatureOptions = [
 ]
 
 const scopeLabel = computed(() => {
-  if (auth.user?.role === 'admin') return 'Platform admins can configure every Janova branch.'
-  if (auth.user?.branch_id) return 'This account can configure its assigned branch.'
-  return 'Owners can configure the branches attached to their restaurant.'
+  if (auth.user?.role === 'admin') return 'Configure each branch workflow, KDS, cash drawer, and receipt printer.'
+  if (auth.user?.branch_id) return 'Configure this branch workflow, cash drawer, and receipt printer.'
+  return 'Configure the branches attached to this restaurant.'
 })
 
 const restaurantOptions = computed(() => {
@@ -685,11 +687,36 @@ function restaurantKey(branch) {
     : 'unassigned'
 }
 
-function ensureSelection() {
+function queryValue(value) {
+  return Array.isArray(value) ? value[0] : value
+}
+
+function ensureSelection(preferQuery = false) {
   if (!branchSettings.value.length) {
     selectedRestaurantKey.value = null
     selectedBranchId.value = null
     return
+  }
+
+  if (preferQuery) {
+    const requestedBranchId = queryValue(route.query.branch_id)
+    const requestedBranch = requestedBranchId
+      ? branchSettings.value.find(branch => Number(branch.id) === Number(requestedBranchId))
+      : null
+
+    if (requestedBranch) {
+      selectedRestaurantKey.value = restaurantKey(requestedBranch)
+      selectedBranchId.value = requestedBranch.id
+      return
+    }
+
+    const requestedRestaurantKey = queryValue(route.query.restaurant_id)
+    if (
+      requestedRestaurantKey
+      && restaurantOptions.value.some(option => option.value === String(requestedRestaurantKey))
+    ) {
+      selectedRestaurantKey.value = String(requestedRestaurantKey)
+    }
   }
 
   if (!restaurantOptions.value.some(option => option.value === selectedRestaurantKey.value)) {
@@ -873,7 +900,7 @@ async function fetchBranchSettings() {
       headers: authHeaders(),
     })
     branchSettings.value = (data.data || []).map(normalizeBranch)
-    ensureSelection()
+    ensureSelection(true)
   } catch (error) {
     settingsError.value = errorMessage(error)
   } finally {
@@ -950,6 +977,11 @@ watch(selectedRestaurantKey, () => {
 })
 
 watch(selectedBranchId, clearDiscoveryResults)
+
+watch(
+  () => [route.query.restaurant_id, route.query.branch_id],
+  () => ensureSelection(true),
+)
 
 onMounted(fetchBranchSettings)
 </script>

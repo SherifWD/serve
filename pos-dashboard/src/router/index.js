@@ -125,7 +125,7 @@ const routes = [
     path: '/settings',
     name: 'settings',
     component: Settings,
-    meta: { ...authenticatedMeta, title: 'Settings', permission: 'settings.view' },
+    meta: { ...authenticatedMeta, title: 'Branch Setup', permission: 'settings.view' },
   },
   {
     path: '/marketing-inquiries',
