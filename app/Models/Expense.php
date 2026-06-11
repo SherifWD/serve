@@ -7,9 +7,18 @@ use Illuminate\Database\Eloquent\Model;
 
 class Expense extends Model
 {
-    use HasFactory; protected $guarded =[];
-    public function branch() {
-    return $this->belongsTo(Branch::class);
-}
+    use HasFactory;
+
+    protected $guarded = [];
+
+    protected $casts = [
+        'amount' => 'float',
+        'expense_date' => 'date',
+    ];
+
+    public function branch()
+    {
+        return $this->belongsTo(Branch::class);
+    }
 
 }

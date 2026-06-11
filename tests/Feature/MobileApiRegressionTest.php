@@ -14,6 +14,7 @@ use App\Models\CustomerOtpCode;
 use App\Models\Device;
 use App\Models\Employee;
 use App\Models\EtaReceiptSubmission;
+use App\Models\Expense;
 use App\Models\FiscalProfile;
 use App\Models\Ingredient;
 use App\Models\IngredientBranch;
@@ -954,6 +955,117 @@ class MobileApiRegressionTest extends TestCase
             collect($response->json('branch_performance'))
                 ->every(fn ($row) => (int) $row['id'] === (int) $branch->id),
         );
+    }
+
+    public function test_owner_summary_includes_expenses_net_and_employee_revenue(): void
+    {
+        $branch = Branch::query()
+            ->whereHas('employees')
+            ->firstOrFail();
+        $employee = Employee::query()
+            ->where('branch_id', $branch->id)
+            ->firstOrFail();
+
+        $order = Order::query()->create([
+            'branch_id' => $branch->id,
+            'employee_id' => $employee->id,
+            'order_type' => 'takeaway',
+            'status' => 'paid',
+            'payment_status' => 'paid',
+            'subtotal' => 321.50,
+            'tax' => 0,
+            'discount' => 0,
+            'total' => 321.50,
+            'order_date' => Carbon::today(),
+        ]);
+
+        $expense = Expense::query()->create([
+            'branch_id' => $branch->id,
+            'category' => 'Regression Finance',
+            'amount' => 45.75,
+            'description' => 'Dashboard finance regression',
+            'expense_date' => Carbon::today(),
+        ]);
+
+        Sanctum::actingAs(User::query()->where('email', 'admin@restaurant-suite.com')->firstOrFail());
+
+        $response = $this->getJson("/api/dashboard/summary?preset=month&branch_id={$branch->id}")
+            ->assertOk()
+            ->assertJsonStructure([
+                'total_expenses',
+                'net_revenue',
+                'expense_by_category',
+                'recent_expenses',
+                'employee_revenue',
+            ]);
+
+        $this->assertGreaterThanOrEqual(45.75, (float) $response->json('total_expenses'));
+        $this->assertEqualsWithDelta(
+            (float) $response->json('total_sales') - (float) $response->json('total_expenses'),
+            (float) $response->json('net_revenue'),
+            0.01,
+        );
+
+        $expenseCategory = collect($response->json('expense_by_category'))
+            ->firstWhere('category', 'Regression Finance');
+        $this->assertNotNull($expenseCategory);
+        $this->assertEqualsWithDelta(45.75, (float) $expenseCategory['total'], 0.01);
+
+        $this->assertTrue(
+            collect($response->json('recent_expenses'))
+                ->contains(fn ($row) => (int) $row['id'] === (int) $expense->id),
+        );
+
+        $employeeRevenue = collect($response->json('employee_revenue'))
+            ->first(fn ($row) => (int) $row['employee_id'] === (int) $employee->id
+                && (int) $row['branch_id'] === (int) $branch->id);
+        $this->assertNotNull($employeeRevenue);
+        $this->assertGreaterThanOrEqual((float) $order->total, (float) $employeeRevenue['revenue']);
+    }
+
+    public function test_owner_can_only_create_expenses_inside_owned_restaurant(): void
+    {
+        $owner = User::query()
+            ->where('role', 'owner')
+            ->whereNotNull('restaurant_id')
+            ->firstOrFail();
+        $ownedBranch = Branch::query()
+            ->where('restaurant_id', $owner->restaurant_id)
+            ->firstOrFail();
+        $foreignBranch = Branch::query()
+            ->where('restaurant_id', '!=', $owner->restaurant_id)
+            ->first();
+
+        if (! $foreignBranch) {
+            $foreignRestaurant = Restaurant::query()->create([
+                'name' => 'Foreign Finance Regression',
+                'kind' => 'restaurant',
+                'currency_code' => 'USD',
+            ]);
+            $foreignBranch = Branch::query()->create([
+                'restaurant_id' => $foreignRestaurant->id,
+                'name' => 'Foreign Finance Branch',
+                'location' => 'Regression',
+            ]);
+        }
+
+        Sanctum::actingAs($owner);
+
+        $this->postJson('/api/expenses', [
+            'branch_id' => $foreignBranch->id,
+            'category' => 'Operations',
+            'amount' => 10,
+            'expense_date' => Carbon::today()->toDateString(),
+        ])->assertForbidden();
+
+        $this->postJson('/api/expenses', [
+            'branch_id' => $ownedBranch->id,
+            'category' => 'Operations',
+            'amount' => 10,
+            'expense_date' => Carbon::today()->toDateString(),
+            'description' => 'Owner scoped expense',
+        ])->assertCreated()
+            ->assertJsonPath('data.branch_id', $ownedBranch->id);
     }
 
     public function test_owner_summary_includes_branch_drilldown_and_active_staff(): void

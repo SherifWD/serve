@@ -220,6 +220,16 @@
                         >
                           {{ branch.cash_drawer.is_open ? 'Drawer open' : 'Drawer closed' }}
                         </v-chip>
+                        <v-btn
+                          color="primary"
+                          size="small"
+                          variant="flat"
+                          prepend-icon="mdi-content-save"
+                          :loading="savingBranchId === branch.id"
+                          @click="saveBranch(branch)"
+                        >
+                          Save setup
+                        </v-btn>
                       </div>
                     </div>
 
@@ -1138,7 +1148,6 @@ onMounted(fetchBranchSettings)
   background: rgba(255, 255, 255, 0.035);
   border: 1px solid rgba(255, 255, 255, 0.07);
   border-radius: 8px;
-  height: 100%;
   padding: 1rem;
 }
 

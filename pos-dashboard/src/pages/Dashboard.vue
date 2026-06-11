@@ -2,7 +2,7 @@
   <OwnerLayout>
     <v-container class="rs-page py-6" fluid>
       <v-row class="mb-4" align="stretch">
-        <v-col cols="12" lg="8">
+        <v-col cols="12" lg="6">
           <div class="rs-panel hero-panel">
             <div>
               <div class="page-kicker">
@@ -54,9 +54,17 @@
 
         <v-col cols="12" md="6" lg="2">
           <div class="rs-panel metric-card">
-            <div class="metric-label">Orders</div>
-            <div class="metric-value">{{ summary.orders_count || 0 }}</div>
-            <div class="metric-note">{{ formatCompactCurrency(summary.avg_order_value) }} average ticket</div>
+            <div class="metric-label">Expenses</div>
+            <div class="metric-value">{{ formatCompactCurrency(summary.total_expenses) }}</div>
+            <div class="metric-note">Logged branch costs</div>
+          </div>
+        </v-col>
+
+        <v-col cols="12" md="6" lg="2">
+          <div class="rs-panel metric-card">
+            <div class="metric-label">Net</div>
+            <div class="metric-value">{{ formatCompactCurrency(summary.net_revenue) }}</div>
+            <div class="metric-note">Revenue minus expenses</div>
           </div>
         </v-col>
       </v-row>
@@ -99,6 +107,140 @@
       </div>
 
       <v-row class="mb-4">
+        <v-col cols="12" lg="5">
+          <div class="rs-panel section-panel">
+            <div class="panel-header">
+              <div>
+                <div class="panel-title">Add Expense</div>
+                <div class="panel-subtitle">Record branch costs inside the current admin or owner scope.</div>
+              </div>
+            </div>
+
+            <v-alert
+              v-if="expenseError"
+              type="error"
+              variant="tonal"
+              density="compact"
+              class="mb-3"
+              closable
+              @click:close="expenseError = ''"
+            >
+              {{ expenseError }}
+            </v-alert>
+
+            <v-form class="expense-form" @submit.prevent="saveExpense">
+              <v-select
+                v-model="expenseForm.branch_id"
+                :items="branches"
+                item-title="name"
+                item-value="id"
+                label="Branch"
+                variant="outlined"
+                density="comfortable"
+                no-data-text="No branch available in this scope"
+              />
+              <v-row dense>
+                <v-col cols="12" sm="6">
+                  <v-select
+                    v-model="expenseForm.category"
+                    :items="expenseCategoryOptions"
+                    label="Category"
+                    variant="outlined"
+                    density="comfortable"
+                  />
+                </v-col>
+                <v-col cols="12" sm="6">
+                  <v-text-field
+                    v-model.number="expenseForm.amount"
+                    label="Amount"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    variant="outlined"
+                    density="comfortable"
+                  />
+                </v-col>
+              </v-row>
+              <v-text-field
+                v-model="expenseForm.expense_date"
+                label="Expense date"
+                type="date"
+                variant="outlined"
+                density="comfortable"
+              />
+              <v-textarea
+                v-model="expenseForm.description"
+                label="Description"
+                rows="2"
+                auto-grow
+                variant="outlined"
+                density="comfortable"
+              />
+              <div class="expense-actions">
+                <v-btn
+                  color="primary"
+                  prepend-icon="mdi-cash-minus"
+                  :loading="savingExpense"
+                  type="submit"
+                >
+                  Save expense
+                </v-btn>
+              </div>
+            </v-form>
+          </div>
+        </v-col>
+
+        <v-col cols="12" lg="3">
+          <div class="rs-panel section-panel">
+            <div class="panel-header">
+              <div>
+                <div class="panel-title">Expense Categories</div>
+                <div class="panel-subtitle">Costs grouped for the active filter.</div>
+              </div>
+            </div>
+
+            <v-data-table
+              :headers="expenseCategoryHeaders"
+              :items="summary.expense_by_category || []"
+              item-value="category"
+              class="rs-table"
+              hide-default-footer
+            >
+              <template #item.total="{ item }">
+                {{ formatCurrency(item.total) }}
+              </template>
+            </v-data-table>
+          </div>
+        </v-col>
+
+        <v-col cols="12" lg="4">
+          <div class="rs-panel section-panel">
+            <div class="panel-header">
+              <div>
+                <div class="panel-title">Recent Expenses</div>
+                <div class="panel-subtitle">Latest expense entries in the active scope.</div>
+              </div>
+            </div>
+
+            <v-data-table
+              :headers="recentExpenseHeaders"
+              :items="summary.recent_expenses || []"
+              item-value="id"
+              class="rs-table"
+              hide-default-footer
+            >
+              <template #item.amount="{ item }">
+                {{ formatCurrency(item.amount) }}
+              </template>
+              <template #item.expense_date="{ item }">
+                {{ formatDateOnly(item.expense_date) }}
+              </template>
+            </v-data-table>
+          </div>
+        </v-col>
+      </v-row>
+
+      <v-row class="mb-4">
         <v-col
           v-for="card in overviewCards"
           :key="card.label"
@@ -137,7 +279,9 @@
                   </div>
                   <div class="leader-values">
                     <span>{{ formatCompactCurrency(branch.sales) }}</span>
-                    <span class="leader-orders">{{ branch.orders_count }} orders</span>
+                    <span class="leader-orders">
+                      {{ branch.orders_count }} orders / {{ formatCompactCurrency(branch.net_revenue) }} net
+                    </span>
                   </div>
                 </div>
                 <v-progress-linear
@@ -189,6 +333,38 @@
           </div>
         </v-col>
       </v-row>
+
+      <div class="rs-panel section-panel mb-4">
+        <div class="panel-header">
+          <div>
+            <div class="panel-title">Employee Revenue</div>
+            <div class="panel-subtitle">
+              Paid revenue grouped by employee and branch in the current filter.
+            </div>
+          </div>
+        </div>
+
+        <v-data-table
+          :headers="employeeRevenueHeaders"
+          :items="summary.employee_revenue || []"
+          item-value="employee_id"
+          class="rs-table"
+          hide-default-footer
+        >
+          <template #item.employee_name="{ item }">
+            <div class="employee-cell">
+              <strong>{{ item.employee_name }}</strong>
+              <span>{{ item.position || 'No position' }}</span>
+            </div>
+          </template>
+          <template #item.revenue="{ item }">
+            {{ formatCurrency(item.revenue) }}
+          </template>
+          <template #item.average_order="{ item }">
+            {{ formatCurrency(item.average_order) }}
+          </template>
+        </v-data-table>
+      </div>
 
       <v-row class="mb-4">
         <v-col cols="12" lg="4">
@@ -297,8 +473,19 @@ const restaurants = ref([])
 const branches = ref([])
 const selectedRestaurant = ref(null)
 const selectedBranch = ref(null)
+const savingExpense = ref(false)
+const expenseError = ref('')
+const expenseForm = ref({
+  branch_id: null,
+  category: 'Operations',
+  amount: null,
+  expense_date: todayInput(),
+  description: '',
+})
 const summary = ref({
   total_sales: 0,
+  total_expenses: 0,
+  net_revenue: 0,
   orders_count: 0,
   avg_order_value: 0,
   restaurant_count: 0,
@@ -310,6 +497,9 @@ const summary = ref({
   kds_backlog: 0,
   loyalty_members: 0,
   payment_mix: [],
+  expense_by_category: [],
+  recent_expenses: [],
+  employee_revenue: [],
   branch_performance: [],
   top_products: [],
   low_stock_items: [],
@@ -335,11 +525,45 @@ const lowStockHeaders = [
   { title: 'Unit', key: 'unit', width: 80 },
 ]
 
+const expenseCategoryHeaders = [
+  { title: 'Category', key: 'category' },
+  { title: 'Total', key: 'total', align: 'end' },
+]
+
+const recentExpenseHeaders = [
+  { title: 'Date', key: 'expense_date' },
+  { title: 'Branch', key: 'branch_name' },
+  { title: 'Category', key: 'category' },
+  { title: 'Amount', key: 'amount', align: 'end' },
+]
+
+const employeeRevenueHeaders = [
+  { title: 'Employee', key: 'employee_name' },
+  { title: 'Restaurant', key: 'restaurant_name' },
+  { title: 'Branch', key: 'branch_name' },
+  { title: 'Orders', key: 'orders_count', align: 'end' },
+  { title: 'Revenue', key: 'revenue', align: 'end' },
+  { title: 'Average', key: 'average_order', align: 'end' },
+]
+
+const expenseCategoryOptions = [
+  'Operations',
+  'Supplies',
+  'Ingredients',
+  'Utilities',
+  'Rent',
+  'Salaries',
+  'Maintenance',
+  'Marketing',
+  'Delivery',
+  'Other',
+]
+
 const overviewCards = computed(() => [
   {
-    label: 'Restaurants',
-    value: auth.isAdmin ? summary.value.restaurant_count || restaurants.value.length : auth.user?.restaurant?.name || '1',
-    note: auth.isAdmin ? 'Brands available to your admin account' : 'Current restaurant',
+    label: 'Orders',
+    value: summary.value.orders_count || 0,
+    note: `${formatCompactCurrency(summary.value.avg_order_value)} average ticket`,
   },
   {
     label: 'Branches',
@@ -490,6 +714,14 @@ function formatDate(value) {
   }).format(new Date(value))
 }
 
+function formatDateOnly(value) {
+  if (!value) return 'N/A'
+
+  return new Intl.DateTimeFormat('en-GB', {
+    dateStyle: 'medium',
+  }).format(new Date(value))
+}
+
 function progressForBranch(value) {
   return (Number(value || 0) / maxBranchSales.value) * 100
 }
@@ -534,6 +766,7 @@ async function loadBranches() {
   })
 
   branches.value = data.data || data
+  syncExpenseBranchSelection()
 }
 
 async function fetchDashboard() {
@@ -547,6 +780,8 @@ async function fetchDashboard() {
   if (selectedBranch.value) {
     params.branch_id = selectedBranch.value
   }
+
+  syncExpenseBranchSelection()
 
   try {
     const { data } = await axios.get(`${API_BASE_URL}/dashboard/summary`, {
@@ -564,6 +799,75 @@ async function handleRestaurantChange() {
   selectedBranch.value = null
   await loadBranches()
   await fetchDashboard()
+}
+
+function todayInput() {
+  const now = new Date()
+  const local = new Date(now.getTime() - now.getTimezoneOffset() * 60000)
+  return local.toISOString().slice(0, 10)
+}
+
+function syncExpenseBranchSelection() {
+  const branchIds = branches.value.map((branch) => Number(branch.id))
+
+  if (selectedBranch.value && branchIds.includes(Number(selectedBranch.value))) {
+    expenseForm.value.branch_id = selectedBranch.value
+    return
+  }
+
+  if (!branchIds.includes(Number(expenseForm.value.branch_id))) {
+    expenseForm.value.branch_id = branches.value.length === 1 ? branches.value[0].id : null
+  }
+}
+
+function resetExpenseFormAfterSave() {
+  expenseForm.value = {
+    branch_id: selectedBranch.value || expenseForm.value.branch_id,
+    category: expenseForm.value.category || 'Operations',
+    amount: null,
+    expense_date: todayInput(),
+    description: '',
+  }
+  syncExpenseBranchSelection()
+}
+
+function expenseValidationError() {
+  if (!expenseForm.value.branch_id) return 'Choose a branch for this expense.'
+  if (!expenseForm.value.category) return 'Choose an expense category.'
+  if (Number(expenseForm.value.amount || 0) <= 0) return 'Expense amount must be greater than zero.'
+  if (!expenseForm.value.expense_date) return 'Choose the expense date.'
+
+  return ''
+}
+
+async function saveExpense() {
+  const validationError = expenseValidationError()
+  if (validationError) {
+    expenseError.value = validationError
+    return
+  }
+
+  if (savingExpense.value) return
+
+  try {
+    savingExpense.value = true
+    expenseError.value = ''
+    await axios.post(`${API_BASE_URL}/expenses`, {
+      branch_id: expenseForm.value.branch_id,
+      category: expenseForm.value.category,
+      amount: Number(expenseForm.value.amount),
+      expense_date: expenseForm.value.expense_date,
+      description: expenseForm.value.description || null,
+    }, {
+      headers: authHeaders(),
+    })
+    resetExpenseFormAfterSave()
+    await fetchDashboard()
+  } catch (error) {
+    expenseError.value = error?.response?.data?.message || 'Could not save expense.'
+  } finally {
+    savingExpense.value = false
+  }
 }
 
 onMounted(async () => {
@@ -777,6 +1081,30 @@ onMounted(async () => {
   grid-column: 1 / -1;
   justify-self: start;
   align-self: end;
+}
+
+.expense-form {
+  display: grid;
+  gap: 12px;
+}
+
+.expense-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.employee-cell {
+  display: grid;
+  gap: 4px;
+}
+
+.employee-cell strong {
+  color: var(--rs-text);
+}
+
+.employee-cell span {
+  color: var(--rs-text-soft);
+  font-size: 0.86rem;
 }
 
 @media (max-width: 1100px) {

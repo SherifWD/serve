@@ -12,6 +12,7 @@ use App\Http\Controllers\Api\DataExportController;
 use App\Http\Controllers\Api\DeviceController;
 use App\Http\Controllers\Api\EmployeeController;
 use App\Http\Controllers\Api\EtaSubmissionController;
+use App\Http\Controllers\Api\ExpenseController;
 use App\Http\Controllers\Api\FiscalProfileController;
 use App\Http\Controllers\Api\FiscalReceiptController;
 use App\Http\Controllers\Api\IngredientController;
@@ -55,6 +56,7 @@ Route::middleware(['auth:sanctum', EnsureApiPermission::class])->group(function 
     Route::apiResource('orders', OrderController::class);
     Route::apiResource('customers', CustomerController::class)->only(['index', 'show']);
     Route::apiResource('employees', EmployeeController::class);
+    Route::apiResource('expenses', ExpenseController::class);
     Route::apiResource('inventory-items', InventoryItemController::class);
     Route::apiResource('inventory-transactions', InventoryTransactionController::class);
     Route::prefix('inventory-operations')->group(function () {

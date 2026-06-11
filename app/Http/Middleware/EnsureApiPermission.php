@@ -18,6 +18,7 @@ class EnsureApiPermission
         'orders' => ['view' => 'orders.view', 'manage' => 'orders.manage'],
         'customers' => ['view' => 'customers.view', 'manage' => 'customers.manage'],
         'employees' => ['view' => 'employees.view', 'manage' => 'employees.manage'],
+        'expenses' => ['view' => 'dashboard.view', 'manage' => 'dashboard.view'],
         'inventory-items' => ['view' => 'inventory.view', 'manage' => 'inventory.manage'],
         'inventory-transactions' => ['view' => 'inventory.view', 'manage' => 'inventory.manage'],
         'inventory-operations' => ['view' => 'inventory.view', 'manage' => 'inventory.manage'],

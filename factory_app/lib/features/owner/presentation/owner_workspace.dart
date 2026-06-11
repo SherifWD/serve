@@ -250,6 +250,13 @@ class _OwnerWorkspacePageState extends ConsumerState<OwnerWorkspacePage> {
                 const SizedBox(height: 16),
                 _OwnerKpiGrid(summary: summary, currency: currency),
                 const SizedBox(height: 16),
+                _FinanceSummaryPanel(summary: summary, currency: currency),
+                const SizedBox(height: 16),
+                _EmployeeRevenuePanel(
+                  entries: summary.employeeRevenue,
+                  currency: currency,
+                ),
+                const SizedBox(height: 16),
                 _BranchPerformancePanel(
                   branches: summary.branchPerformance,
                   currency: currency,
@@ -581,7 +588,7 @@ class _OwnerHero extends StatelessWidget {
               ),
               const SizedBox(height: 10),
               Text(
-                currency.format(summary.totalSales),
+                currency.format(summary.netRevenue),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: Theme.of(context).textTheme.headlineMedium?.copyWith(
@@ -591,7 +598,7 @@ class _OwnerHero extends StatelessWidget {
               ),
               const SizedBox(height: 6),
               Text(
-                '${summary.ordersCount} paid orders',
+                '${currency.format(summary.totalSales)} revenue / ${currency.format(summary.totalExpenses)} expenses',
                 style: const TextStyle(color: Colors.white70),
               ),
             ],
@@ -681,6 +688,20 @@ class _OwnerKpiGrid extends StatelessWidget {
         caption: 'Paid sales',
         color: const Color(0xFFE86C2F),
         icon: Icons.attach_money_outlined,
+      ),
+      _OwnerKpiCard(
+        title: 'Expenses',
+        value: currency.format(summary.totalExpenses),
+        caption: 'Logged branch costs',
+        color: const Color(0xFFF87171),
+        icon: Icons.money_off_outlined,
+      ),
+      _OwnerKpiCard(
+        title: 'Net',
+        value: currency.format(summary.netRevenue),
+        caption: 'Revenue minus expenses',
+        color: const Color(0xFF34D399),
+        icon: Icons.account_balance_wallet_outlined,
       ),
       _OwnerKpiCard(
         title: 'Orders',
@@ -911,7 +932,7 @@ class _BranchPerformancePanel extends StatelessWidget {
                                 ),
                                 const SizedBox(height: 4),
                                 Text(
-                                  '${branches[i].ordersCount} orders',
+                                  '${branches[i].ordersCount} orders / ${currency.format(branches[i].netRevenue)} net',
                                   style: const TextStyle(color: Colors.white54),
                                 ),
                               ],
@@ -1062,6 +1083,14 @@ class _BranchDetailSheet extends StatelessWidget {
             _BranchMetricChip(
               label: 'Sales',
               value: currency.format(detail.sales),
+            ),
+            _BranchMetricChip(
+              label: 'Expenses',
+              value: currency.format(detail.expenses),
+            ),
+            _BranchMetricChip(
+              label: 'Net',
+              value: currency.format(detail.netRevenue),
             ),
             _BranchMetricChip(
               label: 'Orders',
@@ -1347,6 +1376,190 @@ class _EmployeeStatusPill extends StatelessWidget {
           fontWeight: FontWeight.w800,
         ),
       ),
+    );
+  }
+}
+
+class _FinanceSummaryPanel extends StatelessWidget {
+  const _FinanceSummaryPanel({
+    required this.summary,
+    required this.currency,
+  });
+
+  final OwnerSummary summary;
+  final NumberFormat currency;
+
+  @override
+  Widget build(BuildContext context) {
+    return _OwnerPanel(
+      title: 'Revenue and expenses',
+      subtitle: 'Read-only finance view for your restaurant and branch filter',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: [
+              _BranchMetricChip(
+                label: 'Revenue',
+                value: currency.format(summary.totalSales),
+              ),
+              _BranchMetricChip(
+                label: 'Expenses',
+                value: currency.format(summary.totalExpenses),
+              ),
+              _BranchMetricChip(
+                label: 'Net',
+                value: currency.format(summary.netRevenue),
+              ),
+            ],
+          ),
+          const SizedBox(height: 18),
+          Text(
+            'Expense categories',
+            style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w900,
+                ),
+          ),
+          const SizedBox(height: 8),
+          if (summary.expenseByCategory.isEmpty)
+            const Text(
+              'No expenses in this period.',
+              style: TextStyle(color: Colors.white70),
+            )
+          else
+            for (final category in summary.expenseByCategory.take(5))
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                dense: true,
+                title: Text(
+                  category.category,
+                  style: const TextStyle(color: Colors.white),
+                ),
+                trailing: Text(
+                  currency.format(category.total),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+          const SizedBox(height: 12),
+          Text(
+            'Recent expenses',
+            style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w900,
+                ),
+          ),
+          const SizedBox(height: 8),
+          if (summary.recentExpenses.isEmpty)
+            const Text(
+              'No recent expenses.',
+              style: TextStyle(color: Colors.white70),
+            )
+          else
+            for (final expense in summary.recentExpenses.take(5))
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                dense: true,
+                leading: const Icon(
+                  Icons.receipt_long_outlined,
+                  color: Color(0xFFF87171),
+                ),
+                title: Text(
+                  expense.category,
+                  style: const TextStyle(color: Colors.white),
+                ),
+                subtitle: Text(
+                  [
+                    if (expense.branchName != null) expense.branchName!,
+                    if (expense.expenseDate != null) expense.expenseDate!,
+                  ].join(' - '),
+                  style: const TextStyle(color: Colors.white54),
+                ),
+                trailing: Text(
+                  currency.format(expense.amount),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+        ],
+      ),
+    );
+  }
+}
+
+class _EmployeeRevenuePanel extends StatelessWidget {
+  const _EmployeeRevenuePanel({
+    required this.entries,
+    required this.currency,
+  });
+
+  final List<EmployeeRevenueEntry> entries;
+  final NumberFormat currency;
+
+  @override
+  Widget build(BuildContext context) {
+    return _OwnerPanel(
+      title: 'Employee revenue',
+      subtitle: 'Paid order revenue by employee and branch',
+      child: entries.isEmpty
+          ? const Text(
+              'No employee revenue in this period.',
+              style: TextStyle(color: Colors.white70),
+            )
+          : Column(
+              children: [
+                for (final entry in entries.take(12))
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: const Icon(
+                      Icons.badge_outlined,
+                      color: Color(0xFF38BDF8),
+                    ),
+                    title: Text(
+                      entry.employeeName,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    subtitle: Text(
+                      [
+                        if (entry.position != null) entry.position!,
+                        if (entry.branchName != null) entry.branchName!,
+                        '${entry.ordersCount} orders',
+                      ].join(' - '),
+                      style: const TextStyle(color: Colors.white54),
+                    ),
+                    trailing: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Text(
+                          currency.format(entry.revenue),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                        Text(
+                          '${currency.format(entry.averageOrder)} avg',
+                          style: const TextStyle(
+                            color: Colors.white54,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
     );
   }
 }

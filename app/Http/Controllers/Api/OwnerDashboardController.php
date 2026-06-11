@@ -12,6 +12,7 @@ use App\Models\Payment;
 use App\Models\Product;
 use App\Models\Restaurant;
 use App\Models\Employee;
+use App\Models\Expense;
 use App\Models\InventoryItem;
 use App\Models\Table;
 use Illuminate\Support\Facades\DB;
@@ -56,6 +57,29 @@ class OwnerDashboardController extends Controller
         // Average Order Value
         $avgOrderValue = $totalOrders > 0 ? round($totalSales / $totalOrders, 2) : 0;
 
+        $expensesQuery = $this->expenseScopeQuery($restaurantId, $branchId, $dateStart, $dateEnd);
+        $totalExpenses = round((float) (clone $expensesQuery)->sum('amount'), 2);
+        $netRevenue = round((float) $totalSales - $totalExpenses, 2);
+        $expenseByCategory = (clone $expensesQuery)
+            ->select('category', DB::raw('SUM(amount) as total'))
+            ->groupBy('category')
+            ->orderByDesc('total')
+            ->get()
+            ->map(fn (Expense $expense) => [
+                'category' => $expense->category,
+                'total' => (float) $expense->total,
+            ])
+            ->values();
+        $recentExpenses = (clone $expensesQuery)
+            ->with('branch.restaurant:id,name,kind,currency_code')
+            ->latest('expense_date')
+            ->latest('id')
+            ->limit(8)
+            ->get()
+            ->map(fn (Expense $expense) => $this->expenseRow($expense))
+            ->values();
+        $employeeRevenue = $this->employeeRevenueRows($restaurantId, $branchId, $dateStart, $dateEnd);
+
         // Products & Employees count (by branch if you want)
         $products = Product::query()
             ->when($restaurantId, fn ($q) => $q->whereHas('branch', fn ($branchQuery) => $branchQuery->where('restaurant_id', $restaurantId)))
@@ -78,7 +102,8 @@ class OwnerDashboardController extends Controller
                 $query->where('orders.payment_status', 'paid')
                     ->orWhere('orders.status', 'paid');
             })
-            ->whereBetween('orders.order_date', [$dateStart->toDateString(), $dateEnd->toDateString()]);
+            ->whereDate('orders.order_date', '>=', $dateStart->toDateString())
+            ->whereDate('orders.order_date', '<=', $dateEnd->toDateString());
         if ($restaurantId) $topProductsQuery->join('branches', 'branches.id', '=', 'orders.branch_id')
             ->where('branches.restaurant_id', $restaurantId);
         if ($branchId) $topProductsQuery->where('orders.branch_id', $branchId);
@@ -149,7 +174,8 @@ class OwnerDashboardController extends Controller
                 $query->where('orders.payment_status', 'paid')
                     ->orWhere('orders.status', 'paid');
             })
-            ->whereBetween('orders.order_date', [$dateStart->toDateString(), $dateEnd->toDateString()]);
+            ->whereDate('orders.order_date', '>=', $dateStart->toDateString())
+            ->whereDate('orders.order_date', '<=', $dateEnd->toDateString());
         if ($restaurantId) $paymentMixQuery->join('branches', 'branches.id', '=', 'orders.branch_id')
             ->where('branches.restaurant_id', $restaurantId);
         if ($branchId) $paymentMixQuery->where('orders.branch_id', $branchId);
@@ -173,12 +199,22 @@ class OwnerDashboardController extends Controller
                 $this->applyOrderDateRange($query, $dateStart, $dateEnd);
             }]);
         if ($branchId) $branchPerformanceQuery->where('id', $branchId);
-        $branchPerformance = $branchPerformanceQuery->orderByDesc('paid_sales')->limit(6)->get()
+        $branchPerformanceModels = $branchPerformanceQuery->orderByDesc('paid_sales')->limit(6)->get();
+        $branchExpensesById = Expense::query()
+            ->select('branch_id', DB::raw('SUM(amount) as total'))
+            ->whereIn('branch_id', $branchPerformanceModels->pluck('id')->all())
+            ->whereDate('expense_date', '>=', $dateStart->toDateString())
+            ->whereDate('expense_date', '<=', $dateEnd->toDateString())
+            ->groupBy('branch_id')
+            ->pluck('total', 'branch_id');
+        $branchPerformance = $branchPerformanceModels
             ->map(fn ($branch) => [
                 'id' => $branch->id,
                 'name' => $branch->name,
                 'location' => $branch->location,
                 'sales' => (float) ($branch->paid_sales ?? 0),
+                'expenses' => (float) ($branchExpensesById[$branch->id] ?? 0),
+                'net_revenue' => round((float) ($branch->paid_sales ?? 0) - (float) ($branchExpensesById[$branch->id] ?? 0), 2),
                 'orders_count' => $branch->paid_orders_count,
             ]);
 
@@ -212,6 +248,8 @@ class OwnerDashboardController extends Controller
 
         return response()->json([
             'total_sales'   => $totalSales,
+            'total_expenses' => $totalExpenses,
+            'net_revenue' => $netRevenue,
             'orders_count'  => $totalOrders,
             'avg_order_value' => $avgOrderValue,
             'restaurant_count' => $restaurantsCount,
@@ -223,6 +261,9 @@ class OwnerDashboardController extends Controller
             'kds_backlog' => $kdsBacklog,
             'loyalty_members' => $loyaltyMembers,
             'payment_mix' => $paymentMix,
+            'expense_by_category' => $expenseByCategory,
+            'recent_expenses' => $recentExpenses,
+            'employee_revenue' => $employeeRevenue,
             'branch_performance' => $branchPerformance,
             'branch_options' => $branchOptions,
             'selected_branch_id' => $branchId,
@@ -257,7 +298,8 @@ class OwnerDashboardController extends Controller
                 $query->where('payment_status', 'paid')
                     ->orWhere('status', 'paid');
             })
-            ->whereBetween('order_date', [$dateStart->toDateString(), $dateEnd->toDateString()])
+            ->whereDate('order_date', '>=', $dateStart->toDateString())
+            ->whereDate('order_date', '<=', $dateEnd->toDateString())
             ->when($restaurantId, fn ($query) => $query->whereHas('branch', fn ($branchQuery) => $branchQuery->where('restaurant_id', $restaurantId)))
             ->when($branchId, fn ($query) => $query->where('branch_id', $branchId))
             ->orderBy('order_date')
@@ -386,7 +428,84 @@ class OwnerDashboardController extends Controller
 
     private function applyOrderDateRange($query, Carbon $start, Carbon $end): void
     {
-        $query->whereBetween('order_date', [$start->toDateString(), $end->toDateString()]);
+        $query->whereDate('order_date', '>=', $start->toDateString())
+            ->whereDate('order_date', '<=', $end->toDateString());
+    }
+
+    private function expenseScopeQuery(?int $restaurantId, ?int $branchId, Carbon $dateStart, Carbon $dateEnd)
+    {
+        return Expense::query()
+            ->when($restaurantId, fn ($query) => $query->whereHas('branch', fn ($branchQuery) => $branchQuery->where('restaurant_id', $restaurantId)))
+            ->when($branchId, fn ($query) => $query->where('branch_id', $branchId))
+            ->whereDate('expense_date', '>=', $dateStart->toDateString())
+            ->whereDate('expense_date', '<=', $dateEnd->toDateString());
+    }
+
+    private function expenseRow(Expense $expense): array
+    {
+        return [
+            'id' => $expense->id,
+            'branch_id' => $expense->branch_id,
+            'branch_name' => $expense->branch?->name,
+            'restaurant_id' => $expense->branch?->restaurant_id,
+            'restaurant_name' => $expense->branch?->restaurant?->name,
+            'category' => $expense->category,
+            'amount' => (float) $expense->amount,
+            'description' => $expense->description,
+            'expense_date' => optional($expense->expense_date)->toDateString(),
+            'created_at' => optional($expense->created_at)->toDateTimeString(),
+        ];
+    }
+
+    private function employeeRevenueRows(?int $restaurantId, ?int $branchId, Carbon $dateStart, Carbon $dateEnd)
+    {
+        $query = DB::table('orders')
+            ->join('branches', 'branches.id', '=', 'orders.branch_id')
+            ->leftJoin('restaurants', 'restaurants.id', '=', 'branches.restaurant_id')
+            ->leftJoin('employees', 'employees.id', '=', 'orders.employee_id')
+            ->where(function ($query) {
+                $query->where('orders.payment_status', 'paid')
+                    ->orWhere('orders.status', 'paid');
+            })
+            ->whereDate('orders.order_date', '>=', $dateStart->toDateString())
+            ->whereDate('orders.order_date', '<=', $dateEnd->toDateString())
+            ->when($restaurantId, fn ($query) => $query->where('branches.restaurant_id', $restaurantId))
+            ->when($branchId, fn ($query) => $query->where('orders.branch_id', $branchId))
+            ->select([
+                'orders.employee_id',
+                'employees.name as employee_name',
+                'employees.position',
+                'orders.branch_id',
+                'branches.name as branch_name',
+                'restaurants.name as restaurant_name',
+                DB::raw('COUNT(orders.id) as orders_count'),
+                DB::raw('SUM(orders.total) as revenue'),
+            ])
+            ->groupBy(
+                'orders.employee_id',
+                'employees.name',
+                'employees.position',
+                'orders.branch_id',
+                'branches.name',
+                'restaurants.name',
+            )
+            ->orderByDesc('revenue')
+            ->limit(25)
+            ->get();
+
+        return $query->map(fn ($row) => [
+            'employee_id' => $row->employee_id ? (int) $row->employee_id : null,
+            'employee_name' => $row->employee_name ?: 'Unassigned',
+            'position' => $row->position,
+            'restaurant_name' => $row->restaurant_name,
+            'branch_id' => (int) $row->branch_id,
+            'branch_name' => $row->branch_name,
+            'orders_count' => (int) $row->orders_count,
+            'revenue' => (float) $row->revenue,
+            'average_order' => (int) $row->orders_count > 0
+                ? round((float) $row->revenue / (int) $row->orders_count, 2)
+                : 0,
+        ])->values();
     }
 
     private function buildOwnerOperations(?int $restaurantId, ?int $branchId, $branchPerformance, Carbon $dateStart, Carbon $dateEnd): array
@@ -433,7 +552,8 @@ class OwnerDashboardController extends Controller
                             'statusLogs.user:id,name,role',
                         ])
                         ->where('branch_id', $branch->id)
-                        ->whereBetween('order_date', [$dateStart->toDateString(), $dateEnd->toDateString()])
+                        ->whereDate('order_date', '>=', $dateStart->toDateString())
+                        ->whereDate('order_date', '<=', $dateEnd->toDateString())
                         ->orderByDesc('created_at')
                         ->limit(10)
                         ->get()
@@ -442,7 +562,8 @@ class OwnerDashboardController extends Controller
 
                     $returnedOrderQuery = Order::query()
                         ->where('branch_id', $branch->id)
-                        ->whereBetween('order_date', [$dateStart->toDateString(), $dateEnd->toDateString()])
+                        ->whereDate('order_date', '>=', $dateStart->toDateString())
+                        ->whereDate('order_date', '<=', $dateEnd->toDateString())
                         ->where(function ($query) {
                             $query->where('status', 'refunded')
                                 ->orWhereHas('items', fn ($itemQuery) => $this->applyReturnedItemScope($itemQuery));
@@ -468,6 +589,8 @@ class OwnerDashboardController extends Controller
                         'name' => $branch->name,
                         'location' => $branch->location,
                         'sales' => (float) ($performance['sales'] ?? 0),
+                        'expenses' => (float) ($performance['expenses'] ?? 0),
+                        'net_revenue' => (float) ($performance['net_revenue'] ?? (($performance['sales'] ?? 0) - ($performance['expenses'] ?? 0))),
                         'orders_count' => (int) ($performance['orders_count'] ?? 0),
                         'returned_orders_count' => $returnedOrdersCount,
                         'employees' => $employees->values(),

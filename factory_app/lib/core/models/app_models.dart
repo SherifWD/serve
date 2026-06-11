@@ -1074,11 +1074,103 @@ class PaymentMixEntry {
   }
 }
 
+class ExpenseCategorySummary {
+  const ExpenseCategorySummary({
+    required this.category,
+    required this.total,
+  });
+
+  final String category;
+  final double total;
+
+  factory ExpenseCategorySummary.fromJson(Map<String, dynamic> json) {
+    return ExpenseCategorySummary(
+      category: jsonString(json['category'], fallback: 'Uncategorized'),
+      total: jsonDouble(json['total']),
+    );
+  }
+}
+
+class ExpenseEntry {
+  const ExpenseEntry({
+    required this.id,
+    required this.category,
+    required this.amount,
+    this.branchId,
+    this.branchName,
+    this.restaurantName,
+    this.description,
+    this.expenseDate,
+  });
+
+  final int id;
+  final int? branchId;
+  final String? branchName;
+  final String? restaurantName;
+  final String category;
+  final double amount;
+  final String? description;
+  final String? expenseDate;
+
+  factory ExpenseEntry.fromJson(Map<String, dynamic> json) {
+    return ExpenseEntry(
+      id: jsonInt(json['id']),
+      branchId: jsonNullableInt(json['branch_id']),
+      branchName: jsonNullableString(json['branch_name']),
+      restaurantName: jsonNullableString(json['restaurant_name']),
+      category: jsonString(json['category'], fallback: 'Expense'),
+      amount: jsonDouble(json['amount']),
+      description: jsonNullableString(json['description']),
+      expenseDate: jsonNullableString(json['expense_date']),
+    );
+  }
+}
+
+class EmployeeRevenueEntry {
+  const EmployeeRevenueEntry({
+    required this.employeeName,
+    required this.ordersCount,
+    required this.revenue,
+    required this.averageOrder,
+    this.employeeId,
+    this.position,
+    this.restaurantName,
+    this.branchId,
+    this.branchName,
+  });
+
+  final int? employeeId;
+  final String employeeName;
+  final String? position;
+  final String? restaurantName;
+  final int? branchId;
+  final String? branchName;
+  final int ordersCount;
+  final double revenue;
+  final double averageOrder;
+
+  factory EmployeeRevenueEntry.fromJson(Map<String, dynamic> json) {
+    return EmployeeRevenueEntry(
+      employeeId: jsonNullableInt(json['employee_id']),
+      employeeName: jsonString(json['employee_name'], fallback: 'Unassigned'),
+      position: jsonNullableString(json['position']),
+      restaurantName: jsonNullableString(json['restaurant_name']),
+      branchId: jsonNullableInt(json['branch_id']),
+      branchName: jsonNullableString(json['branch_name']),
+      ordersCount: jsonInt(json['orders_count']),
+      revenue: jsonDouble(json['revenue']),
+      averageOrder: jsonDouble(json['average_order']),
+    );
+  }
+}
+
 class BranchPerformance {
   const BranchPerformance({
     required this.id,
     required this.name,
     required this.sales,
+    required this.expenses,
+    required this.netRevenue,
     required this.ordersCount,
     this.location,
   });
@@ -1086,6 +1178,8 @@ class BranchPerformance {
   final int id;
   final String name;
   final double sales;
+  final double expenses;
+  final double netRevenue;
   final int ordersCount;
   final String? location;
 
@@ -1094,6 +1188,8 @@ class BranchPerformance {
       id: jsonInt(json['id']),
       name: jsonString(json['name']),
       sales: jsonDouble(json['sales']),
+      expenses: jsonDouble(json['expenses']),
+      netRevenue: jsonDouble(json['net_revenue']),
       ordersCount: jsonInt(json['orders_count']),
       location: jsonNullableString(json['location']),
     );
@@ -1283,6 +1379,8 @@ class OwnerBranchDetail {
     required this.id,
     required this.name,
     required this.sales,
+    required this.expenses,
+    required this.netRevenue,
     required this.ordersCount,
     required this.returnedOrdersCount,
     required this.employees,
@@ -1298,6 +1396,8 @@ class OwnerBranchDetail {
   final String name;
   final String? location;
   final double sales;
+  final double expenses;
+  final double netRevenue;
   final int ordersCount;
   final int returnedOrdersCount;
   final List<OwnerEmployeeActivity> employees;
@@ -1313,6 +1413,8 @@ class OwnerBranchDetail {
       name: jsonString(json['name'], fallback: 'Branch'),
       location: jsonNullableString(json['location']),
       sales: jsonDouble(json['sales']),
+      expenses: jsonDouble(json['expenses']),
+      netRevenue: jsonDouble(json['net_revenue']),
       ordersCount: jsonInt(json['orders_count']),
       returnedOrdersCount: jsonInt(json['returned_orders_count']),
       employees: jsonMapList(json['employees'])
@@ -1340,6 +1442,8 @@ class OwnerBranchDetail {
 class OwnerSummary {
   const OwnerSummary({
     required this.totalSales,
+    required this.totalExpenses,
+    required this.netRevenue,
     required this.ordersCount,
     required this.avgOrderValue,
     required this.productCount,
@@ -1349,6 +1453,9 @@ class OwnerSummary {
     required this.kdsBacklog,
     required this.loyaltyMembers,
     required this.paymentMix,
+    required this.expenseByCategory,
+    required this.recentExpenses,
+    required this.employeeRevenue,
     required this.branchPerformance,
     this.branchOptions = const [],
     this.activeEmployees = const [],
@@ -1360,6 +1467,8 @@ class OwnerSummary {
   });
 
   final double totalSales;
+  final double totalExpenses;
+  final double netRevenue;
   final int ordersCount;
   final double avgOrderValue;
   final int productCount;
@@ -1369,6 +1478,9 @@ class OwnerSummary {
   final int kdsBacklog;
   final int loyaltyMembers;
   final List<PaymentMixEntry> paymentMix;
+  final List<ExpenseCategorySummary> expenseByCategory;
+  final List<ExpenseEntry> recentExpenses;
+  final List<EmployeeRevenueEntry> employeeRevenue;
   final List<BranchPerformance> branchPerformance;
   final List<BranchInfo> branchOptions;
   final List<OwnerEmployeeActivity> activeEmployees;
@@ -1381,6 +1493,8 @@ class OwnerSummary {
   factory OwnerSummary.fromJson(Map<String, dynamic> json) {
     return OwnerSummary(
       totalSales: jsonDouble(json['total_sales']),
+      totalExpenses: jsonDouble(json['total_expenses']),
+      netRevenue: jsonDouble(json['net_revenue']),
       ordersCount: jsonInt(json['orders_count']),
       avgOrderValue: jsonDouble(json['avg_order_value']),
       productCount: jsonInt(json['product_count']),
@@ -1391,6 +1505,15 @@ class OwnerSummary {
       loyaltyMembers: jsonInt(json['loyalty_members']),
       paymentMix: jsonMapList(json['payment_mix'])
           .map(PaymentMixEntry.fromJson)
+          .toList(growable: false),
+      expenseByCategory: jsonMapList(json['expense_by_category'])
+          .map(ExpenseCategorySummary.fromJson)
+          .toList(growable: false),
+      recentExpenses: jsonMapList(json['recent_expenses'])
+          .map(ExpenseEntry.fromJson)
+          .toList(growable: false),
+      employeeRevenue: jsonMapList(json['employee_revenue'])
+          .map(EmployeeRevenueEntry.fromJson)
           .toList(growable: false),
       branchPerformance: jsonMapList(json['branch_performance'])
           .map(BranchPerformance.fromJson)
