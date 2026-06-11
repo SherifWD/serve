@@ -32,8 +32,21 @@
                 </v-col>
                 <v-col cols="12" md="2">
                   <v-select
+                    v-model="filters.restaurant_id"
+                    :items="restaurants"
+                    item-title="name"
+                    item-value="id"
+                    label="Restaurant"
+                    dense
+                    clearable
+                    rounded
+                    @update:model-value="filters.branch_id = null"
+                  />
+                </v-col>
+                <v-col cols="12" md="2">
+                  <v-select
                     v-model="filters.branch_id"
-                    :items="branches"
+                    :items="branchFilterItems"
                     item-title="name"
                     item-value="id"
                     label="Branch"
@@ -122,9 +135,29 @@
           <v-window-item value="general">
             <v-form @submit.prevent="saveEmployee" class="pa-6">
               <v-text-field label="Name" v-model="form.name" required variant="outlined" color="primary" class="mb-4 rounded-xl" />
-              <v-text-field label="Position" v-model="form.position" required variant="outlined" color="primary" class="mb-4 rounded-xl" />
+              <v-select
+                label="Restaurant"
+                :items="restaurants"
+                item-title="name"
+                item-value="id"
+                v-model="form.restaurant_id"
+                required
+                variant="outlined"
+                color="primary"
+                class="mb-4 rounded-xl"
+                @update:model-value="syncEmployeeBranch"
+              />
+              <v-select
+                label="Position"
+                :items="roleOptions"
+                v-model="form.position"
+                required
+                variant="outlined"
+                color="primary"
+                class="mb-4 rounded-xl"
+              />
               <v-text-field label="Base Salary" v-model="form.base_salary" type="number" min="0" required variant="outlined" color="primary" class="mb-4 rounded-xl" />
-              <v-select label="Branch" :items="branches" item-title="name" item-value="id" v-model="form.branch_id" required variant="outlined" color="primary" class="mb-4 rounded-xl" />
+              <v-select label="Branch" :items="filteredFormBranches" item-title="name" item-value="id" v-model="form.branch_id" required variant="outlined" color="primary" class="mb-4 rounded-xl" no-data-text="Choose a restaurant with branches" />
               <v-text-field label="Hired At" v-model="form.hired_at" type="date" required variant="outlined" color="primary" class="mb-4 rounded-xl" />
               <v-btn color="primary" class="rounded-pill" block size="large" style="color:#181818;font-weight:bold;" type="submit">
                 <v-icon start>mdi-check</v-icon>{{ editing ? 'Update' : 'Add' }}
@@ -169,21 +202,26 @@ import { confirmDelete } from '../lib/confirmDelete'
 import { missingField, showValidationAlert } from '../lib/validationAlert'
 import Chart from 'chart.js/auto'
 import OwnerLayout from '@/layouts/OwnerLayout.vue'
+import { useAuthStore } from '../store/auth'
 
+const auth = useAuthStore()
 const employees = ref([])
 const branches = ref([])
+const restaurants = ref([])
+const roles = ref([])
 const dialog = ref(false)
 const editing = ref(false)
 const performanceRecords = ref([])
 const chartInstance = ref(null)
 const form = ref({
-  id: null, name: '', position: '', base_salary: '', branch_id: null, hired_at: ''
+  id: null, name: '', restaurant_id: null, position: '', base_salary: '', branch_id: null, hired_at: ''
 })
 const tab = ref('general')
 const search = ref('')
 
 const filters = ref({
   name: '',
+  restaurant_id: null,
   position: '',
   branch_id: null,
   hired_at: '',
@@ -199,6 +237,25 @@ const headers = [
   { title: 'Actions', value: 'actions', sortable: false }
 ]
 
+const roleOptions = computed(() => {
+  const dynamic = roles.value.map(role => role.name)
+  return Array.from(new Set([...dynamic, 'owner', 'supervisor', 'staff', 'employee']))
+})
+
+const branchFilterItems = computed(() => {
+  if (!filters.value.restaurant_id) return branches.value
+  return branches.value.filter(branch =>
+    Number(branchRestaurantId(branch)) === Number(filters.value.restaurant_id)
+  )
+})
+
+const filteredFormBranches = computed(() => {
+  if (!form.value.restaurant_id) return branches.value
+  return branches.value.filter(branch =>
+    Number(branchRestaurantId(branch)) === Number(form.value.restaurant_id)
+  )
+})
+
 const filteredEmployees = computed(() => {
   return employees.value.filter(emp => {
     // Quick search
@@ -208,8 +265,9 @@ const filteredEmployees = computed(() => {
     }
     // Individual column filters
     if (filters.value.name && !emp.name?.toLowerCase().includes(filters.value.name.toLowerCase())) return false
+    if (filters.value.restaurant_id && Number(branchRestaurantId(emp.branch)) !== Number(filters.value.restaurant_id)) return false
     if (filters.value.position && !emp.position?.toLowerCase().includes(filters.value.position.toLowerCase())) return false
-    if (filters.value.branch_id && emp.branch_id !== filters.value.branch_id) return false
+    if (filters.value.branch_id && Number(emp.branch_id) !== Number(filters.value.branch_id)) return false
     if (filters.value.hired_at && emp.hired_at !== filters.value.hired_at) return false
     if (filters.value.salary && parseFloat(emp.base_salary) < parseFloat(filters.value.salary)) return false
     return true
@@ -223,6 +281,14 @@ async function loadEmployees() {
   })
   employees.value = res.data.data || res.data
 }
+async function loadRestaurants() {
+  const token = localStorage.getItem('token')
+  const res = await axios.get(`${API_BASE_URL}/restaurants`, {
+    headers: { Authorization: `Bearer ${token}` }
+  })
+  restaurants.value = res.data.data || res.data
+}
+
 async function loadBranches() {
   const token = localStorage.getItem('token')
   const res = await axios.get(`${API_BASE_URL}/branches`, {
@@ -231,17 +297,59 @@ async function loadBranches() {
   branches.value = res.data.data || res.data
 }
 
+async function loadRoles() {
+  const token = localStorage.getItem('token')
+  const res = await axios.get(`${API_BASE_URL}/roles`, {
+    headers: { Authorization: `Bearer ${token}` }
+  })
+  roles.value = res.data.roles || []
+}
+
+function branchRestaurantId(branch) {
+  return branch?.restaurant_id ?? branch?.restaurant?.id ?? null
+}
+
+function defaultRestaurantId() {
+  return auth.user?.restaurant_id ??
+    auth.user?.branch?.restaurant_id ??
+    branchRestaurantId(branches.value[0]) ??
+    restaurants.value[0]?.id ??
+    null
+}
+
+function syncEmployeeBranch() {
+  const selectedStillAvailable = filteredFormBranches.value.some(branch =>
+    Number(branch.id) === Number(form.value.branch_id)
+  )
+  if (!selectedStillAvailable) {
+    form.value.branch_id = filteredFormBranches.value[0]?.id ?? null
+  }
+}
+
 function openAdd() {
   editing.value = false
   tab.value = 'general'
-  form.value = { id: null, name: '', position: '', base_salary: '', branch_id: null, hired_at: '' }
+  form.value = {
+    id: null,
+    name: '',
+    restaurant_id: defaultRestaurantId(),
+    position: roleOptions.value.includes('staff') ? 'staff' : (roleOptions.value[0] || ''),
+    base_salary: '',
+    branch_id: null,
+    hired_at: '',
+  }
+  syncEmployeeBranch()
   dialog.value = true
   performanceRecords.value = []
 }
 function openEdit(emp) {
   editing.value = true
   tab.value = 'general'
-  form.value = { ...emp }
+  form.value = {
+    ...emp,
+    restaurant_id: branchRestaurantId(emp.branch) ?? defaultRestaurantId(),
+  }
+  syncEmployeeBranch()
   dialog.value = true
   loadPerformance(emp.id)
 }
@@ -254,12 +362,19 @@ async function saveEmployee() {
   }
 
   const token = localStorage.getItem('token')
+  const payload = {
+    name: form.value.name,
+    position: form.value.position,
+    base_salary: form.value.base_salary,
+    branch_id: form.value.branch_id,
+    hired_at: form.value.hired_at,
+  }
   if (editing.value) {
-    await axios.put(`${API_BASE_URL}/employees/${form.value.id}`, form.value, {
+    await axios.put(`${API_BASE_URL}/employees/${form.value.id}`, payload, {
       headers: { Authorization: `Bearer ${token}` }
     })
   } else {
-    await axios.post(`${API_BASE_URL}/employees`, form.value, {
+    await axios.post(`${API_BASE_URL}/employees`, payload, {
       headers: { Authorization: `Bearer ${token}` }
     })
   }
@@ -270,7 +385,8 @@ async function saveEmployee() {
 function employeeValidationFields() {
   return [
     missingField('Name', Boolean(form.value.name.trim())),
-    missingField('Position', Boolean(form.value.position.trim())),
+    missingField('Restaurant', Boolean(form.value.restaurant_id)),
+    missingField('Position', Boolean(form.value.position)),
     missingField('Base Salary', hasNumberAtLeast(form.value.base_salary, 0)),
     missingField('Branch', Boolean(form.value.branch_id)),
     missingField('Hired At', Boolean(form.value.hired_at)),
@@ -365,8 +481,10 @@ watch(dialog, (val) => {
 })
 
 onMounted(() => {
+  loadRestaurants()
   loadEmployees()
   loadBranches()
+  loadRoles()
 })
 </script>
 

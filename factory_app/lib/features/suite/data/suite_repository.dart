@@ -259,6 +259,16 @@ class SuiteRepository {
     _throwIfNeeded(response);
   }
 
+  Future<void> removeUnsentOrderItem({
+    required int orderItemId,
+  }) async {
+    final response = await _dio.delete(
+      '/mobile/order-items/$orderItemId',
+      options: _mutationOptions('remove-unsent-order-item'),
+    );
+    _throwIfNeeded(response);
+  }
+
   Future<void> moveTable({
     required int fromTableId,
     required int toTableId,

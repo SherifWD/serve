@@ -22,7 +22,7 @@ class AuthController extends Controller
             'type' => 'nullable|string|exists:types,name',
         ]);
 
-        $user = User::with(['types', 'roles.permissions', 'branch:id,name,restaurant_id,operation_mode,operation_label,operation_features', 'restaurant:id,name,kind'])
+        $user = User::with(['types', 'roles.permissions', 'branch:id,name,restaurant_id,opens_at,closes_at,operation_mode,operation_label,operation_features', 'restaurant:id,name,kind,currency_code'])
             ->where('email', $request->email)
             ->first();
 
@@ -55,7 +55,7 @@ class AuthController extends Controller
     // Get current user (for profile/SPA boot)
     public function me(Request $request)
     {
-        $user = $request->user()->loadMissing(['types', 'roles.permissions', 'branch:id,name,restaurant_id,operation_mode,operation_label,operation_features', 'restaurant:id,name,kind']);
+        $user = $request->user()->loadMissing(['types', 'roles.permissions', 'branch:id,name,restaurant_id,opens_at,closes_at,operation_mode,operation_label,operation_features', 'restaurant:id,name,kind,currency_code']);
 
         return response()->json($this->serializeUser($user));
     }
@@ -74,6 +74,8 @@ class AuthController extends Controller
                 'id' => $user->branch->id,
                 'name' => $user->branch->name,
                 'restaurant_id' => $user->branch->restaurant_id,
+                'opens_at' => $user->branch->opens_at,
+                'closes_at' => $user->branch->closes_at,
                 'operation_profile' => BranchOperationProfile::forBranch($user->branch),
             ] : null,
             'restaurant_id' => $user->restaurant_id,
@@ -81,6 +83,7 @@ class AuthController extends Controller
                 'id' => $user->restaurant->id,
                 'name' => $user->restaurant->name,
                 'kind' => $user->restaurant->kind,
+                'currency_code' => $user->restaurant->currency_code,
             ] : null,
             'types' => $user->types->pluck('name')->values(),
         ];

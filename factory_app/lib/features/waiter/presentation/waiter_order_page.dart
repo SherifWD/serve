@@ -212,6 +212,7 @@ class _WaiterOrderPageState extends ConsumerState<WaiterOrderPage> {
                         child: _OrderItemsCard(
                           items: bundle.details.items,
                           onDecrease: (item) => _handleDecrease(item),
+                          onRemove: (item) => _handleRemove(item),
                           onRefund: (item) => _handleRefund(item),
                           onReturnToKitchen: (item) => _handleReturn(item),
                         ),
@@ -232,6 +233,7 @@ class _WaiterOrderPageState extends ConsumerState<WaiterOrderPage> {
                   _OrderItemsCard(
                     items: bundle.details.items,
                     onDecrease: (item) => _handleDecrease(item),
+                    onRemove: (item) => _handleRemove(item),
                     onRefund: (item) => _handleRefund(item),
                     onReturnToKitchen: (item) => _handleReturn(item),
                   ),
@@ -347,6 +349,43 @@ class _WaiterOrderPageState extends ConsumerState<WaiterOrderPage> {
             note: 'Quantity reduced by floor staff',
           ),
       '${item.name} quantity updated',
+    );
+  }
+
+  Future<void> _handleRemove(OrderItemLine item) async {
+    if (!item.canRemoveBeforeKitchen) {
+      return;
+    }
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Remove ${item.name}?'),
+        content: const Text(
+          'This only removes an item that has not been sent to kitchen.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Remove'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) {
+      return;
+    }
+
+    await _runAction(
+      () => ref.read(suiteRepositoryProvider).removeUnsentOrderItem(
+            orderItemId: item.id,
+          ),
+      '${item.name} removed',
     );
   }
 
@@ -806,12 +845,14 @@ class _OrderItemsCard extends StatelessWidget {
   const _OrderItemsCard({
     required this.items,
     required this.onDecrease,
+    required this.onRemove,
     required this.onRefund,
     required this.onReturnToKitchen,
   });
 
   final List<OrderItemLine> items;
   final ValueChanged<OrderItemLine> onDecrease;
+  final ValueChanged<OrderItemLine> onRemove;
   final ValueChanged<OrderItemLine> onRefund;
   final ValueChanged<OrderItemLine> onReturnToKitchen;
 
@@ -900,6 +941,7 @@ class _OrderItemsCard extends StatelessWidget {
                   child: _OrderItemTile(
                     item: item,
                     onDecrease: onDecrease,
+                    onRemove: onRemove,
                     onRefund: onRefund,
                     onReturnToKitchen: onReturnToKitchen,
                   ),
@@ -932,6 +974,7 @@ class _OrderItemsCard extends StatelessWidget {
                 return _OrderItemTile(
                   item: historicalItems[index],
                   onDecrease: onDecrease,
+                  onRemove: onRemove,
                   onRefund: onRefund,
                   onReturnToKitchen: onReturnToKitchen,
                   closeBeforeAction: true,
@@ -955,6 +998,7 @@ class _OrderItemTile extends StatelessWidget {
   const _OrderItemTile({
     required this.item,
     required this.onDecrease,
+    required this.onRemove,
     required this.onRefund,
     required this.onReturnToKitchen,
     this.closeBeforeAction = false,
@@ -962,6 +1006,7 @@ class _OrderItemTile extends StatelessWidget {
 
   final OrderItemLine item;
   final ValueChanged<OrderItemLine> onDecrease;
+  final ValueChanged<OrderItemLine> onRemove;
   final ValueChanged<OrderItemLine> onRefund;
   final ValueChanged<OrderItemLine> onReturnToKitchen;
   final bool closeBeforeAction;
@@ -1060,6 +1105,13 @@ class _OrderItemTile extends StatelessWidget {
                     ? () => _runAction(context, onDecrease)
                     : null,
                 icon: const Icon(Icons.remove_circle_outline),
+              ),
+              IconButton(
+                tooltip: 'Remove unsent item',
+                onPressed: item.canRemoveBeforeKitchen
+                    ? () => _runAction(context, onRemove)
+                    : null,
+                icon: const Icon(Icons.delete_outline),
               ),
               IconButton(
                 tooltip: 'Refund item',

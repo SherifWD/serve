@@ -55,6 +55,7 @@ class OnboardingController extends Controller
             $restaurant = Restaurant::query()->create([
                 'name' => $data['restaurant']['name'],
                 'kind' => $data['restaurant']['kind'],
+                'currency_code' => strtoupper($data['settings']['currency'] ?? 'USD'),
             ]);
 
             $branches = collect($data['branches'])

@@ -39,16 +39,17 @@
                     :items="restaurants"
                     item-title="name"
                     item-value="id"
-                    label="Restaurant"
-                    clearable
-                    variant="outlined"
-                    density="comfortable"
-                  />
-                </v-col>
-                <v-col cols="12" md="3">
-                  <v-select
-                    v-model="filters.branch_id"
-                    :items="branches"
+                  label="Restaurant"
+                  clearable
+                  variant="outlined"
+                  density="comfortable"
+                  @update:model-value="filters.branch_id = null"
+                />
+              </v-col>
+              <v-col cols="12" md="3">
+                <v-select
+                  v-model="filters.branch_id"
+                  :items="filterBranches"
                     item-title="name"
                     item-value="id"
                     label="Branch"
@@ -296,6 +297,14 @@ const filteredBranches = computed(() => {
 
   return branches.value.filter((branch) =>
     Number(branchRestaurantId(branch)) === Number(form.value.restaurant_id),
+  )
+})
+
+const filterBranches = computed(() => {
+  if (!filters.value.restaurant_id) return branches.value
+
+  return branches.value.filter((branch) =>
+    Number(branchRestaurantId(branch)) === Number(filters.value.restaurant_id),
   )
 })
 

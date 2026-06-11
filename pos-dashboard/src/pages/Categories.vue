@@ -30,8 +30,22 @@
             <v-row dense class="mb-4">
               <v-col cols="12" md="4">
                 <v-select
+                  v-model="filters.restaurant_id"
+                  :items="restaurants"
+                  item-title="name"
+                  item-value="id"
+                  label="Restaurant"
+                  clearable
+                  variant="outlined"
+                  density="comfortable"
+                  :menu-props="{ contentClass: 'dashboard-select-menu' }"
+                  @update:model-value="filters.branch_id = null"
+                />
+              </v-col>
+              <v-col cols="12" md="4">
+                <v-select
                   v-model="filters.branch_id"
-                  :items="branches"
+                  :items="filterBranchItems"
                   item-title="name"
                   item-value="id"
                   label="Branch"
@@ -158,6 +172,20 @@
               color="primary"
               class="mb-4 rounded-xl"
               style="border-radius: 1.5rem;"
+            />
+            <v-select
+              label="Restaurant"
+              :items="restaurants"
+              item-title="name"
+              item-value="id"
+              v-model="form.restaurant_id"
+              required
+              variant="outlined"
+              color="primary"
+              class="mb-4 rounded-xl"
+              style="border-radius: 1.5rem;"
+              :menu-props="{ contentClass: 'dashboard-select-menu' }"
+              @update:model-value="onSelectedRestaurantChange"
             />
             <v-select
               label="Default KDS station"
@@ -332,15 +360,25 @@ import OwnerLayout from '@/layouts/OwnerLayout.vue'
 
 const categories = ref([])
 const branches = ref([])
+const restaurants = ref([])
 const rightDrawer = ref(false)
 const editing = ref(false)
 const saving = ref(false)
 const tab = ref('general')
-const form = ref(blankForm())
+const form = ref({
+  id: null,
+  name: '',
+  restaurant_id: null,
+  kds_station: null,
+  branch_ids: [],
+  questions: [],
+  modifiers: [],
+})
 const search = ref('')
 const formError = ref('')
 let localKey = 0
 const filters = ref({
+  restaurant_id: null,
   branch_id: null,
   kds_station: null,
   questions: null,
@@ -372,9 +410,9 @@ const stationItems = [
 const ALL_BRANCHES_VALUE = '__all_branches__'
 
 const branchSelectItems = computed(() =>
-  branches.value.length > 1
-    ? [{ id: ALL_BRANCHES_VALUE, name: 'All branches' }, ...branches.value]
-    : branches.value
+  formBranches.value.length > 1
+    ? [{ id: ALL_BRANCHES_VALUE, name: 'All branches in restaurant' }, ...formBranches.value]
+    : formBranches.value
 )
 
 const filteredCategories = computed(() => {
@@ -386,10 +424,25 @@ const filteredCategories = computed(() => {
       categoryBranches(cat).some(branch => branch.name.toLowerCase().includes(q)) ||
       (cat.questions ?? []).some(question => question.question.toLowerCase().includes(q)) ||
       (cat.modifiers ?? []).some(modifier => modifier.name.toLowerCase().includes(q))) &&
+    (!filters.value.restaurant_id || categoryBranches(cat).some(branch => Number(branchRestaurantId(branch)) === Number(filters.value.restaurant_id))) &&
     (!filters.value.branch_id || categoryBranchIds(cat).includes(Number(filters.value.branch_id))) &&
     (!filters.value.kds_station || (cat.kds_station || null) === filters.value.kds_station) &&
     matchesPresenceFilter(questionCount(cat), filters.value.questions) &&
     matchesPresenceFilter(modifierCount(cat), filters.value.modifiers)
+  )
+})
+
+const filterBranchItems = computed(() => {
+  if (!filters.value.restaurant_id) return branches.value
+  return branches.value.filter(branch =>
+    Number(branchRestaurantId(branch)) === Number(filters.value.restaurant_id)
+  )
+})
+
+const formBranches = computed(() => {
+  if (!form.value.restaurant_id) return branches.value
+  return branches.value.filter(branch =>
+    Number(branchRestaurantId(branch)) === Number(form.value.restaurant_id)
   )
 })
 
@@ -413,6 +466,14 @@ async function loadBranches() {
     headers: { Authorization: `Bearer ${token}` }
   })
   branches.value = res.data.data || res.data
+}
+
+async function loadRestaurants() {
+  const token = localStorage.getItem('token')
+  const res = await axios.get(`${API_BASE_URL}/restaurants`, {
+    headers: { Authorization: `Bearer ${token}` }
+  })
+  restaurants.value = res.data.data || res.data
 }
 
 function openAddDrawer() {
@@ -463,6 +524,7 @@ async function saveCategory() {
 function categoryValidationFields() {
   return [
     missingField('Name', Boolean(form.value.name.trim())),
+    missingField('Restaurant', Boolean(form.value.restaurant_id)),
     missingField('Branches', form.value.branch_ids.length > 0),
   ].filter(Boolean)
 }
@@ -504,10 +566,21 @@ function onSelectedBranchesChange() {
   form.value.branch_ids = normalizedSelectedBranchIds(form.value.branch_ids)
 }
 
+function onSelectedRestaurantChange() {
+  const branchIds = formBranches.value.map(branch => Number(branch.id))
+  form.value.branch_ids = form.value.branch_ids
+    .map(Number)
+    .filter(branchId => branchIds.includes(branchId))
+
+  if (!form.value.branch_ids.length && formBranches.value.length === 1) {
+    form.value.branch_ids = [formBranches.value[0].id]
+  }
+}
+
 function normalizedSelectedBranchIds(selected) {
   const values = Array.isArray(selected) ? selected : []
   if (values.includes(ALL_BRANCHES_VALUE)) {
-    return branches.value.map(branch => branch.id)
+    return formBranches.value.map(branch => branch.id)
   }
 
   return values
@@ -531,6 +604,7 @@ function matchesPresenceFilter(count, value) {
 function resetFilters() {
   search.value = ''
   filters.value = {
+    restaurant_id: null,
     branch_id: null,
     kds_station: null,
     questions: null,
@@ -542,8 +616,9 @@ function blankForm() {
   return {
     id: null,
     name: '',
+    restaurant_id: defaultRestaurantId(),
     kds_station: null,
-    branch_ids: branches.value.length === 1 ? [branches.value[0].id] : [],
+    branch_ids: formBranches.value.length === 1 ? [formBranches.value[0].id] : [],
     questions: [],
     modifiers: [],
   }
@@ -581,6 +656,7 @@ function categoryToForm(category) {
   return {
     id: category.id,
     name: category.name ?? '',
+    restaurant_id: restaurantIdForCategory(category) ?? defaultRestaurantId(),
     kds_station: category.kds_station ?? null,
     branch_ids: categoryBranchIds(category),
     questions: (category.questions ?? []).map(question => ({
@@ -645,6 +721,18 @@ function categoryBranches(category) {
     .filter(Boolean)
 }
 
+function branchRestaurantId(branch) {
+  return branch?.restaurant_id ?? branch?.restaurant?.id ?? null
+}
+
+function defaultRestaurantId() {
+  return branchRestaurantId(branches.value[0]) ?? restaurants.value[0]?.id ?? null
+}
+
+function restaurantIdForCategory(category) {
+  return branchRestaurantId(categoryBranches(category)[0])
+}
+
 function nextLocalKey() {
   localKey += 1
   return `local-${Date.now()}-${localKey}`
@@ -657,6 +745,7 @@ function errorMessage(error) {
 }
 
 onMounted(() => {
+  loadRestaurants()
   loadCategories()
   loadBranches()
 })

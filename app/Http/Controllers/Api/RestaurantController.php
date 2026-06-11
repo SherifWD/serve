@@ -3,8 +3,11 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\FiscalProfile;
 use App\Models\Restaurant;
+use App\Models\Setting;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class RestaurantController extends Controller
 {
@@ -13,6 +16,7 @@ class RestaurantController extends Controller
         $user = $request->user();
 
         $query = Restaurant::query()
+            ->with('fiscalProfiles:id,restaurant_id,branch_id,currency_code,is_default')
             ->withCount('branches')
             ->withCount('users')
             ->orderBy('name');
@@ -35,10 +39,17 @@ class RestaurantController extends Controller
         $data = $request->validate([
             'name' => 'required|string|max:255|unique:restaurants,name',
             'kind' => 'required|in:restaurant,cafe',
+            'currency_code' => 'nullable|string|size:3',
             'logo_url' => 'nullable|string|max:2048',
         ]);
+        $data['currency_code'] = $this->normalizeCurrency($data['currency_code'] ?? null);
 
-        return Restaurant::create($data);
+        return DB::transaction(function () use ($data) {
+            $restaurant = Restaurant::create($data);
+            $this->syncRestaurantCurrency($restaurant, $data['currency_code']);
+
+            return response()->json($restaurant->fresh(['fiscalProfiles']), 201);
+        });
     }
 
     public function show(Request $request, Restaurant $restaurant)
@@ -51,7 +62,8 @@ class RestaurantController extends Controller
             'You cannot view this restaurant.'
         );
 
-        return $restaurant->loadCount(['branches', 'users']);
+        return $restaurant->load('fiscalProfiles:id,restaurant_id,branch_id,currency_code,is_default')
+            ->loadCount(['branches', 'users']);
     }
 
     public function update(Request $request, Restaurant $restaurant)
@@ -61,12 +73,17 @@ class RestaurantController extends Controller
         $data = $request->validate([
             'name' => 'required|string|max:255|unique:restaurants,name,'.$restaurant->id,
             'kind' => 'required|in:restaurant,cafe',
+            'currency_code' => 'nullable|string|size:3',
             'logo_url' => 'nullable|string|max:2048',
         ]);
+        $data['currency_code'] = $this->normalizeCurrency($data['currency_code'] ?? $restaurant->currency_code ?? null);
 
-        $restaurant->update($data);
+        DB::transaction(function () use ($restaurant, $data) {
+            $restaurant->update($data);
+            $this->syncRestaurantCurrency($restaurant, $data['currency_code']);
+        });
 
-        return $restaurant->fresh(['branches']);
+        return $restaurant->fresh(['branches', 'fiscalProfiles']);
     }
 
     public function destroy(Request $request, Restaurant $restaurant)
@@ -76,5 +93,33 @@ class RestaurantController extends Controller
         $restaurant->delete();
 
         return response()->json(['message' => 'Restaurant deleted']);
+    }
+
+    private function normalizeCurrency(?string $currency): string
+    {
+        $currency = strtoupper(trim((string) $currency));
+
+        return strlen($currency) === 3 ? $currency : 'USD';
+    }
+
+    private function syncRestaurantCurrency(Restaurant $restaurant, string $currency): void
+    {
+        Setting::query()->updateOrCreate(
+            ['key' => "restaurant.{$restaurant->id}.currency"],
+            ['value' => $currency],
+        );
+
+        FiscalProfile::query()->updateOrCreate(
+            [
+                'restaurant_id' => $restaurant->id,
+                'branch_id' => null,
+            ],
+            [
+                'display_name' => $restaurant->name.' fiscal profile',
+                'is_default' => true,
+                'currency_code' => $currency,
+                'eta_seller_name' => $restaurant->name,
+            ],
+        );
     }
 }

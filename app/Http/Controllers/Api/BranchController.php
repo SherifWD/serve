@@ -14,7 +14,7 @@ class BranchController extends Controller
         $user = $request->user();
 
         $query = Branch::query()
-            ->with('restaurant:id,name,kind,logo_url')
+            ->with('restaurant:id,name,kind,currency_code,logo_url')
             ->orderBy('name');
 
         if ($user->isPlatformAdmin()) {
@@ -41,6 +41,8 @@ class BranchController extends Controller
         $data = $request->validate([
             'name' => 'required|string|max:255',
             'location' => 'nullable|string|max:255',
+            'opens_at' => 'nullable|date_format:H:i',
+            'closes_at' => 'nullable|date_format:H:i',
             'restaurant_id' => 'nullable|integer|exists:restaurants,id',
         ]);
 
@@ -56,14 +58,17 @@ class BranchController extends Controller
             abort(403, 'You cannot create branches.');
         }
 
-        return Branch::create($data)->load('restaurant:id,name,kind,logo_url');
+        return response()->json(
+            Branch::create($data)->load('restaurant:id,name,kind,currency_code,logo_url'),
+            201,
+        );
     }
 
     public function show(Request $request, Branch $branch)
     {
         $this->ensureBranchAccess($request->user(), $branch);
 
-        return $branch->load('restaurant:id,name,kind,logo_url');
+        return $branch->load('restaurant:id,name,kind,currency_code,logo_url');
     }
 
     public function update(Request $request, Branch $branch)
@@ -74,6 +79,8 @@ class BranchController extends Controller
         $data = $request->validate([
             'name' => 'required|string|max:255',
             'location' => 'nullable|string|max:255',
+            'opens_at' => 'nullable|date_format:H:i',
+            'closes_at' => 'nullable|date_format:H:i',
             'restaurant_id' => 'nullable|integer|exists:restaurants,id',
         ]);
 
@@ -83,7 +90,7 @@ class BranchController extends Controller
 
         $branch->update($data);
 
-        return $branch->fresh('restaurant:id,name,kind,logo_url');
+        return $branch->fresh('restaurant:id,name,kind,currency_code,logo_url');
     }
 
     public function destroy(Request $request, Branch $branch)

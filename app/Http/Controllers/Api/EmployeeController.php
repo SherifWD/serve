@@ -14,7 +14,7 @@ class EmployeeController extends Controller
     public function index(Request $request)
     {
         $query = $this->branchScoped($request, Employee::query());
-        return response()->json($query->with('branch')->latest()->paginate(20));
+        return response()->json($query->with('branch.restaurant:id,name,kind,currency_code')->latest()->paginate(20));
     }
 
     public function store(Request $request)
@@ -33,7 +33,7 @@ class EmployeeController extends Controller
 
     public function show(Request $request, $id)
     {
-        return $this->branchScoped($request, Employee::with('branch'))->findOrFail($id);
+        return $this->branchScoped($request, Employee::with('branch.restaurant:id,name,kind,currency_code'))->findOrFail($id);
     }
 
     public function update(Request $request, $id)

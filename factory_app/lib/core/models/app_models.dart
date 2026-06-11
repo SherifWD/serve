@@ -505,6 +505,14 @@ class OrderItemLine {
             kitchenStatus == 'changed');
   }
 
+  bool get canRemoveBeforeKitchen {
+    final kitchenStatus = kdsStatus ?? status;
+    return !isVoided &&
+        (kitchenStatus == null ||
+            kitchenStatus == 'pending' ||
+            kitchenStatus == 'changed');
+  }
+
   bool get canReturnToKitchen {
     final kitchenStatus = kdsStatus ?? status;
     return !isVoided &&

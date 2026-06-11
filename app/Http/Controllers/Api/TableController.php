@@ -15,7 +15,7 @@ class TableController extends Controller
 
     // List all tables (with branch name)
    public function index(Request $request) {
-    $tables = $this->branchScoped($request, Table::query())->with('branch')->withCount(['orders' => function($q) {
+    $tables = $this->branchScoped($request, Table::query())->with('branch.restaurant:id,name,kind,currency_code')->withCount(['orders' => function($q) {
         $q->where('status', '!=', 'closed'); // Or whatever means "active"
     }])->get();
 
@@ -74,7 +74,7 @@ class TableController extends Controller
             'name' => $data['name'],
             'seats' => $data['seats'] ?? null,
         ]);
-        return response()->json($table->load('branch'), 201);
+        return response()->json($table->load('branch.restaurant:id,name,kind,currency_code'), 201);
     }
 
     // Show a table
@@ -106,7 +106,7 @@ class TableController extends Controller
             'name' => $data['name'],
             'seats' => $data['seats'] ?? null,
         ]);
-        return response()->json($table->load('branch'));
+        return response()->json($table->load('branch.restaurant:id,name,kind,currency_code'));
     }
 
     // Delete a table

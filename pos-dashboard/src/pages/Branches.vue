@@ -90,6 +90,16 @@
             </v-chip>
           </template>
 
+          <template #item.restaurant_type="{ item }">
+            <v-chip :color="item.restaurant?.kind === 'cafe' ? 'info' : 'primary'" variant="tonal" class="rs-pill">
+              {{ item.restaurant?.kind || 'Not set' }}
+            </v-chip>
+          </template>
+
+          <template #item.hours="{ item }">
+            {{ branchHours(item) }}
+          </template>
+
           <template #item.actions="{ item }">
             <div class="table-actions">
               <v-btn
@@ -135,6 +145,22 @@
               <v-col cols="12">
                 <v-text-field v-model="form.location" label="Location" variant="outlined" />
               </v-col>
+              <v-col cols="12" sm="6">
+                <v-text-field
+                  v-model="form.opens_at"
+                  label="Opening time"
+                  type="time"
+                  variant="outlined"
+                />
+              </v-col>
+              <v-col cols="12" sm="6">
+                <v-text-field
+                  v-model="form.closes_at"
+                  label="Closing time"
+                  type="time"
+                  variant="outlined"
+                />
+              </v-col>
             </v-row>
           </v-card-text>
           <v-card-actions class="justify-end px-6 pb-6">
@@ -169,7 +195,9 @@ const headers = [
   { title: 'ID', key: 'id', width: 70 },
   { title: 'Branch', key: 'name' },
   { title: 'Restaurant', key: 'restaurant' },
+  { title: 'Type', key: 'restaurant_type' },
   { title: 'Location', key: 'location' },
+  { title: 'Hours', key: 'hours' },
   { title: 'Actions', key: 'actions', sortable: false, width: 120 },
 ]
 
@@ -190,6 +218,8 @@ function createEmptyForm() {
     restaurant_id: auth.isAdmin ? selectedRestaurant.value : auth.user?.restaurant_id,
     name: '',
     location: '',
+    opens_at: '',
+    closes_at: '',
   }
 }
 
@@ -234,6 +264,8 @@ function openEdit(branch) {
     restaurant_id: branch.restaurant_id ?? branch.restaurant?.id ?? auth.user?.restaurant_id,
     name: branch.name,
     location: branch.location,
+    opens_at: timeForInput(branch.opens_at),
+    closes_at: timeForInput(branch.closes_at),
   }
   dialog.value = true
 }
@@ -248,6 +280,8 @@ async function saveBranch() {
   const payload = {
     name: form.value.name,
     location: form.value.location,
+    opens_at: form.value.opens_at || null,
+    closes_at: form.value.closes_at || null,
   }
 
   if (auth.isAdmin) {
@@ -273,6 +307,18 @@ function branchValidationFields() {
     missingField('Restaurant', !auth.isAdmin || Boolean(form.value.restaurant_id)),
     missingField('Branch name', Boolean(form.value.name.trim())),
   ].filter(Boolean)
+}
+
+function timeForInput(value) {
+  if (!value) return ''
+  return String(value).slice(0, 5)
+}
+
+function branchHours(branch) {
+  const opens = timeForInput(branch.opens_at)
+  const closes = timeForInput(branch.closes_at)
+  if (!opens && !closes) return 'Not set'
+  return `${opens || 'Not set'} - ${closes || 'Not set'}`
 }
 
 async function removeBranch(id) {

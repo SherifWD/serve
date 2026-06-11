@@ -16,10 +16,13 @@
               <!-- Filter Bar -->
               <v-row class="mb-4" align="center" dense>
                 <v-col cols="12" md="2">
-                  <v-select v-model="filters.branch_id" :items="branches" item-title="name" item-value="id" label="Branch" dense clearable rounded />
+                  <v-select v-model="filters.restaurant_id" :items="restaurants" item-title="name" item-value="id" label="Restaurant" dense clearable rounded @update:model-value="filters.branch_id = null; filters.table_id = null" />
                 </v-col>
                 <v-col cols="12" md="2">
-                  <v-select v-model="filters.table_id" :items="tables" item-title="name" item-value="id" label="Table" dense clearable rounded />
+                  <v-select v-model="filters.branch_id" :items="filterBranches" item-title="name" item-value="id" label="Branch" dense clearable rounded @update:model-value="filters.table_id = null" />
+                </v-col>
+                <v-col cols="12" md="2">
+                  <v-select v-model="filters.table_id" :items="filterTables" item-title="name" item-value="id" label="Table" dense clearable rounded />
                 </v-col>
                 <v-col cols="12" md="2">
                   <v-select v-model="filters.status" :items="statuses" label="Status" dense clearable rounded />
@@ -111,10 +114,14 @@
           <!-- General Info Tab -->
           <v-window-item value="general">
             <v-form class="pa-6">
-              <v-select label="Branch" :items="branches" item-title="name" item-value="id" v-model="form.branch_id" required variant="outlined" color="primary" class="mb-4 rounded-xl" />
-              <v-select label="Table" :items="tables" item-title="name" item-value="id" v-model="form.table_id" required variant="outlined" color="primary" class="mb-4 rounded-xl" />
-              <v-select label="Order Type" :items="orderTypes" v-model="form.order_type" required variant="outlined" color="primary" class="mb-4 rounded-xl" />
+              <v-select label="Restaurant" :items="restaurants" item-title="name" item-value="id" v-model="form.restaurant_id" required variant="outlined" color="primary" class="mb-4 rounded-xl" @update:model-value="syncOrderBranch" />
+              <v-select label="Branch" :items="formBranches" item-title="name" item-value="id" v-model="form.branch_id" required variant="outlined" color="primary" class="mb-4 rounded-xl" @update:model-value="syncOrderTableAndItems" />
+              <v-select label="Order Type" :items="orderTypes" v-model="form.order_type" required variant="outlined" color="primary" class="mb-4 rounded-xl" @update:model-value="syncOrderTableAndItems" />
+              <v-select v-if="form.order_type === 'dine-in'" label="Table" :items="formTables" item-title="name" item-value="id" v-model="form.table_id" required variant="outlined" color="primary" class="mb-4 rounded-xl" no-data-text="No tables in selected branch" />
               <v-select label="Status" :items="statuses" v-model="form.status" required variant="outlined" color="primary" class="mb-4 rounded-xl" />
+              <v-text-field label="Customer name" v-model="form.customer_name" variant="outlined" color="primary" class="mb-4 rounded-xl" />
+              <v-text-field label="Customer phone" v-model="form.customer_phone" variant="outlined" color="primary" class="mb-4 rounded-xl" />
+              <v-text-field label="Customer email" v-model="form.customer_email" variant="outlined" color="primary" class="mb-4 rounded-xl" />
             </v-form>
           </v-window-item>
           <!-- Items Tab -->
@@ -123,7 +130,7 @@
               <h4 class="text-h6 mb-2">Items</h4>
               <div v-for="(item, i) in form.order_items" :key="i" class="d-flex align-center mb-2">
                 <v-select
-                  :items="products"
+                  :items="formProducts"
                   item-title="name"
                   item-value="id"
                   v-model="item.product_id"
@@ -131,6 +138,7 @@
                   class="mr-2 rounded-xl"
                   dense
                   style="min-width:120px;"
+                  @update:model-value="syncItemPrice(item)"
                 />
                 <v-text-field
                   v-model="item.quantity"
@@ -230,6 +238,7 @@ import { API_BASE_URL } from '../lib/api'
 import OwnerLayout from '@/layouts/OwnerLayout.vue'
 
 const orders = ref([])
+const restaurants = ref([])
 const branches = ref([])
 const tables = ref([])
 const products = ref([])
@@ -240,10 +249,14 @@ const tab = ref('general')
 const statuses = ['pending', 'paid', 'cancelled', 'refunded']
 const orderTypes = ['dine-in', 'takeaway', 'delivery']
 const form = ref({
+  restaurant_id: null,
   branch_id: null,
   table_id: null,
   status: 'pending',
   order_type: 'dine-in',
+  customer_name: '',
+  customer_phone: '',
+  customer_email: '',
   order_items: [{ product_id: null, quantity: 1, price: 0 }]
 })
 
@@ -259,6 +272,7 @@ const headers = [
   { title: 'Actions', key: 'actions', sortable: false }
 ]
 const filters = ref({
+  restaurant_id: null,
   branch_id: null,
   table_id: null,
   status: null,
@@ -267,6 +281,31 @@ const filters = ref({
   dateMenu: false,
   search: ''
 })
+
+const filterBranches = computed(() => {
+  if (!filters.value.restaurant_id) return branches.value
+  return branches.value.filter(branch => Number(branchRestaurantId(branch)) === Number(filters.value.restaurant_id))
+})
+
+const filterTables = computed(() => {
+  return tables.value.filter(table =>
+    (!filters.value.restaurant_id || Number(tableRestaurantId(table)) === Number(filters.value.restaurant_id)) &&
+    (!filters.value.branch_id || Number(table.branch_id) === Number(filters.value.branch_id))
+  )
+})
+
+const formBranches = computed(() => {
+  if (!form.value.restaurant_id) return branches.value
+  return branches.value.filter(branch => Number(branchRestaurantId(branch)) === Number(form.value.restaurant_id))
+})
+
+const formTables = computed(() =>
+  tables.value.filter(table => Number(table.branch_id) === Number(form.value.branch_id))
+)
+
+const formProducts = computed(() =>
+  products.value.filter(product => productBranchIds(product).includes(Number(form.value.branch_id)))
+)
 function dateToYMD(date) {
   if (!date) return null;
   const d = typeof date === 'string' ? new Date(date) : date;
@@ -276,8 +315,9 @@ function dateToYMD(date) {
 
 const filteredOrders = computed(() => {
   return orders.value.filter(order => {
-    if (filters.value.branch_id && order.branch_id !== filters.value.branch_id) return false
-    if (filters.value.table_id && order.table_id !== filters.value.table_id) return false
+    if (filters.value.branch_id && Number(order.branch_id) !== Number(filters.value.branch_id)) return false
+    if (filters.value.restaurant_id && Number(order.branch?.restaurant_id ?? order.branch?.restaurant?.id) !== Number(filters.value.restaurant_id)) return false
+    if (filters.value.table_id && Number(order.table_id) !== Number(filters.value.table_id)) return false
     if (filters.value.status && order.status !== filters.value.status) return false
     if (filters.value.order_type && order.order_type !== filters.value.order_type) return false
     if (filters.value.date) {
@@ -303,6 +343,57 @@ function statusColor(status) {
   }
 }
 
+function branchRestaurantId(branch) {
+  return branch?.restaurant_id ?? branch?.restaurant?.id ?? null
+}
+
+function tableRestaurantId(table) {
+  const branch = table.branch || branches.value.find(candidate => Number(candidate.id) === Number(table.branch_id))
+  return branchRestaurantId(branch)
+}
+
+function defaultRestaurantId() {
+  return branchRestaurantId(branches.value[0]) ?? restaurants.value[0]?.id ?? null
+}
+
+function productBranchIds(product) {
+  if (Array.isArray(product?.branch_ids) && product.branch_ids.length) {
+    return product.branch_ids.map(Number)
+  }
+  return product?.branch_id ? [Number(product.branch_id)] : []
+}
+
+function syncOrderBranch() {
+  const branchStillAvailable = formBranches.value.some(branch => Number(branch.id) === Number(form.value.branch_id))
+  if (!branchStillAvailable) {
+    form.value.branch_id = formBranches.value[0]?.id ?? null
+  }
+  syncOrderTableAndItems()
+}
+
+function syncOrderTableAndItems() {
+  if (form.value.order_type === 'dine-in') {
+    const tableStillAvailable = formTables.value.some(table => Number(table.id) === Number(form.value.table_id))
+    if (!tableStillAvailable) {
+      form.value.table_id = formTables.value[0]?.id ?? null
+    }
+  } else {
+    form.value.table_id = null
+  }
+
+  for (const item of form.value.order_items) {
+    if (item.product_id && !formProducts.value.some(product => Number(product.id) === Number(item.product_id))) {
+      item.product_id = null
+      item.price = 0
+    }
+  }
+}
+
+function syncItemPrice(item) {
+  const product = products.value.find(candidate => Number(candidate.id) === Number(item.product_id))
+  item.price = product ? Number(product.price) : 0
+}
+
 async function loadOrders() {
   const token = localStorage.getItem('token')
   const res = await axios.get(`${API_BASE_URL}/orders`, {
@@ -317,6 +408,13 @@ async function loadBranches() {
     headers: { Authorization: `Bearer ${token}` }
   })
   branches.value = res.data.data || res.data
+}
+async function loadRestaurants() {
+  const token = localStorage.getItem('token')
+  const res = await axios.get(`${API_BASE_URL}/restaurants`, {
+    headers: { Authorization: `Bearer ${token}` }
+  })
+  restaurants.value = res.data.data || res.data
 }
 async function loadTables() {
   const token = localStorage.getItem('token')
@@ -334,13 +432,33 @@ async function loadProducts() {
 }
 
 function openAdd() {
-  form.value = { branch_id: null, table_id: null, status: 'pending', order_type: 'dine-in', order_items: [{ product_id: null, quantity: 1, price: 0 }] }
+  form.value = {
+    restaurant_id: defaultRestaurantId(),
+    branch_id: null,
+    table_id: null,
+    status: 'pending',
+    order_type: 'dine-in',
+    customer_name: '',
+    customer_phone: '',
+    customer_email: '',
+    order_items: [{ product_id: null, quantity: 1, price: 0 }],
+  }
+  syncOrderBranch()
   tab.value = 'general'
   dialog.value = true
 }
 async function addOrder() {
   const token = localStorage.getItem('token')
-  await axios.post(`${API_BASE_URL}/orders`, form.value, {
+  await axios.post(`${API_BASE_URL}/orders`, {
+    branch_id: form.value.branch_id,
+    table_id: form.value.order_type === 'dine-in' ? form.value.table_id : null,
+    status: form.value.status,
+    order_type: form.value.order_type,
+    customer_name: form.value.customer_name,
+    customer_phone: form.value.customer_phone,
+    customer_email: form.value.customer_email,
+    order_items: form.value.order_items,
+  }, {
     headers: { Authorization: `Bearer ${token}` }
   })
   dialog.value = false
@@ -353,6 +471,7 @@ function viewOrder(order) {
 }
 
 onMounted(() => {
+  loadRestaurants()
   loadOrders()
   loadBranches()
   loadTables()

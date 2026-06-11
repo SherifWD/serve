@@ -24,8 +24,22 @@
               <v-row dense class="mb-4">
                 <v-col cols="12" sm="6" lg="3">
                   <v-select
+                    v-model="filters.restaurant_id"
+                    :items="restaurants"
+                    item-title="name"
+                    item-value="id"
+                    label="Restaurant"
+                    clearable
+                    variant="outlined"
+                    density="comfortable"
+                    :menu-props="{ contentClass: 'dashboard-select-menu' }"
+                    @update:model-value="filters.branch_id = null"
+                  />
+                </v-col>
+                <v-col cols="12" sm="6" lg="3">
+                  <v-select
                     v-model="filters.branch_id"
-                    :items="branches"
+                    :items="filterBranchItems"
                     item-title="name"
                     item-value="id"
                     label="Branch"
@@ -158,9 +172,22 @@
         <v-form @submit.prevent="saveProduct">
           <div class="pa-6">
             <v-text-field label="Name" v-model="drawerForm.name" required variant="outlined" color="primary" class="mb-4 rounded-xl" />
-            <v-select label="Category" :items="categoryItems" item-title="name" item-value="id" v-model="drawerForm.category_id" required variant="outlined" color="primary" class="mb-4 rounded-xl" :menu-props="{ contentClass: 'dashboard-select-menu' }" />
-            <v-select label="KDS station override" :items="stationItems" v-model="drawerForm.kds_station" clearable variant="outlined" color="primary" class="mb-4 rounded-xl" hint="Leave blank to use the category route." persistent-hint />
+            <v-select
+              label="Restaurant"
+              :items="restaurants"
+              item-title="name"
+              item-value="id"
+              v-model="drawerForm.restaurant_id"
+              required
+              variant="outlined"
+              color="primary"
+              class="mb-4 rounded-xl"
+              :menu-props="{ contentClass: 'dashboard-select-menu' }"
+              @update:model-value="onRestaurantChange"
+            />
             <v-select label="Branches" :items="branchSelectItems" item-title="name" item-value="id" v-model="drawerForm.branch_ids" required multiple chips closable-chips variant="outlined" color="primary" class="mb-4 rounded-xl" :menu-props="{ contentClass: 'dashboard-select-menu' }" @update:model-value="onBranchChange" />
+            <v-select label="Category" :items="formCategoryItems" item-title="name" item-value="id" v-model="drawerForm.category_id" required variant="outlined" color="primary" class="mb-4 rounded-xl" :menu-props="{ contentClass: 'dashboard-select-menu' }" no-data-text="Assign categories to the selected branches first" />
+            <v-select label="KDS station override" :items="stationItems" v-model="drawerForm.kds_station" clearable variant="outlined" color="primary" class="mb-4 rounded-xl" hint="Leave blank to use the category route." persistent-hint />
             <v-text-field label="Price" v-model="drawerForm.price" type="number" required variant="outlined" color="primary" class="mb-4 rounded-xl" />
             <v-text-field label="Minimum stock" v-model="drawerForm.min_stock" type="number" min="0" variant="outlined" color="primary" class="mb-4 rounded-xl" />
             <v-switch label="Available" v-model="drawerForm.is_available" color="primary" inset class="mb-6" style="--v-switch-track-color: #2a9d8f;" />
@@ -304,6 +331,7 @@ import OwnerLayout from '@/layouts/OwnerLayout.vue'
 const products = ref([])
 const categories = ref([])
 const branches = ref([])
+const restaurants = ref([])
 const recipes = ref([])
 const rightDrawer = ref(false)
 const viewDrawer = ref(false)
@@ -313,6 +341,7 @@ const tab = ref('general')
 const drawerForm = ref({
   id: null,
   name: '',
+  restaurant_id: null,
   category_id: null,
   kds_station: null,
   price: '',
@@ -325,6 +354,7 @@ const viewProduct = ref({})
 const search = ref('')
 const formError = ref('')
 const filters = ref({
+  restaurant_id: null,
   branch_id: null,
   category_id: null,
   availability: null,
@@ -359,9 +389,9 @@ const stationItems = [
 const ALL_BRANCHES_VALUE = '__all_branches__'
 
 const branchSelectItems = computed(() =>
-  branches.value.length > 1
-    ? [{ id: ALL_BRANCHES_VALUE, name: 'All branches' }, ...branches.value]
-    : branches.value
+  formBranches.value.length > 1
+    ? [{ id: ALL_BRANCHES_VALUE, name: 'All branches in restaurant' }, ...formBranches.value]
+    : formBranches.value
 )
 
 const recipeFilterItems = [
@@ -373,6 +403,7 @@ const filteredProducts = computed(() => {
   const q = search.value.toLowerCase()
   return products.value.filter(prod =>
     matchesProductSearch(prod, q) &&
+    (!filters.value.restaurant_id || productBranches(prod).some(branch => Number(branchRestaurantId(branch)) === Number(filters.value.restaurant_id))) &&
     (!filters.value.branch_id || productBranchIds(prod).includes(Number(filters.value.branch_id))) &&
     (!filters.value.category_id || Number(prod.category_id) === Number(filters.value.category_id)) &&
     (!filters.value.kds_station || productStation(prod) === filters.value.kds_station) &&
@@ -387,12 +418,30 @@ const selectedRecipe = computed(() => {
 })
 
 const categoryItems = computed(() => {
-  const seen = new Set()
-  return categories.value.filter((category) => {
-    const key = category.name.trim().toLowerCase()
-    if (seen.has(key)) return false
-    seen.add(key)
-    return true
+  return categories.value
+})
+
+const filterBranchItems = computed(() => {
+  if (!filters.value.restaurant_id) return branches.value
+  return branches.value.filter(branch =>
+    Number(branchRestaurantId(branch)) === Number(filters.value.restaurant_id)
+  )
+})
+
+const formBranches = computed(() => {
+  if (!drawerForm.value.restaurant_id) return branches.value
+  return branches.value.filter(branch =>
+    Number(branchRestaurantId(branch)) === Number(drawerForm.value.restaurant_id)
+  )
+})
+
+const formCategoryItems = computed(() => {
+  const selectedBranchIds = drawerForm.value.branch_ids.map(Number)
+  if (!selectedBranchIds.length) return []
+
+  return categoryItems.value.filter(category => {
+    const branchIds = categoryBranchIds(category)
+    return selectedBranchIds.every(branchId => branchIds.includes(branchId))
   })
 })
 
@@ -440,6 +489,16 @@ async function loadBranches() {
   } catch (err) { console.error('Failed to load branches', err) }
 }
 
+async function loadRestaurants() {
+  try {
+    const token = localStorage.getItem('token')
+    const res = await axios.get(`${API_BASE_URL}/restaurants`, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+    restaurants.value = res.data.data || res.data
+  } catch (err) { console.error('Failed to load restaurants', err) }
+}
+
 async function loadRecipes() {
   try {
     const token = localStorage.getItem('token')
@@ -458,6 +517,7 @@ function openAddDrawer() {
   drawerForm.value = { 
     id: null, 
     name: '', 
+    restaurant_id: defaultRestaurantId(),
     category_id: null, 
     kds_station: null,
     price: '', 
@@ -477,6 +537,7 @@ function openEditDrawer(product) {
   drawerForm.value = {
     id: product.id,
     name: product.name,
+    restaurant_id: restaurantIdForProduct(product) ?? defaultRestaurantId(),
     category_id: product.category_id,
     kds_station: product.kds_station ?? null,
     price: product.price,
@@ -519,6 +580,13 @@ function recipeIngredientSummary(recipe) {
 function onBranchChange() {
   drawerForm.value.branch_ids = normalizedSelectedBranchIds(drawerForm.value.branch_ids)
 
+  if (
+    drawerForm.value.category_id &&
+    !formCategoryItems.value.some(category => Number(category.id) === Number(drawerForm.value.category_id))
+  ) {
+    drawerForm.value.category_id = null
+  }
+
   if (!drawerForm.value.recipe_id) return
   const stillAvailable = filteredRecipes.value.some((recipe) =>
     Number(recipe.id) === Number(drawerForm.value.recipe_id)
@@ -526,10 +594,21 @@ function onBranchChange() {
   if (!stillAvailable) drawerForm.value.recipe_id = null
 }
 
+function onRestaurantChange() {
+  const availableBranchIds = formBranches.value.map(branch => Number(branch.id))
+  drawerForm.value.branch_ids = drawerForm.value.branch_ids
+    .map(Number)
+    .filter(branchId => availableBranchIds.includes(branchId))
+  if (!drawerForm.value.branch_ids.length && formBranches.value.length === 1) {
+    drawerForm.value.branch_ids = [formBranches.value[0].id]
+  }
+  onBranchChange()
+}
+
 function normalizedSelectedBranchIds(selected) {
   const values = Array.isArray(selected) ? selected : []
   if (values.includes(ALL_BRANCHES_VALUE)) {
-    return branches.value.map(branch => branch.id)
+    return formBranches.value.map(branch => branch.id)
   }
 
   return values
@@ -574,6 +653,7 @@ function resetFilters() {
   filters.value = {
     branch_id: null,
     category_id: null,
+    restaurant_id: null,
     availability: null,
     kds_station: null,
     recipe: null,
@@ -630,10 +710,30 @@ function productStation(product) {
 function productValidationFields() {
   return [
     missingField('Name', Boolean(drawerForm.value.name.trim())),
+    missingField('Restaurant', Boolean(drawerForm.value.restaurant_id)),
     missingField('Category', Boolean(drawerForm.value.category_id)),
     missingField('Branches', drawerForm.value.branch_ids.length > 0),
     missingField('Price', hasNumberAtLeast(drawerForm.value.price, 0)),
   ].filter(Boolean)
+}
+
+function branchRestaurantId(branch) {
+  return branch?.restaurant_id ?? branch?.restaurant?.id ?? null
+}
+
+function defaultRestaurantId() {
+  return branchRestaurantId(branches.value[0]) ?? restaurants.value[0]?.id ?? null
+}
+
+function restaurantIdForProduct(product) {
+  return branchRestaurantId(productBranches(product)[0])
+}
+
+function categoryBranchIds(category) {
+  if (Array.isArray(category?.branch_ids) && category.branch_ids.length) {
+    return category.branch_ids.map(Number)
+  }
+  return category?.branch_id ? [Number(category.branch_id)] : []
 }
 
 function hasNumberAtLeast(value, min) {
@@ -675,6 +775,7 @@ async function deleteProduct(prod) {
 }
 
 onMounted(() => {
+  loadRestaurants()
   loadProducts()
   loadCategories()
   loadBranches()

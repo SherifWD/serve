@@ -668,6 +668,73 @@ public function batchSendToCashier(Request $request)
     });
 }
 
+    public function removeUnsentItem(Request $request, $orderItemId)
+    {
+        $item = OrderItem::with(['order.table', 'product', 'answers', 'modifiers'])->findOrFail($orderItemId);
+        $order = $item->order;
+
+        if ($authResponse = $this->ensureBranchAccessible($request, (int) $order->branch_id)) {
+            return $authResponse;
+        }
+
+        $kitchenStatus = $item->kds_status ?? $item->status;
+        if (! in_array($kitchenStatus, [null, 'pending', 'changed'], true) || $item->kds_sent_at) {
+            return response()->json([
+                'error' => 'Only items that have not been sent to kitchen can be removed.',
+            ], 422);
+        }
+
+        if ((float) $item->paid_amount > 0) {
+            return response()->json([
+                'error' => 'Paid items cannot be removed. Use refund flow instead.',
+            ], 422);
+        }
+
+        $branchId = (int) $order->branch_id;
+        $quantity = (int) $item->quantity;
+        $product = $item->product;
+
+        return DB::transaction(function () use ($item, $order, $branchId, $quantity, $product) {
+            if ($product && $quantity > 0) {
+                app(ProductStockService::class)->restore($product, $branchId, $quantity);
+            }
+
+            $item->modifiers()->delete();
+            $item->answers()->delete();
+            $item->delete();
+
+            $order->refresh()->load('items');
+            $hasItems = $order->items()->exists();
+
+            if (! $hasItems && (float) $order->payments()->sum('amount') <= 0) {
+                $table = $order->table;
+                $order->delete();
+                $table?->update(['status' => TableStatus::OPEN]);
+
+                event(new BranchOrderUpdated($order, 'order.item_removed'));
+
+                return response()->json([
+                    'removed' => true,
+                    'order_deleted' => true,
+                    'order_total' => 0,
+                    'items' => [],
+                ]);
+            }
+
+            $order = \App\Services\Orders\RecalculateOrder::run($order);
+            event(new BranchOrderUpdated($order->fresh(['table', 'customer', 'items.product', 'payments']), 'order.item_removed'));
+
+            return response()->json([
+                'removed' => true,
+                'order_deleted' => false,
+                'items' => $order->items()->with('product')->get(),
+                'order_total' => $order->total,
+                'order_subtotal' => $order->subtotal,
+                'order_tax' => $order->tax,
+            ]);
+        });
+    }
+
 
     public function itemHistory(Request $request, $orderItemId)
     {

@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\Concerns\EnforcesTenantAccess;
 use App\Models\Menu;
 use App\Models\Category;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 
 class MenuController extends Controller
 {
@@ -88,10 +89,10 @@ class MenuController extends Controller
 
         $this->ensureBranchAccess($request, $branchId);
 
+        $user = $request->user();
         $query = Category::query()
             ->whereIn('id', $categoryIds);
 
-        $user = $request->user();
         if (!$user?->isPlatformAdmin()) {
             if ($user?->branch_id) {
                 $query->where(function ($scope) use ($user) {
@@ -108,10 +109,50 @@ class MenuController extends Controller
             }
         }
 
-        $count = $query->count();
+        $categories = $query->get();
 
-        abort_unless($count === count($categoryIds), 422, 'Menu categories must be available to the selected restaurant.');
+        abort_unless($categories->count() === count($categoryIds), 422, 'Menu categories must be available to the selected restaurant.');
 
-        return $categoryIds;
+        return $categories
+            ->map(fn (Category $category) => $this->categoryIdForBranch($category, $branchId))
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    private function categoryIdForBranch(Category $category, int $branchId): int
+    {
+        if ((int) $category->branch_id === $branchId) {
+            return (int) $category->id;
+        }
+
+        $groupId = $category->branch_group_id;
+        $name = mb_strtolower(trim($category->name));
+
+        $sibling = Category::query()
+            ->where('branch_id', $branchId)
+            ->where(function ($query) use ($groupId, $name) {
+                if ($groupId) {
+                    $query->where('branch_group_id', $groupId)
+                        ->orWhereRaw('LOWER(name) = ?', [$name]);
+                    return;
+                }
+
+                $query->whereRaw('LOWER(name) = ?', [$name]);
+            })
+            ->first();
+
+        if (! $sibling) {
+            throw ValidationException::withMessages([
+                'categories' => 'Assign every menu category to the selected branch before using it on a menu.',
+            ]);
+        }
+
+        if ($groupId && ! $sibling->branch_group_id) {
+            $sibling->branch_group_id = $groupId;
+            $sibling->save();
+        }
+
+        return (int) $sibling->id;
     }
 }

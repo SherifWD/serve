@@ -159,6 +159,7 @@ Route::prefix('mobile')->middleware(['auth:sanctum', EnsureClientMutationIdempot
     Route::post('/orders/{id}/pay', [OrderMobileController::class, 'pay']);
     Route::get('/orders/{id}/receipt', [OrderMobileController::class, 'receipt']);
     Route::patch('order-items/{id}/refund-change', [TableMobileController::class, 'refundOrChangeItem']);
+    Route::delete('order-items/{id}', [TableMobileController::class, 'removeUnsentItem']);
     Route::get('order-items/{id}/history', [TableMobileController::class, 'itemHistory']);
     // routes/api.php
     Route::get('/modifiers/available', [ModifierController::class, 'availableForWaiter']);

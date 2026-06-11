@@ -814,25 +814,39 @@ class _CounterSaleSheetState extends State<_CounterSaleSheet> {
 
   List<(MenuCategoryData, MenuProduct)> get _products {
     final query = _search.trim().toLowerCase();
-    return [
-      for (final category in widget.menu)
-        for (final product in category.products)
-          if (query.isEmpty ||
-              product.name.toLowerCase().contains(query) ||
-              category.name.toLowerCase().contains(query))
-            (category, product),
-    ];
+    return _allProducts
+        .where((entry) =>
+            query.isEmpty ||
+            entry.$2.name.toLowerCase().contains(query) ||
+            entry.$1.name.toLowerCase().contains(query))
+        .toList(growable: false);
   }
 
   List<(MenuCategoryData, MenuProduct)> get _allProducts {
-    return [
-      for (final category in widget.menu)
-        for (final product in category.products) (category, product),
-    ];
+    final seen = <int>{};
+    final items = <(MenuCategoryData, MenuProduct)>[];
+    for (final category in widget.menu) {
+      for (final product in category.products) {
+        if (seen.add(product.id)) {
+          items.add((category, product));
+        }
+      }
+    }
+
+    return items;
   }
 
   List<(MenuCategoryData, MenuProduct)> get _quickProducts {
     return _allProducts.take(12).toList(growable: false);
+  }
+
+  List<(MenuCategoryData, MenuProduct)> get _browseProducts {
+    if (_search.trim().isNotEmpty) return _products;
+
+    final quickIds = _quickProducts.map((entry) => entry.$2.id).toSet();
+    return _products
+        .where((entry) => !quickIds.contains(entry.$2.id))
+        .toList(growable: false);
   }
 
   double get _cartTotal => _cart.values.fold<double>(
@@ -937,7 +951,7 @@ class _CounterSaleSheetState extends State<_CounterSaleSheet> {
   @override
   Widget build(BuildContext context) {
     final currency = NumberFormat.currency(symbol: 'USD ');
-    final products = _products;
+    final products = _browseProducts;
 
     return SafeArea(
       child: DraggableScrollableSheet(

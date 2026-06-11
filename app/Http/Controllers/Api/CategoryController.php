@@ -12,6 +12,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 
 class CategoryController extends Controller
 {
@@ -53,6 +54,7 @@ class CategoryController extends Controller
             $data['branch_ids'] ?? null,
             isset($data['branch_id']) ? (int) $data['branch_id'] : null,
         );
+        $this->ensureBranchesShareRestaurant($branchIds);
         $questions = $data['questions'] ?? null;
         $modifiers = $data['modifiers'] ?? null;
         unset($data['questions'], $data['modifiers'], $data['branch_ids'], $data['branch_id']);
@@ -130,6 +132,7 @@ class CategoryController extends Controller
             $data['branch_ids'] ?? null,
             isset($data['branch_id']) ? (int) $data['branch_id'] : (int) $category->branch_id,
         );
+        $this->ensureBranchesShareRestaurant($branchIds);
         unset($data['questions'], $data['modifiers'], $data['branch_ids'], $data['branch_id']);
 
         if (isset($data['name'])) {
@@ -264,6 +267,22 @@ class CategoryController extends Controller
             $deleteQuery->whereNotIn('id', $keptQuestionIds);
         }
         $deleteQuery->delete();
+    }
+
+    private function ensureBranchesShareRestaurant(array $branchIds): void
+    {
+        $restaurantIds = Branch::query()
+            ->whereIn('id', $branchIds)
+            ->pluck('restaurant_id')
+            ->map(fn ($id) => $id === null ? null : (int) $id)
+            ->unique()
+            ->values();
+
+        if ($restaurantIds->count() !== 1 || $restaurantIds->contains(null)) {
+            throw ValidationException::withMessages([
+                'branch_ids' => 'Category branches must belong to one restaurant.',
+            ]);
+        }
     }
 
     private function syncChoices($question, array $choices): void

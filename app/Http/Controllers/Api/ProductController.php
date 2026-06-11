@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Api\Concerns\EnforcesTenantAccess;
 use App\Http\Controllers\Controller;
+use App\Models\Branch;
 use App\Models\Category;
 use App\Models\Ingredient;
 use App\Models\Product;
@@ -60,8 +61,9 @@ class ProductController extends Controller
             $data['branch_ids'] ?? null,
             isset($data['branch_id']) ? (int) $data['branch_id'] : null,
         );
-        $this->ensureCategoryCanBeUsed($request, (int) $data['category_id']);
+        $this->ensureBranchesShareRestaurant($branchIds);
         $category = Category::query()->findOrFail((int) $data['category_id']);
+        $this->ensureCategoryCanBeUsed($request, $category, $branchIds);
 
         $recipeId = $data['recipe_id'] ?? null;
         unset($data['recipe_id'], $data['branch_ids'], $data['branch_id'], $data['recipe']);
@@ -74,16 +76,13 @@ class ProductController extends Controller
             $data['image'] = $request->file('image')->store('product_images', 'public');
         }
 
-        $mapCategoryToBranch = count($branchIds) > 1;
-        $products = DB::transaction(function () use ($request, $data, $branchIds, $recipeId, $category, $mapCategoryToBranch) {
+        $products = DB::transaction(function () use ($request, $data, $branchIds, $recipeId, $category) {
             $created = collect();
 
             foreach ($branchIds as $branchId) {
                 $product = Product::create(array_merge($data, [
                     'branch_id' => $branchId,
-                    'category_id' => $mapCategoryToBranch
-                        ? $this->categoryIdForBranch($category, (int) $branchId)
-                        : (int) $category->id,
+                    'category_id' => $this->categoryIdForBranch($category, (int) $branchId),
                     'sku' => $this->uniqueSku(),
                 ]));
 
@@ -139,9 +138,14 @@ class ProductController extends Controller
             $data['branch_ids'] ?? null,
             isset($data['branch_id']) ? (int) $data['branch_id'] : (int) $product->branch_id,
         );
+        $this->ensureBranchesShareRestaurant($branchIds);
 
         if (array_key_exists('category_id', $data)) {
-            $this->ensureCategoryCanBeUsed($request, (int) $data['category_id']);
+            $this->ensureCategoryCanBeUsed(
+                $request,
+                Category::query()->findOrFail((int) $data['category_id']),
+                $branchIds,
+            );
         }
         $category = array_key_exists('category_id', $data)
             ? Category::query()->findOrFail((int) $data['category_id'])
@@ -169,8 +173,11 @@ class ProductController extends Controller
 
         $groupId = $product->branch_group_id ?: (string) Str::uuid();
 
-        $mapCategoryToBranch = count($branchIds) > 1;
-        DB::transaction(function () use ($request, $product, $data, $branchIds, $recipeId, $groupId, $category, $mapCategoryToBranch) {
+        if ($category) {
+            $this->ensureCategoryCanBeUsed($request, $category, $branchIds);
+        }
+
+        DB::transaction(function () use ($request, $product, $data, $branchIds, $recipeId, $groupId, $category) {
             if (! $product->branch_group_id) {
                 $product->branch_group_id = $groupId;
                 $product->save();
@@ -194,9 +201,6 @@ class ProductController extends Controller
                 $targetData = $data;
                 if ($category) {
                     $targetData['category_id'] = $this->categoryIdForBranch($category, (int) $branchId);
-                    if (! $mapCategoryToBranch) {
-                        $targetData['category_id'] = (int) $category->id;
-                    }
                 }
 
                 $target->fill($targetData);
@@ -233,9 +237,9 @@ class ProductController extends Controller
         return response()->json(['message' => 'Product and associated recipe deleted successfully']);
     }
 
-    private function ensureCategoryCanBeUsed(Request $request, int $categoryId): void
+    private function ensureCategoryCanBeUsed(Request $request, Category $category, array $branchIds): void
     {
-        $query = Category::query()->whereKey($categoryId);
+        $query = Category::query()->whereKey($category->id);
         $user = $request->user();
 
         if (! $user?->isPlatformAdmin()) {
@@ -255,6 +259,26 @@ class ProductController extends Controller
         }
 
         abort_unless($query->exists(), 422, 'Product category must be available to the selected restaurant.');
+
+        foreach ($branchIds as $branchId) {
+            $this->categoryIdForBranch($category, (int) $branchId);
+        }
+    }
+
+    private function ensureBranchesShareRestaurant(array $branchIds): void
+    {
+        $restaurantIds = Branch::query()
+            ->whereIn('id', $branchIds)
+            ->pluck('restaurant_id')
+            ->map(fn ($id) => $id === null ? null : (int) $id)
+            ->unique()
+            ->values();
+
+        if ($restaurantIds->count() !== 1 || $restaurantIds->contains(null)) {
+            throw ValidationException::withMessages([
+                'branch_ids' => 'Product branches must belong to one restaurant.',
+            ]);
+        }
     }
 
     private function assignExistingRecipe(Request $request, Product $product, ?int $recipeId): void
@@ -387,42 +411,38 @@ class ProductController extends Controller
 
     private function categoryIdForBranch(Category $category, int $branchId): int
     {
-        if ($category->branch_id === null || (int) $category->branch_id === $branchId) {
+        if ((int) $category->branch_id === $branchId) {
             return (int) $category->id;
         }
 
         $groupId = $category->branch_group_id;
-        if (! $groupId) {
-            $groupId = (string) Str::uuid();
-            $category->branch_group_id = $groupId;
-            $category->save();
-        }
+        $name = mb_strtolower(trim($category->name));
 
         $sibling = Category::query()
             ->where('branch_id', $branchId)
-            ->where(function ($query) use ($category, $groupId) {
-                $query->where('branch_group_id', $groupId)
-                    ->orWhereRaw('LOWER(name) = ?', [mb_strtolower(trim($category->name))]);
+            ->where(function ($query) use ($groupId, $name) {
+                if ($groupId) {
+                    $query->where('branch_group_id', $groupId)
+                        ->orWhereRaw('LOWER(name) = ?', [$name]);
+                    return;
+                }
+
+                $query->whereRaw('LOWER(name) = ?', [$name]);
             })
             ->first();
 
-        if ($sibling) {
-            if (! $sibling->branch_group_id) {
-                $sibling->branch_group_id = $groupId;
-                $sibling->save();
-            }
-
-            return (int) $sibling->id;
+        if (! $sibling) {
+            throw ValidationException::withMessages([
+                'category_id' => 'Assign this category to every selected branch before adding products.',
+            ]);
         }
 
-        $copy = Category::create([
-            'name' => $category->name,
-            'branch_id' => $branchId,
-            'kds_station' => $category->kds_station,
-            'branch_group_id' => $groupId,
-        ]);
+        if ($groupId && ! $sibling->branch_group_id) {
+            $sibling->branch_group_id = $groupId;
+            $sibling->save();
+        }
 
-        return (int) $copy->id;
+        return (int) $sibling->id;
     }
 
     private function groupForDashboard(Collection $products): Collection

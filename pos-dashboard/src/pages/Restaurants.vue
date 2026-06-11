@@ -99,6 +99,12 @@
             </v-chip>
           </template>
 
+          <template #item.currency_code="{ item }">
+            <v-chip color="success" variant="tonal" class="rs-pill">
+              {{ item.currency_code || 'USD' }}
+            </v-chip>
+          </template>
+
           <template #item.actions="{ item }">
             <div class="table-actions">
               <v-btn
@@ -149,6 +155,13 @@
                 variant="outlined"
                 class="mb-4"
               />
+              <v-select
+                v-model="form.currency_code"
+                :items="currencyItems"
+                label="Currency"
+                variant="outlined"
+                class="mb-4"
+              />
             </v-form>
           </v-card-text>
           <v-card-actions class="justify-end px-6 pb-6">
@@ -191,12 +204,14 @@ const form = ref({
   id: null,
   name: '',
   kind: 'restaurant',
+  currency_code: 'USD',
 })
 
 const headers = [
   { title: 'ID', key: 'id' },
   { title: 'Name', key: 'name' },
   { title: 'Type', key: 'kind' },
+  { title: 'Currency', key: 'currency_code' },
   { title: 'Branches', key: 'branches_count' },
   { title: 'Users', key: 'users_count' },
   { title: 'Actions', key: 'actions', sortable: false, width: 120 },
@@ -206,6 +221,8 @@ const kindFilterItems = [
   { title: 'Restaurant', value: 'restaurant' },
   { title: 'Cafe', value: 'cafe' },
 ]
+
+const currencyItems = ['USD', 'EGP', 'EUR', 'GBP', 'SAR', 'AED']
 
 const totalBranches = computed(() =>
   restaurants.value.reduce((sum, restaurant) => sum + Number(restaurant.branches_count || 0), 0),
@@ -246,6 +263,7 @@ function openCreate() {
     id: null,
     name: '',
     kind: 'restaurant',
+    currency_code: 'USD',
   }
   dialog.value = true
 }
@@ -257,6 +275,7 @@ function openEdit(restaurant) {
     id: restaurant.id,
     name: restaurant.name,
     kind: restaurant.kind,
+    currency_code: restaurant.currency_code || 'USD',
   }
   dialog.value = true
 }
@@ -273,6 +292,7 @@ async function saveRestaurant() {
   const payload = {
     name: form.value.name.trim(),
     kind: form.value.kind,
+    currency_code: form.value.currency_code,
   }
 
   try {
@@ -302,6 +322,7 @@ function restaurantValidationFields() {
   return [
     missingField('Venue name', Boolean(form.value.name.trim())),
     missingField('Venue type', ['restaurant', 'cafe'].includes(form.value.kind)),
+    missingField('Currency', currencyItems.includes(form.value.currency_code)),
   ].filter(Boolean)
 }
 
