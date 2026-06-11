@@ -484,6 +484,12 @@ public function batchSendToCashier(Request $request)
         }
     }
 
+    if (in_array($action, ['refund', 'cancel'], true) && ($note === null || trim($note) === '')) {
+        return response()->json([
+            'error' => ucfirst($action).' reason is required.',
+        ], 422);
+    }
+
     if ($action === 'refund') {
         $kitchenStatus = $item->kds_status ?? $item->status;
 

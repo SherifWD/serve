@@ -447,6 +447,7 @@ class OrderItemLine {
     required this.name,
     required this.quantity,
     required this.total,
+    this.productId,
     this.price = 0,
     this.status,
     this.kdsStatus,
@@ -454,11 +455,14 @@ class OrderItemLine {
     this.paidAmount = 0,
     this.itemNote,
     this.changeNote,
+    this.kdsStation,
+    this.kdsStationLabel,
     this.modifiers = const [],
     this.imageUrl,
   });
 
   final int id;
+  final int? productId;
   final String name;
   final int quantity;
   final double total;
@@ -469,6 +473,8 @@ class OrderItemLine {
   final double paidAmount;
   final String? itemNote;
   final String? changeNote;
+  final String? kdsStation;
+  final String? kdsStationLabel;
   final List<String> modifiers;
   final String? imageUrl;
 
@@ -485,6 +491,7 @@ class OrderItemLine {
         kitchenStatus != 'served' &&
         kitchenStatus != 'returned';
   }
+
   bool get canRefund {
     final kitchenStatus = kdsStatus ?? status;
     return !isVoided && kitchenStatus == 'returned';
@@ -500,7 +507,8 @@ class OrderItemLine {
 
   bool get canReturnToKitchen {
     final kitchenStatus = kdsStatus ?? status;
-    return !isVoided && (kitchenStatus == 'queued' || kitchenStatus == 'served');
+    return !isVoided &&
+        (kitchenStatus == 'queued' || kitchenStatus == 'served');
   }
 
   String get kitchenStatusLabel {
@@ -532,6 +540,7 @@ class OrderItemLine {
     final product = jsonMap(json['product']);
     return OrderItemLine(
       id: jsonInt(json['id']),
+      productId: jsonNullableInt(product['id'] ?? json['product_id']),
       name: jsonString(product['name'] ?? json['name'], fallback: 'Item'),
       quantity: jsonInt(json['quantity'], fallback: 1),
       total: jsonDouble(json['total']),
@@ -542,6 +551,9 @@ class OrderItemLine {
       paidAmount: jsonDouble(json['paid_amount']),
       itemNote: jsonNullableString(json['item_note'] ?? json['note']),
       changeNote: jsonNullableString(json['change_note']),
+      kdsStation:
+          jsonNullableString(json['kds_station'] ?? product['kds_station']),
+      kdsStationLabel: jsonNullableString(json['kds_station_label']),
       imageUrl: jsonNullableString(product['image'] ?? json['image']),
       modifiers: jsonMapList(json['modifiers'])
           .map((modifier) {
@@ -628,6 +640,8 @@ class CustomerOrder {
     required this.payments,
     this.restaurantId,
     this.branchId,
+    this.tableId,
+    this.tableName,
     this.branchName,
     this.branchLocation,
     this.restaurantName,
@@ -644,6 +658,8 @@ class CustomerOrder {
   final List<PaymentRecord> payments;
   final int? restaurantId;
   final int? branchId;
+  final int? tableId;
+  final String? tableName;
   final String? branchName;
   final String? branchLocation;
   final String? restaurantName;
@@ -659,6 +675,8 @@ class CustomerOrder {
       createdAt: jsonDate(json['created_at']),
       restaurantId: jsonNullableInt(json['restaurant_id']),
       branchId: jsonNullableInt(json['branch_id']),
+      tableId: jsonNullableInt(json['table_id']),
+      tableName: jsonNullableString(json['table_name']),
       items: jsonMapList(json['items'])
           .map(OrderItemLine.fromJson)
           .toList(growable: false),
@@ -788,12 +806,14 @@ class MenuProduct {
     required this.id,
     required this.name,
     required this.price,
+    this.kdsStation,
     this.imageUrl,
   });
 
   final int id;
   final String name;
   final double price;
+  final String? kdsStation;
   final String? imageUrl;
 
   factory MenuProduct.fromJson(Map<String, dynamic> json) {
@@ -801,6 +821,7 @@ class MenuProduct {
       id: jsonInt(json['id']),
       name: jsonString(json['name']),
       price: jsonDouble(json['price']),
+      kdsStation: jsonNullableString(json['kds_station']),
       imageUrl: jsonNullableString(json['image']),
     );
   }

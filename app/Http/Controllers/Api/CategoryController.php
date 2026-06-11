@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\Concerns\EnforcesTenantAccess;
 use App\Models\Branch;
 use App\Models\Category;
 use App\Models\Modifier;
+use App\Support\KdsStation;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -30,6 +31,7 @@ class CategoryController extends Controller
     {
         $data = $request->validate([
             'name' => 'required|string|max:255',
+            'kds_station' => 'nullable|string|max:40',
             'branch_id' => 'nullable|integer|exists:branches,id',
             'branch_ids' => 'nullable|array',
             'branch_ids.*' => 'integer|exists:branches,id',
@@ -56,6 +58,7 @@ class CategoryController extends Controller
         unset($data['questions'], $data['modifiers'], $data['branch_ids'], $data['branch_id']);
 
         $data['name'] = trim($data['name']);
+        $data['kds_station'] = KdsStation::normalize($data['kds_station'] ?? null);
         $groupId = (string) Str::uuid();
 
         $categories = DB::transaction(function () use ($data, $branchIds, $groupId, $questions, $modifiers) {
@@ -103,6 +106,7 @@ class CategoryController extends Controller
         $category = $this->categoryQueryForUser($request)->findOrFail($id);
         $data = $request->validate([
             'name' => 'string|max:255',
+            'kds_station' => 'nullable|string|max:40',
             'branch_id' => 'nullable|integer|exists:branches,id',
             'branch_ids' => 'nullable|array',
             'branch_ids.*' => 'integer|exists:branches,id',
@@ -130,6 +134,9 @@ class CategoryController extends Controller
 
         if (isset($data['name'])) {
             $data['name'] = trim($data['name']);
+        }
+        if (array_key_exists('kds_station', $data)) {
+            $data['kds_station'] = KdsStation::normalize($data['kds_station']);
         }
 
         $groupId = $category->branch_group_id ?: (string) Str::uuid();

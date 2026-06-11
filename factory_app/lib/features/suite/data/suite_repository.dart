@@ -87,6 +87,7 @@ class SuiteRepository {
 
   Future<CustomerOrder> createCustomerCheckout({
     required int branchId,
+    int? tableId,
     required List<Map<String, dynamic>> items,
     String orderType = 'takeaway',
     String paymentMethod = 'pay_at_counter',
@@ -96,6 +97,7 @@ class SuiteRepository {
       '/customer/orders',
       data: {
         'branch_id': branchId,
+        if (tableId != null) 'table_id': tableId,
         'order_type': orderType,
         'payment_method': paymentMethod,
         if (notes != null && notes.isNotEmpty) 'notes': notes,
@@ -269,8 +271,14 @@ class SuiteRepository {
     _throwIfNeeded(response);
   }
 
-  Future<List<KdsTicket>> fetchKitchenBoard() async {
-    final response = await _dio.get('/mobile/kds/orders');
+  Future<List<KdsTicket>> fetchKitchenBoard({String? station}) async {
+    final response = await _dio.get(
+      '/mobile/kds/orders',
+      queryParameters: {
+        if (station != null && station.isNotEmpty && station != 'all')
+          'station': station,
+      },
+    );
     _throwIfNeeded(response);
     return _list(response.data, 'data')
         .map(KdsTicket.fromJson)
@@ -285,6 +293,23 @@ class SuiteRepository {
       '/mobile/kds/order-items/$itemId',
       data: {'status': status},
       options: _mutationOptions('kds-item-status'),
+    );
+    _throwIfNeeded(response);
+  }
+
+  Future<void> openCashDrawer({required int branchId}) async {
+    final response = await _dio.post(
+      '/mobile/print-jobs',
+      data: {
+        'branch_id': branchId,
+        'type': 'cash_drawer',
+        'priority': 10,
+        'payload': {
+          'command': 'open_cash_drawer',
+          'requested_at': DateTime.now().toIso8601String(),
+        },
+      },
+      options: _mutationOptions('open-cash-drawer'),
     );
     _throwIfNeeded(response);
   }

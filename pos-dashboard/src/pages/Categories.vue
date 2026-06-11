@@ -43,6 +43,16 @@
               </v-col>
               <v-col cols="12" md="3">
                 <v-select
+                  v-model="filters.kds_station"
+                  :items="stationItems"
+                  label="KDS station"
+                  clearable
+                  variant="outlined"
+                  density="comfortable"
+                />
+              </v-col>
+              <v-col cols="12" md="2">
+                <v-select
                   v-model="filters.questions"
                   :items="presenceFilterItems"
                   label="Questions"
@@ -51,7 +61,7 @@
                   density="comfortable"
                 />
               </v-col>
-              <v-col cols="12" md="3">
+              <v-col cols="12" md="2">
                 <v-select
                   v-model="filters.modifiers"
                   :items="presenceFilterItems"
@@ -61,7 +71,7 @@
                   density="comfortable"
                 />
               </v-col>
-              <v-col cols="12" md="2" class="d-flex align-center">
+              <v-col cols="12" md="1" class="d-flex align-center">
                 <v-btn variant="tonal" color="primary" class="rounded-pill" @click="resetFilters">
                   <v-icon start>mdi-filter-remove-outline</v-icon>Reset
                 </v-btn>
@@ -98,6 +108,11 @@
                     {{ branch.name }}
                   </v-chip>
                 </div>
+              </template>
+              <template #item.kds_station="{ item }">
+                <v-chip color="info" size="small" variant="tonal">
+                  {{ stationTitle(item.kds_station) }}
+                </v-chip>
               </template>
               <template #item.actions="{ item }">
                 <v-btn icon class="rounded-xl" size="small" color="primary" @click="openEditDrawer(item)">
@@ -143,6 +158,17 @@
               color="primary"
               class="mb-4 rounded-xl"
               style="border-radius: 1.5rem;"
+            />
+            <v-select
+              label="Default KDS station"
+              :items="stationItems"
+              v-model="form.kds_station"
+              clearable
+              variant="outlined"
+              color="primary"
+              class="mb-4 rounded-xl"
+              hint="Products in this category route here unless overridden."
+              persistent-hint
             />
             <v-select
               label="Branches"
@@ -316,6 +342,7 @@ const formError = ref('')
 let localKey = 0
 const filters = ref({
   branch_id: null,
+  kds_station: null,
   questions: null,
   modifiers: null,
 })
@@ -323,6 +350,7 @@ const filters = ref({
 const headers = [
   { title: 'Name', value: 'name' },
   { title: 'Branches', value: 'branches' },
+  { title: 'KDS station', value: 'kds_station' },
   { title: 'Questions', value: 'questions', sortable: false },
   { title: 'Modifiers', value: 'modifiers', sortable: false },
   { title: 'Actions', value: 'actions', sortable: false }
@@ -331,6 +359,14 @@ const headers = [
 const presenceFilterItems = [
   { title: 'Configured', value: 'has' },
   { title: 'Not configured', value: 'none' },
+]
+
+const stationItems = [
+  { title: 'General', value: 'general' },
+  { title: 'Barista', value: 'barista' },
+  { title: 'Grill', value: 'grill' },
+  { title: 'Cold', value: 'cold' },
+  { title: 'Dessert', value: 'dessert' },
 ]
 
 const ALL_BRANCHES_VALUE = '__all_branches__'
@@ -346,10 +382,12 @@ const filteredCategories = computed(() => {
   return categories.value.filter(cat =>
     (!q ||
       cat.name.toLowerCase().includes(q) ||
+      stationTitle(cat.kds_station).toLowerCase().includes(q) ||
       categoryBranches(cat).some(branch => branch.name.toLowerCase().includes(q)) ||
       (cat.questions ?? []).some(question => question.question.toLowerCase().includes(q)) ||
       (cat.modifiers ?? []).some(modifier => modifier.name.toLowerCase().includes(q))) &&
     (!filters.value.branch_id || categoryBranchIds(cat).includes(Number(filters.value.branch_id))) &&
+    (!filters.value.kds_station || (cat.kds_station || null) === filters.value.kds_station) &&
     matchesPresenceFilter(questionCount(cat), filters.value.questions) &&
     matchesPresenceFilter(modifierCount(cat), filters.value.modifiers)
   )
@@ -494,6 +532,7 @@ function resetFilters() {
   search.value = ''
   filters.value = {
     branch_id: null,
+    kds_station: null,
     questions: null,
     modifiers: null,
   }
@@ -503,6 +542,7 @@ function blankForm() {
   return {
     id: null,
     name: '',
+    kds_station: null,
     branch_ids: branches.value.length === 1 ? [branches.value[0].id] : [],
     questions: [],
     modifiers: [],
@@ -541,6 +581,7 @@ function categoryToForm(category) {
   return {
     id: category.id,
     name: category.name ?? '',
+    kds_station: category.kds_station ?? null,
     branch_ids: categoryBranchIds(category),
     questions: (category.questions ?? []).map(question => ({
       id: question.id ?? null,
@@ -556,6 +597,7 @@ function categoryToForm(category) {
 function categoryPayload() {
   return {
     name: form.value.name.trim(),
+    kds_station: form.value.kds_station || null,
     branch_id: form.value.branch_ids[0],
     branch_ids: form.value.branch_ids,
     questions: form.value.questions
@@ -580,6 +622,10 @@ function categoryPayload() {
       }))
       .filter(modifier => modifier.name),
   }
+}
+
+function stationTitle(station) {
+  return stationItems.find(item => item.value === station)?.title || 'General'
 }
 
 function categoryBranchIds(category) {

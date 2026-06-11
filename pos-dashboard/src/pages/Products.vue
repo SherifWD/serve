@@ -60,6 +60,16 @@
                 </v-col>
                 <v-col cols="12" sm="6" lg="2">
                   <v-select
+                    v-model="filters.kds_station"
+                    :items="stationItems"
+                    label="KDS station"
+                    clearable
+                    variant="outlined"
+                    density="comfortable"
+                  />
+                </v-col>
+                <v-col cols="12" sm="6" lg="2">
+                  <v-select
                     v-model="filters.recipe"
                     :items="recipeFilterItems"
                     label="Recipe"
@@ -68,7 +78,7 @@
                     density="comfortable"
                   />
                 </v-col>
-                <v-col cols="12" lg="2" class="d-flex align-center">
+                <v-col cols="12" lg="1" class="d-flex align-center">
                   <v-btn variant="tonal" color="primary" class="rounded-pill" @click="resetFilters">
                     <v-icon start>mdi-filter-remove-outline</v-icon>Reset
                   </v-btn>
@@ -102,6 +112,11 @@
                 <template #item.is_available="{ item }">
                   <v-chip :color="item.is_available ? 'success' : 'red'" size="small" text-color="white">
                     {{ item.is_available ? 'Available' : 'Unavailable' }}
+                  </v-chip>
+                </template>
+                <template #item.kds_station="{ item }">
+                  <v-chip color="info" size="small" variant="tonal">
+                    {{ stationTitle(productStation(item)) }}
                   </v-chip>
                 </template>
                 <template #item.actions="{ item }">
@@ -144,6 +159,7 @@
           <div class="pa-6">
             <v-text-field label="Name" v-model="drawerForm.name" required variant="outlined" color="primary" class="mb-4 rounded-xl" />
             <v-select label="Category" :items="categoryItems" item-title="name" item-value="id" v-model="drawerForm.category_id" required variant="outlined" color="primary" class="mb-4 rounded-xl" :menu-props="{ contentClass: 'dashboard-select-menu' }" />
+            <v-select label="KDS station override" :items="stationItems" v-model="drawerForm.kds_station" clearable variant="outlined" color="primary" class="mb-4 rounded-xl" hint="Leave blank to use the category route." persistent-hint />
             <v-select label="Branches" :items="branchSelectItems" item-title="name" item-value="id" v-model="drawerForm.branch_ids" required multiple chips closable-chips variant="outlined" color="primary" class="mb-4 rounded-xl" :menu-props="{ contentClass: 'dashboard-select-menu' }" @update:model-value="onBranchChange" />
             <v-text-field label="Price" v-model="drawerForm.price" type="number" required variant="outlined" color="primary" class="mb-4 rounded-xl" />
             <v-text-field label="Minimum stock" v-model="drawerForm.min_stock" type="number" min="0" variant="outlined" color="primary" class="mb-4 rounded-xl" />
@@ -247,6 +263,11 @@
                 {{ viewProduct.is_available ? 'Available' : 'Unavailable' }}
               </v-chip>
             </div>
+            <div class="my-2">
+              <v-chip color="info" size="small" variant="tonal">
+                KDS: {{ stationTitle(productStation(viewProduct)) }}
+              </v-chip>
+            </div>
             <v-divider class="my-4" />
             <div class="recipe-container">
               <h3 style="margin-bottom:4px;">Recipe:</h3>
@@ -293,6 +314,7 @@ const drawerForm = ref({
   id: null,
   name: '',
   category_id: null,
+  kds_station: null,
   price: '',
   branch_ids: [],
   is_available: true,
@@ -306,6 +328,7 @@ const filters = ref({
   branch_id: null,
   category_id: null,
   availability: null,
+  kds_station: null,
   recipe: null,
 })
 
@@ -313,6 +336,7 @@ const headers = [
   { text: 'Name', value: 'name' },
   { title: 'Category', value: 'category.name' },
   { title: 'Branches', value: 'branches' },
+  { title: 'KDS station', value: 'kds_station' },
   { title: 'Price', value: 'price' },
   { title: 'Available', value: 'is_available' },
   { title: 'Actions', value: 'actions', sortable: false }
@@ -322,6 +346,14 @@ const availabilityItems = [
   { title: 'Available', value: 'available' },
   { title: 'Unavailable', value: 'unavailable' },
   { title: 'Low stock', value: 'low_stock' },
+]
+
+const stationItems = [
+  { title: 'General', value: 'general' },
+  { title: 'Barista', value: 'barista' },
+  { title: 'Grill', value: 'grill' },
+  { title: 'Cold', value: 'cold' },
+  { title: 'Dessert', value: 'dessert' },
 ]
 
 const ALL_BRANCHES_VALUE = '__all_branches__'
@@ -343,6 +375,7 @@ const filteredProducts = computed(() => {
     matchesProductSearch(prod, q) &&
     (!filters.value.branch_id || productBranchIds(prod).includes(Number(filters.value.branch_id))) &&
     (!filters.value.category_id || Number(prod.category_id) === Number(filters.value.category_id)) &&
+    (!filters.value.kds_station || productStation(prod) === filters.value.kds_station) &&
     matchesAvailabilityFilter(prod) &&
     matchesRecipeFilter(prod)
   )
@@ -426,6 +459,7 @@ function openAddDrawer() {
     id: null, 
     name: '', 
     category_id: null, 
+    kds_station: null,
     price: '', 
     branch_ids: branches.value.length === 1 ? [branches.value[0].id] : [],
     is_available: true, 
@@ -444,6 +478,7 @@ function openEditDrawer(product) {
     id: product.id,
     name: product.name,
     category_id: product.category_id,
+    kds_station: product.kds_station ?? null,
     price: product.price,
     branch_ids: productBranchIds(product),
     is_available: !!product.is_available,
@@ -511,6 +546,7 @@ function matchesProductSearch(product, query) {
 
   return product.name.toLowerCase().includes(query) ||
     (product.category?.name ?? '').toLowerCase().includes(query) ||
+    stationTitle(product.kds_station).toLowerCase().includes(query) ||
     productBranches(product).some(branch => branch.name.toLowerCase().includes(query)) ||
     (product.recipe ? recipeTitle(product.recipe).toLowerCase().includes(query) : false)
 }
@@ -539,6 +575,7 @@ function resetFilters() {
     branch_id: null,
     category_id: null,
     availability: null,
+    kds_station: null,
     recipe: null,
   }
 }
@@ -559,6 +596,7 @@ async function saveProduct() {
   const payload = {
     name: drawerForm.value.name.trim(),
     category_id: drawerForm.value.category_id,
+    kds_station: drawerForm.value.kds_station || null,
     branch_id: drawerForm.value.branch_ids[0],
     branch_ids: drawerForm.value.branch_ids,
     price: Number(drawerForm.value.price),
@@ -579,6 +617,14 @@ async function saveProduct() {
   } catch (error) {
     formError.value = errorMessage(error);
   }
+}
+
+function stationTitle(station) {
+  return stationItems.find(item => item.value === station)?.title || 'Category default'
+}
+
+function productStation(product) {
+  return product.kds_station || product.category?.kds_station || null
 }
 
 function productValidationFields() {

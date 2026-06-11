@@ -152,6 +152,96 @@ class MobileApiRegressionTest extends TestCase
             && (int) $event->order->id === (int) $order->id);
     }
 
+    public function test_kds_station_filter_routes_items_by_product_or_category(): void
+    {
+        $branch = Branch::query()->whereHas('tables')->firstOrFail();
+        $table = Table::query()->where('branch_id', $branch->id)->firstOrFail();
+        $baristaCategory = Category::create([
+            'name' => 'Regression Drinks Station',
+            'branch_id' => $branch->id,
+            'kds_station' => 'barista',
+        ]);
+        $grillCategory = Category::create([
+            'name' => 'Regression Grill Station',
+            'branch_id' => $branch->id,
+            'kds_station' => 'grill',
+        ]);
+        $latte = Product::create([
+            'name' => 'Regression Station Latte',
+            'category_id' => $baristaCategory->id,
+            'branch_id' => $branch->id,
+            'price' => 45,
+            'stock' => 100,
+            'is_available' => true,
+        ]);
+        $burger = Product::create([
+            'name' => 'Regression Station Burger',
+            'category_id' => $grillCategory->id,
+            'branch_id' => $branch->id,
+            'kds_station' => 'grill',
+            'price' => 90,
+            'stock' => 100,
+            'is_available' => true,
+        ]);
+        $order = Order::create([
+            'branch_id' => $branch->id,
+            'table_id' => $table->id,
+            'order_type' => 'dine-in',
+            'status' => 'pending',
+            'payment_status' => 'unpaid',
+            'subtotal' => 135,
+            'tax' => 0,
+            'discount' => 0,
+            'total' => 135,
+            'kds_sent_at' => now(),
+            'order_date' => now(),
+        ]);
+        OrderItem::create([
+            'order_id' => $order->id,
+            'product_id' => $latte->id,
+            'quantity' => 1,
+            'price' => 45,
+            'total' => 45,
+            'status' => 'queued',
+            'kds_status' => 'queued',
+            'kds_sent_at' => now(),
+        ]);
+        OrderItem::create([
+            'order_id' => $order->id,
+            'product_id' => $burger->id,
+            'quantity' => 1,
+            'price' => 90,
+            'total' => 90,
+            'status' => 'queued',
+            'kds_status' => 'queued',
+            'kds_sent_at' => now(),
+        ]);
+
+        Sanctum::actingAs($this->staffUserForBranch((int) $branch->id, 'kitchen'));
+
+        $baristaResponse = $this->getJson('/api/mobile/kds/orders?station=barista')
+            ->assertOk()
+            ->assertJsonPath('data.0.items.0.kds_station', 'barista');
+
+        $baristaItems = collect($baristaResponse->json('data'))
+            ->flatMap(fn ($order) => $order['items'] ?? [])
+            ->pluck('product.name')
+            ->all();
+        $this->assertContains('Regression Station Latte', $baristaItems);
+        $this->assertNotContains('Regression Station Burger', $baristaItems);
+
+        $grillResponse = $this->getJson('/api/mobile/kds/orders?station=grill')
+            ->assertOk()
+            ->assertJsonPath('data.0.items.0.kds_station', 'grill');
+
+        $grillItems = collect($grillResponse->json('data'))
+            ->flatMap(fn ($order) => $order['items'] ?? [])
+            ->pluck('product.name')
+            ->all();
+        $this->assertContains('Regression Station Burger', $grillItems);
+        $this->assertNotContains('Regression Station Latte', $grillItems);
+    }
+
     public function test_cross_branch_cashier_cannot_pay_a_foreign_order(): void
     {
         $order = Order::query()->whereHas('items')->firstOrFail();
@@ -670,6 +760,53 @@ class MobileApiRegressionTest extends TestCase
             'note' => '',
         ])->assertUnprocessable()
             ->assertJsonPath('error', 'Return reason is required.');
+    }
+
+    public function test_refund_and_cancel_actions_require_reason(): void
+    {
+        $refundItem = OrderItem::query()
+            ->with('order.table')
+            ->whereHas('order.table')
+            ->firstOrFail();
+        $refundItem->forceFill([
+            'status' => 'returned',
+            'kds_status' => 'returned',
+            'kds_sent_at' => now(),
+        ])->save();
+
+        Sanctum::actingAs($this->staffUserForBranch((int) $refundItem->order->branch_id, 'waiter'));
+
+        $this->patchJson("/api/mobile/order-items/{$refundItem->id}/refund-change", [
+            'action' => 'refund',
+            'note' => '',
+        ])->assertUnprocessable()
+            ->assertJsonPath('error', 'Refund reason is required.');
+
+        $refundItem->refresh();
+        $this->assertSame('returned', $refundItem->status);
+        $this->assertSame('returned', $refundItem->kds_status);
+
+        $cancelItem = OrderItem::query()
+            ->with('order.table')
+            ->whereHas('order', fn ($query) => $query->where('branch_id', $refundItem->order->branch_id))
+            ->whereHas('order.table')
+            ->whereKeyNot($refundItem->id)
+            ->firstOrFail();
+        $cancelItem->forceFill([
+            'status' => 'pending',
+            'kds_status' => 'pending',
+            'kds_sent_at' => null,
+        ])->save();
+
+        $this->patchJson("/api/mobile/order-items/{$cancelItem->id}/refund-change", [
+            'action' => 'cancel',
+            'note' => '',
+        ])->assertUnprocessable()
+            ->assertJsonPath('error', 'Cancel reason is required.');
+
+        $cancelItem->refresh();
+        $this->assertSame('pending', $cancelItem->status);
+        $this->assertSame('pending', $cancelItem->kds_status);
     }
 
     public function test_waiter_cannot_refund_item_until_it_was_returned_to_kitchen(): void
@@ -1780,6 +1917,80 @@ class MobileApiRegressionTest extends TestCase
             ->where('product_id', $product->id)
             ->value('quantity');
         $this->assertEqualsWithDelta(8, (float) $remainingStock, 0.001);
+    }
+
+    public function test_customer_qr_table_checkout_waits_for_waiter_to_send_to_kds(): void
+    {
+        $customer = Customer::query()->firstOrFail();
+        $branch = Branch::query()->whereHas('tables')->whereNotNull('restaurant_id')->firstOrFail();
+        $table = Table::query()->where('branch_id', $branch->id)->firstOrFail();
+        $category = Category::query()->firstOrCreate([
+            'branch_id' => $branch->id,
+            'name' => 'QR Table Checkout',
+        ]);
+        $product = Product::query()->create([
+            'name' => 'QR Table Lemonade',
+            'category_id' => $category->id,
+            'branch_id' => $branch->id,
+            'price' => 35,
+            'is_available' => true,
+            'stock' => 10,
+            'min_stock' => 1,
+            'sku' => 'QR-TABLE-LEMONADE',
+        ]);
+
+        $this->ensureProductStockAvailable($product, (int) $branch->id, 10);
+
+        Sanctum::actingAs($customer);
+
+        $this->postJson('/api/customer/orders', [
+            'branch_id' => $branch->id,
+            'table_id' => $table->id,
+            'order_type' => 'dine-in',
+            'payment_method' => 'pay_at_counter',
+            'items' => [
+                [
+                    'product_id' => $product->id,
+                    'quantity' => 1,
+                    'note' => 'QR customer-added item',
+                ],
+            ],
+        ])
+            ->assertCreated()
+            ->assertJsonPath('data.branch_id', $branch->id)
+            ->assertJsonPath('data.table_id', $table->id)
+            ->assertJsonPath('data.order_type', 'dine-in')
+            ->assertJsonPath('data.items.0.name', $product->name);
+
+        $order = Order::query()
+            ->where('customer_id', $customer->id)
+            ->where('table_id', $table->id)
+            ->latest('id')
+            ->firstOrFail();
+
+        $this->assertSame('pending', $order->status);
+        $this->assertNull($order->kds_sent_at);
+        $this->assertSame('pending', $order->items()->firstOrFail()->kds_status);
+
+        Sanctum::actingAs($this->staffUserForBranch((int) $branch->id, 'waiter'));
+
+        $tablePayload = $this->getJson("/api/mobile/tables/{$table->id}")
+            ->assertOk()
+            ->json('data');
+
+        $this->assertSame($order->id, $tablePayload['orders'][0]['id']);
+        $this->assertSame($product->name, $tablePayload['orders'][0]['items'][0]['product']['name']);
+        $this->assertDatabaseHas('order_items', [
+            'order_id' => $order->id,
+            'product_id' => $product->id,
+            'item_note' => 'QR customer-added item',
+        ]);
+
+        $this->postJson("/api/mobile/orders/{$order->id}/send-to-kds")
+            ->assertOk()
+            ->assertJsonPath('ok', true);
+
+        $this->assertNotNull($order->fresh()->kds_sent_at);
     }
 
     public function test_customer_checkout_can_resolve_same_menu_item_for_selected_branch(): void

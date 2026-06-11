@@ -157,11 +157,8 @@ void main() {
       isNull,
     );
     expect(
-      tester
-          .widget<IconButton>(
-              find.widgetWithIcon(IconButton, Icons.restart_alt_outlined))
-          .onPressed,
-      isNull,
+      find.widgetWithIcon(IconButton, Icons.restart_alt_outlined),
+      findsNothing,
     );
   });
 }

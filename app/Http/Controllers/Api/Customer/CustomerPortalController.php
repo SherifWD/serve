@@ -9,6 +9,7 @@ use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Product;
 use App\Models\Restaurant;
+use App\Models\Table;
 use App\Services\Inventory\ProductStockService;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Http\JsonResponse;
@@ -212,8 +213,9 @@ class CustomerPortalController extends Controller
         $customer = $request->user();
 
         $data = $request->validate([
-            'branch_id' => 'required|integer|exists:branches,id',
-            'order_type' => 'nullable|in:takeaway,delivery',
+            'branch_id' => 'required_without:table_id|nullable|integer|exists:branches,id',
+            'table_id' => 'nullable|integer|exists:tables,id',
+            'order_type' => 'nullable|in:dine-in,takeaway,delivery',
             'payment_method' => 'nullable|in:cash_on_pickup,pay_at_counter,online_pending',
             'notes' => 'nullable|string|max:500',
             'items' => 'required|array|min:1',
@@ -222,14 +224,23 @@ class CustomerPortalController extends Controller
             'items.*.note' => 'nullable|string|max:255',
         ]);
 
-        $branch = Branch::query()->with('restaurant')->findOrFail($data['branch_id']);
+        $table = !empty($data['table_id'])
+            ? Table::query()->with('branch.restaurant')->findOrFail($data['table_id'])
+            : null;
+        $branch = $table?->branch ?: Branch::query()->with('restaurant')->findOrFail($data['branch_id']);
 
-        $order = DB::transaction(function () use ($data, $customer, $branch, $stockService): Order {
+        if ($table && !empty($data['branch_id']) && (int) $data['branch_id'] !== (int) $table->branch_id) {
+            throw ValidationException::withMessages([
+                'branch_id' => 'Branch must match the selected table.',
+            ]);
+        }
+
+        $order = DB::transaction(function () use ($data, $customer, $branch, $table, $stockService): Order {
             $order = Order::query()->create([
                 'branch_id' => $branch->id,
-                'table_id' => null,
+                'table_id' => $table?->id,
                 'customer_id' => $customer->id,
-                'order_type' => $data['order_type'] ?? 'takeaway',
+                'order_type' => $data['order_type'] ?? ($table ? 'dine-in' : 'takeaway'),
                 'status' => 'pending',
                 'payment_status' => 'unpaid',
                 'payment_method' => $data['payment_method'] ?? 'pay_at_counter',
@@ -291,10 +302,14 @@ class CustomerPortalController extends Controller
                 ]);
             }
 
+            if ($table) {
+                $table->update(['status' => \App\Enums\TableStatus::OCCUPIED]);
+            }
+
             return \App\Services\Orders\RecalculateOrder::run($order);
         });
 
-        $order->load(['branch.restaurant', 'items.product', 'payments']);
+        $order->load(['branch.restaurant', 'table', 'items.product', 'payments']);
 
         return response()->json([
             'data' => $this->transformOrder($order),
@@ -372,6 +387,8 @@ class CustomerPortalController extends Controller
             'id' => $order->id,
             'restaurant_id' => $order->branch?->restaurant?->id,
             'branch_id' => $order->branch?->id,
+            'table_id' => $order->table?->id,
+            'table_name' => $order->table?->name,
             'status' => $order->status,
             'payment_status' => $order->payment_status,
             'payment_method' => $order->payment_method,

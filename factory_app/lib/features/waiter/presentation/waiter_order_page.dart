@@ -23,6 +23,7 @@ class _WaiterOrderPageState extends ConsumerState<WaiterOrderPage> {
   final _customerNameController = TextEditingController();
   final _customerPhoneController = TextEditingController();
   late Future<_WaiterOrderBundle> _future;
+  final List<int> _recentProductIds = <int>[];
 
   @override
   void initState() {
@@ -86,6 +87,7 @@ class _WaiterOrderPageState extends ConsumerState<WaiterOrderPage> {
           final bundle = snapshot.data!;
           final canSendToKitchen = bundle.details.orderId != null &&
               bundle.details.items.any((item) => item.canSendToKitchen);
+          final duplicateCandidate = _lastDuplicableItem(bundle.details.items);
           final wide = MediaQuery.of(context).size.width > 1120;
 
           return RefreshIndicator(
@@ -186,6 +188,15 @@ class _WaiterOrderPageState extends ConsumerState<WaiterOrderPage> {
                               icon: const Icon(Icons.swap_horiz),
                               label: const Text('Move table'),
                             ),
+                            OutlinedButton.icon(
+                              onPressed: duplicateCandidate == null
+                                  ? null
+                                  : () => _duplicateLastItem(
+                                        duplicateCandidate,
+                                      ),
+                              icon: const Icon(Icons.content_copy_outlined),
+                              label: const Text('Duplicate last'),
+                            ),
                           ],
                         ),
                       ],
@@ -210,6 +221,7 @@ class _WaiterOrderPageState extends ConsumerState<WaiterOrderPage> {
                         child: _MenuComposerCard(
                           menu: bundle.menu,
                           modifiers: bundle.modifiers,
+                          recentProductIds: _recentProductIds,
                           onAdd: (product, category) => _showAddProductSheet(
                               product, category, bundle.modifiers),
                         ),
@@ -227,6 +239,7 @@ class _WaiterOrderPageState extends ConsumerState<WaiterOrderPage> {
                   _MenuComposerCard(
                     menu: bundle.menu,
                     modifiers: bundle.modifiers,
+                    recentProductIds: _recentProductIds,
                     onAdd: (product, category) => _showAddProductSheet(
                         product, category, bundle.modifiers),
                   ),
@@ -265,6 +278,7 @@ class _WaiterOrderPageState extends ConsumerState<WaiterOrderPage> {
       );
 
       if (!mounted) return;
+      _rememberRecentProduct(product.id);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('${product.name} added to the order')),
       );
@@ -276,6 +290,49 @@ class _WaiterOrderPageState extends ConsumerState<WaiterOrderPage> {
       ScaffoldMessenger.of(context)
           .showSnackBar(SnackBar(content: Text(e.toString())));
     }
+  }
+
+  OrderItemLine? _lastDuplicableItem(List<OrderItemLine> items) {
+    for (final item in items.reversed) {
+      if (!_isHistoricalOrderItem(item) && item.productId != null) {
+        return item;
+      }
+    }
+    return null;
+  }
+
+  void _rememberRecentProduct(int productId) {
+    _recentProductIds.remove(productId);
+    _recentProductIds.insert(0, productId);
+    if (_recentProductIds.length > 12) {
+      _recentProductIds.removeRange(12, _recentProductIds.length);
+    }
+  }
+
+  Future<void> _duplicateLastItem(OrderItemLine item) async {
+    final productId = item.productId;
+    if (productId == null) {
+      return;
+    }
+
+    await _runAction(
+      () async {
+        await ref.read(suiteRepositoryProvider).createOrder(
+          tableId: widget.table.id,
+          customerName: _customerNameController.text.trim(),
+          customerPhone: _customerPhoneController.text.trim(),
+          items: [
+            {
+              'product_id': productId,
+              'quantity': 1,
+              if ((item.itemNote ?? '').isNotEmpty) 'note': item.itemNote,
+            }
+          ],
+        );
+        _rememberRecentProduct(productId);
+      },
+      '${item.name} duplicated',
+    );
   }
 
   Future<void> _handleDecrease(OrderItemLine item) async {
@@ -294,10 +351,15 @@ class _WaiterOrderPageState extends ConsumerState<WaiterOrderPage> {
   }
 
   Future<void> _handleRefund(OrderItemLine item) async {
+    final reason = await _promptRefundReason(item);
+    if (reason == null || reason.isEmpty) {
+      return;
+    }
+
     await _runAction(
       () => ref.read(suiteRepositoryProvider).refundOrderItem(
             orderItemId: item.id,
-            note: 'Refunded by floor staff',
+            note: reason,
           ),
       '${item.name} refunded',
     );
@@ -321,7 +383,24 @@ class _WaiterOrderPageState extends ConsumerState<WaiterOrderPage> {
   Future<String?> _promptReturnReason(OrderItemLine item) async {
     return showDialog<String>(
       context: context,
-      builder: (_) => _ReturnReasonDialog(itemName: item.name),
+      builder: (_) => _ItemReasonDialog(
+        title: 'Return ${item.name}',
+        label: 'Reason',
+        hint: 'Example: customer requested a remake',
+        confirmLabel: 'Return',
+      ),
+    );
+  }
+
+  Future<String?> _promptRefundReason(OrderItemLine item) async {
+    return showDialog<String>(
+      context: context,
+      builder: (_) => _ItemReasonDialog(
+        title: 'Refund ${item.name}',
+        label: 'Refund reason',
+        hint: 'Example: wrong item, customer complaint, manager approved',
+        confirmLabel: 'Refund',
+      ),
     );
   }
 
@@ -401,16 +480,24 @@ class _WaiterOrderPageState extends ConsumerState<WaiterOrderPage> {
   }
 }
 
-class _ReturnReasonDialog extends StatefulWidget {
-  const _ReturnReasonDialog({required this.itemName});
+class _ItemReasonDialog extends StatefulWidget {
+  const _ItemReasonDialog({
+    required this.title,
+    required this.label,
+    required this.hint,
+    required this.confirmLabel,
+  });
 
-  final String itemName;
+  final String title;
+  final String label;
+  final String hint;
+  final String confirmLabel;
 
   @override
-  State<_ReturnReasonDialog> createState() => _ReturnReasonDialogState();
+  State<_ItemReasonDialog> createState() => _ItemReasonDialogState();
 }
 
-class _ReturnReasonDialogState extends State<_ReturnReasonDialog> {
+class _ItemReasonDialogState extends State<_ItemReasonDialog> {
   final _formKey = GlobalKey<FormState>();
   final _controller = TextEditingController();
 
@@ -431,7 +518,7 @@ class _ReturnReasonDialogState extends State<_ReturnReasonDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: Text('Return ${widget.itemName}'),
+      title: Text(widget.title),
       content: Form(
         key: _formKey,
         child: TextFormField(
@@ -439,14 +526,13 @@ class _ReturnReasonDialogState extends State<_ReturnReasonDialog> {
           autofocus: true,
           maxLines: 3,
           textInputAction: TextInputAction.done,
-          decoration: const InputDecoration(
-            labelText: 'Reason',
-            hintText: 'Example: customer requested a remake',
+          decoration: InputDecoration(
+            labelText: widget.label,
+            hintText: widget.hint,
           ),
-          validator: (value) =>
-              (value == null || value.trim().isEmpty)
-                  ? 'Return reason is required'
-                  : null,
+          validator: (value) => (value == null || value.trim().isEmpty)
+              ? '${widget.label} is required'
+              : null,
           onFieldSubmitted: (_) => _submit(),
         ),
       ),
@@ -457,7 +543,7 @@ class _ReturnReasonDialogState extends State<_ReturnReasonDialog> {
         ),
         FilledButton(
           onPressed: _submit,
-          child: const Text('Return'),
+          child: Text(widget.confirmLabel),
         ),
       ],
     );
@@ -483,6 +569,14 @@ class _AddProductSheetState extends State<_AddProductSheet> {
   final _noteController = TextEditingController();
   final _selectedChoices = <int, int>{};
   final _selectedModifiers = <int>{};
+  static const _commonNotes = [
+    'No salt',
+    'Extra sauce',
+    'Allergy',
+    'No onions',
+    'Well done',
+    'Serve first',
+  ];
   int _quantity = 1;
 
   @override
@@ -499,6 +593,14 @@ class _AddProductSheetState extends State<_AddProductSheet> {
         choiceIds: _selectedChoices.values.toList(growable: false),
         modifierIds: _selectedModifiers.toList(growable: false),
       ),
+    );
+  }
+
+  void _appendCommonNote(String note) {
+    final current = _noteController.text.trim();
+    _noteController.text = current.isEmpty ? note : '$current, $note';
+    _noteController.selection = TextSelection.fromPosition(
+      TextPosition(offset: _noteController.text.length),
     );
   }
 
@@ -579,6 +681,19 @@ class _AddProductSheetState extends State<_AddProductSheet> {
                 labelText: 'Order note',
                 hintText: 'No onions, extra napkins, serve first...',
               ),
+            ),
+            const SizedBox(height: 10),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                for (final note in _commonNotes)
+                  ActionChip(
+                    avatar: const Icon(Icons.add, size: 16),
+                    label: Text(note),
+                    onPressed: () => _appendCommonNote(note),
+                  ),
+              ],
             ),
             if (category.questions.isNotEmpty) ...[
               const SizedBox(height: 20),
@@ -901,8 +1016,7 @@ class _OrderItemTile extends StatelessWidget {
                   const SizedBox(height: 4),
                   Text(item.itemNote!),
                 ],
-                if (item.changeNote != null &&
-                    item.changeNote!.isNotEmpty) ...[
+                if (item.changeNote != null && item.changeNote!.isNotEmpty) ...[
                   const SizedBox(height: 4),
                   Text(item.changeNote!),
                 ],
@@ -924,8 +1038,7 @@ class _OrderItemTile extends StatelessWidget {
                   children: [
                     _OrderLineStatusChip(
                       label: item.kitchenStatusLabel,
-                      color:
-                          _kitchenStatusColor(item.kdsStatus ?? item.status),
+                      color: _kitchenStatusColor(item.kdsStatus ?? item.status),
                     ),
                     _OrderLineStatusChip(
                       label:
@@ -1029,11 +1142,13 @@ class _MenuComposerCard extends StatefulWidget {
   const _MenuComposerCard({
     required this.menu,
     required this.modifiers,
+    required this.recentProductIds,
     required this.onAdd,
   });
 
   final List<MenuCategoryData> menu;
   final List<ModifierData> modifiers;
+  final List<int> recentProductIds;
   final void Function(MenuProduct product, MenuCategoryData category) onAdd;
 
   @override
@@ -1041,7 +1156,9 @@ class _MenuComposerCard extends StatefulWidget {
 }
 
 class _MenuComposerCardState extends State<_MenuComposerCard> {
+  final _searchController = TextEditingController();
   int? _openCategoryId;
+  String _search = '';
 
   int _modifierCountFor(MenuCategoryData category) {
     return widget.modifiers
@@ -1049,10 +1166,71 @@ class _MenuComposerCardState extends State<_MenuComposerCard> {
         .length;
   }
 
+  List<(MenuCategoryData, MenuProduct)> get _allProducts {
+    return [
+      for (final category in widget.menu)
+        for (final product in category.products) (category, product),
+    ];
+  }
+
+  List<(MenuCategoryData, MenuProduct)> get _quickProducts {
+    final all = _allProducts;
+    final byId = {
+      for (final entry in all) entry.$2.id: entry,
+    };
+    final result = <(MenuCategoryData, MenuProduct)>[];
+    final seen = <int>{};
+
+    for (final productId in widget.recentProductIds) {
+      final entry = byId[productId];
+      if (entry == null || seen.contains(productId)) continue;
+      result.add(entry);
+      seen.add(productId);
+    }
+
+    for (final entry in all) {
+      if (seen.contains(entry.$2.id)) continue;
+      result.add(entry);
+      seen.add(entry.$2.id);
+      if (result.length >= 10) break;
+    }
+
+    return result;
+  }
+
+  List<MenuCategoryData> get _visibleMenu {
+    final query = _search.trim().toLowerCase();
+    if (query.isEmpty) return widget.menu;
+
+    return widget.menu
+        .map((category) {
+          final categoryMatches = category.name.toLowerCase().contains(query);
+          final products = category.products
+              .where((product) =>
+                  categoryMatches || product.name.toLowerCase().contains(query))
+              .toList(growable: false);
+
+          return MenuCategoryData(
+            id: category.id,
+            name: category.name,
+            products: products,
+            questions: category.questions,
+          );
+        })
+        .where((category) => category.products.isNotEmpty)
+        .toList(growable: false);
+  }
+
   @override
   void initState() {
     super.initState();
     _openCategoryId = widget.menu.isEmpty ? null : widget.menu.first.id;
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
   @override
@@ -1084,98 +1262,133 @@ class _MenuComposerCardState extends State<_MenuComposerCard> {
               'Open one category at a time.',
             ),
             const SizedBox(height: 14),
-            for (final category in widget.menu)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Material(
-                      color: const Color(0xFFF8FAFC),
-                      borderRadius: BorderRadius.circular(12),
-                      child: InkWell(
+            TextField(
+              controller: _searchController,
+              onChanged: (value) => setState(() => _search = value),
+              decoration: const InputDecoration(
+                labelText: 'Search products',
+                prefixIcon: Icon(Icons.search_outlined),
+              ),
+            ),
+            const SizedBox(height: 14),
+            if (_quickProducts.isNotEmpty) ...[
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  for (final entry in _quickProducts)
+                    ActionChip(
+                      avatar: const Icon(Icons.add_circle_outline, size: 18),
+                      label: Text(entry.$2.name),
+                      onPressed: () => widget.onAdd(entry.$2, entry.$1),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 14),
+            ],
+            if (_visibleMenu.isEmpty)
+              const SizedBox(
+                height: 180,
+                child: EmptyView(
+                  title: 'No products found',
+                  description: 'Try another product or category name.',
+                  icon: Icons.search_off_outlined,
+                ),
+              )
+            else
+              for (final category in _visibleMenu)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Material(
+                        color: const Color(0xFFF8FAFC),
                         borderRadius: BorderRadius.circular(12),
-                        onTap: () {
-                          setState(() {
-                            _openCategoryId = _openCategoryId == category.id
-                                ? null
-                                : category.id;
-                          });
-                        },
-                        child: Padding(
-                          padding: const EdgeInsets.all(14),
-                          child: Row(
-                            children: [
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      category.name,
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .titleMedium
-                                          ?.copyWith(
-                                              fontWeight: FontWeight.w800),
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      '${category.products.length} products • '
-                                      '${category.questions.length} questions • '
-                                      '${_modifierCountFor(category)} modifiers',
-                                      style: const TextStyle(
-                                        color: Color(0xFF64748B),
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(12),
+                          onTap: () {
+                            setState(() {
+                              _openCategoryId = _openCategoryId == category.id
+                                  ? null
+                                  : category.id;
+                            });
+                          },
+                          child: Padding(
+                            padding: const EdgeInsets.all(14),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        category.name,
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .titleMedium
+                                            ?.copyWith(
+                                                fontWeight: FontWeight.w800),
                                       ),
-                                    ),
-                                  ],
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        '${category.products.length} products • '
+                                        '${category.questions.length} questions • '
+                                        '${_modifierCountFor(category)} modifiers',
+                                        style: const TextStyle(
+                                          color: Color(0xFF64748B),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
-                              ),
-                              Icon(
-                                _openCategoryId == category.id
-                                    ? Icons.keyboard_arrow_up
-                                    : Icons.keyboard_arrow_down,
-                              ),
-                            ],
+                                Icon(
+                                  _openCategoryId == category.id
+                                      ? Icons.keyboard_arrow_up
+                                      : Icons.keyboard_arrow_down,
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                    if (_openCategoryId == category.id) ...[
-                      const SizedBox(height: 12),
-                      LayoutBuilder(
-                        builder: (context, constraints) {
-                          final width = constraints.maxWidth;
-                          final crossAxisCount = width > 760
-                              ? 3
-                              : width > 520
-                                  ? 2
-                                  : 1;
+                      if (_openCategoryId == category.id) ...[
+                        const SizedBox(height: 12),
+                        LayoutBuilder(
+                          builder: (context, constraints) {
+                            final width = constraints.maxWidth;
+                            final crossAxisCount = width > 760
+                                ? 3
+                                : width > 520
+                                    ? 2
+                                    : 1;
 
-                          return GridView.builder(
-                            shrinkWrap: true,
-                            physics: const NeverScrollableScrollPhysics(),
-                            itemCount: category.products.length,
-                            gridDelegate:
-                                SliverGridDelegateWithFixedCrossAxisCount(
-                              crossAxisCount: crossAxisCount,
-                              crossAxisSpacing: 12,
-                              mainAxisSpacing: 12,
-                              childAspectRatio: 0.78,
-                            ),
-                            itemBuilder: (context, index) {
-                              final product = category.products[index];
-                              return _ProductChooserCard(
-                                product: product,
-                                onTap: () => widget.onAdd(product, category),
-                              );
-                            },
-                          );
-                        },
-                      ),
+                            return GridView.builder(
+                              shrinkWrap: true,
+                              physics: const NeverScrollableScrollPhysics(),
+                              itemCount: category.products.length,
+                              gridDelegate:
+                                  SliverGridDelegateWithFixedCrossAxisCount(
+                                crossAxisCount: crossAxisCount,
+                                crossAxisSpacing: 12,
+                                mainAxisSpacing: 12,
+                                childAspectRatio: 0.78,
+                              ),
+                              itemBuilder: (context, index) {
+                                final product = category.products[index];
+                                return _ProductChooserCard(
+                                  product: product,
+                                  onTap: () => widget.onAdd(product, category),
+                                );
+                              },
+                            );
+                          },
+                        ),
+                      ],
                     ],
-                  ],
+                  ),
                 ),
-              ),
           ],
         ),
       ),

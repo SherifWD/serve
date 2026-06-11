@@ -19,6 +19,7 @@ class _KitchenWorkspacePageState extends ConsumerState<KitchenWorkspacePage> {
   late Future<List<KdsTicket>> _future;
   DateTime? _lastUpdatedAt;
   bool _hasUpdates = false;
+  String _station = 'all';
   RealtimeSubscription? _realtimeSubscription;
 
   @override
@@ -67,7 +68,9 @@ class _KitchenWorkspacePageState extends ConsumerState<KitchenWorkspacePage> {
   }
 
   Future<List<KdsTicket>> _loadBoard() async {
-    final tickets = await ref.read(suiteRepositoryProvider).fetchKitchenBoard();
+    final tickets = await ref
+        .read(suiteRepositoryProvider)
+        .fetchKitchenBoard(station: _station);
     if (mounted) {
       setState(() {
         _lastUpdatedAt = DateTime.now();
@@ -75,6 +78,14 @@ class _KitchenWorkspacePageState extends ConsumerState<KitchenWorkspacePage> {
       });
     }
     return tickets;
+  }
+
+  void _setStation(String station) {
+    if (_station == station) return;
+    setState(() {
+      _station = station;
+      _future = _loadBoard();
+    });
   }
 
   @override
@@ -342,12 +353,18 @@ class _KitchenWorkspacePageState extends ConsumerState<KitchenWorkspacePage> {
               children: [
                 ManualRefreshHeader(
                   title: 'Kitchen board',
-                  subtitle: 'Refresh when the kitchen is ready to take updates.',
+                  subtitle:
+                      '${_stationLabel(_station)} station / refresh when ready.',
                   icon: Icons.soup_kitchen_outlined,
                   lastUpdatedAt: _lastUpdatedAt,
                   hasUpdates: _hasUpdates,
                   onRefresh: _refreshBoard,
                   dark: true,
+                ),
+                const SizedBox(height: 16),
+                _StationFilterStrip(
+                  value: _station,
+                  onChanged: _setStation,
                 ),
                 const SizedBox(height: 16),
                 _KitchenHero(
@@ -483,6 +500,96 @@ class _KitchenWorkspacePageState extends ConsumerState<KitchenWorkspacePage> {
           ),
         );
       },
+    );
+  }
+}
+
+String _stationLabel(String station) {
+  switch (station) {
+    case 'barista':
+      return 'Barista';
+    case 'grill':
+      return 'Grill';
+    case 'cold':
+      return 'Cold';
+    case 'dessert':
+      return 'Dessert';
+    case 'general':
+      return 'General';
+    default:
+      return 'All';
+  }
+}
+
+Color _stationColor(String? station) {
+  switch (station) {
+    case 'barista':
+      return const Color(0xFF38BDF8);
+    case 'grill':
+      return const Color(0xFFF97316);
+    case 'cold':
+      return const Color(0xFF22C55E);
+    case 'dessert':
+      return const Color(0xFFE879F9);
+    case 'general':
+      return const Color(0xFFF4F7FB);
+    default:
+      return const Color(0xFF9CA3AF);
+  }
+}
+
+class _StationFilterStrip extends StatelessWidget {
+  const _StationFilterStrip({
+    required this.value,
+    required this.onChanged,
+  });
+
+  final String value;
+  final ValueChanged<String> onChanged;
+
+  static const _stations = [
+    ('all', Icons.dashboard_outlined),
+    ('barista', Icons.coffee_outlined),
+    ('grill', Icons.outdoor_grill_outlined),
+    ('cold', Icons.ac_unit_outlined),
+    ('dessert', Icons.cake_outlined),
+    ('general', Icons.room_service_outlined),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: [
+          for (final station in _stations) ...[
+            ChoiceChip(
+              avatar: Icon(
+                station.$2,
+                size: 18,
+                color: value == station.$1
+                    ? const Color(0xFF05121B)
+                    : _stationColor(station.$1),
+              ),
+              label: Text(_stationLabel(station.$1)),
+              selected: value == station.$1,
+              selectedColor: _stationColor(station.$1),
+              labelStyle: TextStyle(
+                color: value == station.$1
+                    ? const Color(0xFF05121B)
+                    : Colors.white,
+                fontWeight: FontWeight.w800,
+              ),
+              backgroundColor: const Color(0xFF0E1625),
+              side: BorderSide(
+                color: _stationColor(station.$1).withValues(alpha: 0.35),
+              ),
+              onSelected: (_) => onChanged(station.$1),
+            ),
+            const SizedBox(width: 8),
+          ],
+        ],
+      ),
     );
   }
 }
@@ -892,6 +999,11 @@ class _KitchenItemTile extends StatelessWidget {
                       spacing: 8,
                       runSpacing: 8,
                       children: [
+                        _KitchenSignalToken(
+                          label: item.kdsStationLabel ??
+                              _stationLabel(item.kdsStation ?? 'general'),
+                          color: _stationColor(item.kdsStation),
+                        ),
                         for (final modifier in item.modifiers)
                           _KitchenSignalToken(label: modifier),
                         if ((item.itemNote ?? '').isNotEmpty ||
@@ -946,10 +1058,12 @@ class _KitchenItemTile extends StatelessWidget {
 class _KitchenSignalToken extends StatelessWidget {
   const _KitchenSignalToken({
     required this.label,
+    this.color,
     this.onTap,
   });
 
   final String label;
+  final Color? color;
   final VoidCallback? onTap;
 
   @override
@@ -959,13 +1073,15 @@ class _KitchenSignalToken extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: color ?? Colors.white,
           borderRadius: BorderRadius.circular(999),
         ),
         child: Text(
           label,
-          style: const TextStyle(
-            color: Color(0xFF111827),
+          style: TextStyle(
+            color: color == null
+                ? const Color(0xFF111827)
+                : const Color(0xFF05121B),
             fontWeight: FontWeight.w800,
             fontSize: 12,
           ),

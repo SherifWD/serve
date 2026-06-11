@@ -10,6 +10,7 @@ use App\Models\Product;
 use App\Models\Recipe;
 use App\Models\RecipeIngredient;
 use App\Services\Inventory\CatalogInventorySync;
+use App\Support\KdsStation;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -36,6 +37,7 @@ class ProductController extends Controller
         $data = $request->validate([
             'name' => 'required|string',
             'category_id' => 'required|integer|exists:categories,id',
+            'kds_station' => 'nullable|string|max:40',
             'branch_id' => 'nullable|integer|exists:branches,id',
             'branch_ids' => 'nullable|array',
             'branch_ids.*' => 'integer|exists:branches,id',
@@ -65,6 +67,7 @@ class ProductController extends Controller
         unset($data['recipe_id'], $data['branch_ids'], $data['branch_id'], $data['recipe']);
         $data['min_stock'] = $data['min_stock'] ?? 0;
         $data['is_available'] = array_key_exists('is_available', $data) ? (int) $request->boolean('is_available') : 1;
+        $data['kds_station'] = KdsStation::normalize($data['kds_station'] ?? null);
         $data['branch_group_id'] = (string) Str::uuid();
 
         if ($request->hasFile('image')) {
@@ -113,6 +116,7 @@ class ProductController extends Controller
         $data = $request->validate([
             'name' => 'string',
             'category_id' => 'integer|exists:categories,id',
+            'kds_station' => 'nullable|string|max:40',
             'branch_id' => 'nullable|integer|exists:branches,id',
             'branch_ids' => 'nullable|array',
             'branch_ids.*' => 'integer|exists:branches,id',
@@ -147,6 +151,9 @@ class ProductController extends Controller
         }
         if (array_key_exists('min_stock', $data) && $data['min_stock'] === null) {
             $data['min_stock'] = 0;
+        }
+        if (array_key_exists('kds_station', $data)) {
+            $data['kds_station'] = KdsStation::normalize($data['kds_station']);
         }
 
         $recipeId = $data['recipe_id'] ?? null;
@@ -411,6 +418,7 @@ class ProductController extends Controller
         $copy = Category::create([
             'name' => $category->name,
             'branch_id' => $branchId,
+            'kds_station' => $category->kds_station,
             'branch_group_id' => $groupId,
         ]);
 

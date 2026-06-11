@@ -21,7 +21,7 @@ class MobileProductController extends Controller
             }))
             ->with([
                 'products' => function ($query) use ($branchId) {
-                    $query->select('id', 'name', 'price', 'category_id', 'image', 'branch_id', 'stock')
+                    $query->select('id', 'name', 'price', 'category_id', 'kds_station', 'image', 'branch_id', 'stock')
                         ->when($branchId, fn ($inner) => $inner->where('branch_id', $branchId))
                         ->where('is_available', true)
                         ->with('recipe.ingredients')
@@ -35,7 +35,7 @@ class MobileProductController extends Controller
                 },
             ])
             ->orderBy('name')
-            ->get(['id', 'name', 'branch_id']);
+            ->get(['id', 'name', 'branch_id', 'kds_station']);
 
         $categories->each(function ($category) use ($stock) {
             $products = $category->products

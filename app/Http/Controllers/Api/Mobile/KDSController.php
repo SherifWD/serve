@@ -8,6 +8,7 @@ use App\Events\OrderReadyForCashier;
 use App\Http\Controllers\Controller;
 use App\Models\Order;
 use App\Models\OrderItem;
+use App\Support\KdsStation;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -24,6 +25,7 @@ class KDSController extends Controller
 public function getActiveOrders(Request $request)
 {
     $branchId = $request->user()->branch_id;
+    $station = KdsStation::normalize($request->input('station'));
 
     // normalized list for both US/UK spellings, just in case
     $nonActiveItemStatuses = ['canceled','cancelled','refunded'];
@@ -31,7 +33,7 @@ public function getActiveOrders(Request $request)
     $itemScope = function ($q) use ($nonActiveItemStatuses) {
         $q->whereNotIn('status', $nonActiveItemStatuses)
           ->whereIn('kds_status', ['queued','preparing','ready','served','returned'])
-          ->with(['product', 'modifiers.modifier']); // eager-load for UI badges
+          ->with(['product.category', 'modifiers.modifier']); // eager-load for UI badges
     };
 
     $orders = \App\Models\Order::query()
@@ -42,7 +44,15 @@ public function getActiveOrders(Request $request)
         ->with(['table','employee.user','items' => $itemScope]) // but only those filtered items
         ->orderBy('order_date', 'asc')
         ->get()
-        ->map(function($o){
+        ->map(function($o) use ($station) {
+            $items = $station
+                ? $o->items->filter(fn ($item) => KdsStation::forProduct($item->product) === $station)->values()
+                : $o->items->values();
+
+            if ($items->isEmpty()) {
+                return null;
+            }
+
             // Optional: flatten a few fields the KDS page expects
             return [
                 'id'         => $o->id,
@@ -51,14 +61,20 @@ public function getActiveOrders(Request $request)
                 'kds_sent_at'=> $o->kds_sent_at,
                 'created_at' => $o->created_at,
                 
-                'items'      => $o->items->map(function($i){
+                'items'      => $items->map(function($i){
+                    $station = KdsStation::forProduct($i->product);
                     return [
                         'id'         => $i->id,
                         'quantity'   => $i->quantity,
-                        'product'    => ['name' => optional($i->product)->name], // keep it an object
+                        'product'    => [
+                            'name' => optional($i->product)->name,
+                            'kds_station' => $station,
+                        ], // keep it an object
                         'note'       => $i->note,
                         'status'     => $i->status,       // business status
                         'kds_status' => $i->kds_status,   // UI status
+                        'kds_station' => $station,
+                        'kds_station_label' => KdsStation::label($station),
                         'modifiers'  => $i->modifiers->map(function($m){
                             return ['name' => $m->modifier->name ?? ($m->raw_modifier ?? '')];
                         })->values(),
@@ -67,7 +83,9 @@ public function getActiveOrders(Request $request)
                     ];
                 })->values(),
             ];
-        });
+        })
+        ->filter()
+        ->values();
 
     return response()->json(['data' => $orders]);
 }

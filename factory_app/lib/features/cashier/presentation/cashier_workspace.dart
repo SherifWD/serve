@@ -26,7 +26,9 @@ class _CashierWorkspacePageState extends ConsumerState<CashierWorkspacePage> {
   StaffOrderSnapshot? _selectedOrder;
   List<_PaymentDraft> _drafts = [];
   int _selectedDraftIndex = 0;
+  bool _autoPrintPaidReceipt = true;
   final Set<int> _selectedItemIds = <int>{};
+  final List<_CounterSaleDraft> _heldCounterDrafts = <_CounterSaleDraft>[];
 
   @override
   void initState() {
@@ -268,14 +270,10 @@ class _CashierWorkspacePageState extends ConsumerState<CashierWorkspacePage> {
     if (order == null) return;
 
     try {
-      final document = await ref.read(suiteRepositoryProvider).generateReceipt(
-            orderId: order.id,
-            itemIds: _selectedItemIds.toList(growable: false),
-            scope: _selectedItemIds.isEmpty ? 'full' : 'paid',
-          );
-      await Printing.layoutPdf(
-        name: document.filename,
-        onLayout: (_) async => document.bytes,
+      await _printReceipt(
+        orderId: order.id,
+        itemIds: _selectedItemIds.toList(growable: false),
+        scope: _selectedItemIds.isEmpty ? 'full' : 'paid',
       );
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -290,6 +288,22 @@ class _CashierWorkspacePageState extends ConsumerState<CashierWorkspacePage> {
       ScaffoldMessenger.of(context)
           .showSnackBar(SnackBar(content: Text(e.toString())));
     }
+  }
+
+  Future<void> _printReceipt({
+    required int orderId,
+    List<int> itemIds = const [],
+    String scope = 'full',
+  }) async {
+    final document = await ref.read(suiteRepositoryProvider).generateReceipt(
+          orderId: orderId,
+          itemIds: itemIds,
+          scope: itemIds.isEmpty ? scope : 'paid',
+        );
+    await Printing.layoutPdf(
+      name: document.filename,
+      onLayout: (_) async => document.bytes,
+    );
   }
 
   Future<void> _reprintLastReceipt() async {
@@ -338,14 +352,39 @@ class _CashierWorkspacePageState extends ConsumerState<CashierWorkspacePage> {
     }
 
     try {
+      final itemIds = _selectedItemIds.toList(growable: false);
+      final targetAmount = _paymentTargetAmount(order);
+      final tenderedAmount = payments.fold<double>(
+        0,
+        (sum, payment) => sum + (payment['amount'] as double),
+      );
+      final shouldAutoPrint = _autoPrintPaidReceipt &&
+          targetAmount > 0 &&
+          tenderedAmount >= targetAmount;
+
       await ref.read(suiteRepositoryProvider).payOrder(
             orderId: order.id,
             payments: payments,
-            itemIds: _selectedItemIds.toList(growable: false),
+            itemIds: itemIds,
           );
+
+      if (shouldAutoPrint) {
+        await _printReceipt(
+          orderId: order.id,
+          itemIds: itemIds,
+          scope: itemIds.isEmpty ? 'paid' : 'paid',
+        );
+      }
+
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Payment recorded')),
+        SnackBar(
+          content: Text(
+            shouldAutoPrint
+                ? 'Payment recorded and receipt opened'
+                : 'Payment recorded',
+          ),
+        ),
       );
       setState(() {
         _selectedOrder = null;
@@ -373,13 +412,28 @@ class _CashierWorkspacePageState extends ConsumerState<CashierWorkspacePage> {
       final menu = await ref.read(suiteRepositoryProvider).fetchMenu();
       if (!mounted) return;
 
-      final draft = await showModalBottomSheet<_CounterSaleDraft>(
+      final result = await showModalBottomSheet<_CounterSaleResult>(
         context: context,
         isScrollControlled: true,
-        builder: (context) => _CounterSaleSheet(menu: menu),
+        builder: (context) => _CounterSaleSheet(
+          menu: menu,
+          heldDrafts: _heldCounterDrafts,
+        ),
       );
 
-      if (draft == null || !mounted) return;
+      if (result == null || !mounted) return;
+
+      if (result.hold) {
+        setState(() => _heldCounterDrafts.insert(0, result.draft));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Ticket held (${_heldCounterDrafts.length} held)'),
+          ),
+        );
+        return;
+      }
+
+      final draft = result.draft;
 
       final order = await ref.read(suiteRepositoryProvider).createOrder(
             branchId: branchId,
@@ -392,6 +446,11 @@ class _CashierWorkspacePageState extends ConsumerState<CashierWorkspacePage> {
 
       if (!mounted) return;
       setState(() {
+        if (result.heldIndex != null &&
+            result.heldIndex! >= 0 &&
+            result.heldIndex! < _heldCounterDrafts.length) {
+          _heldCounterDrafts.removeAt(result.heldIndex!);
+        }
         _selectedOrder = order;
         _selectedItemIds.clear();
         _resetDrafts();
@@ -400,6 +459,30 @@ class _CashierWorkspacePageState extends ConsumerState<CashierWorkspacePage> {
         SnackBar(content: Text('Counter order #${order.id} ready to settle')),
       );
       await _refreshOrders();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(e.toString())));
+    }
+  }
+
+  Future<void> _openCashDrawer() async {
+    final branchId = ref.read(currentSessionProvider)?.branchId;
+    if (branchId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Select a branch before opening drawer.')),
+      );
+      return;
+    }
+
+    try {
+      await ref
+          .read(suiteRepositoryProvider)
+          .openCashDrawer(branchId: branchId);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Cash drawer command queued')),
+      );
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context)
@@ -445,6 +528,7 @@ class _CashierWorkspacePageState extends ConsumerState<CashierWorkspacePage> {
                   dueNow: 0,
                   averageTicket: 0,
                   onCounterSale: _openCounterSale,
+                  onOpenDrawer: _openCashDrawer,
                 ),
                 const SizedBox(height: 16),
                 const EmptyView(
@@ -474,9 +558,9 @@ class _CashierWorkspacePageState extends ConsumerState<CashierWorkspacePage> {
             children: [
               refreshHeader,
               const SizedBox(height: 16),
-	              _CashierHeader(
-	                pendingCount: orders.length,
-	                dueNow: orders.fold<double>(
+              _CashierHeader(
+                pendingCount: orders.length,
+                dueNow: orders.fold<double>(
                   0,
                   (sum, order) => sum + order.outstandingAmount,
                 ),
@@ -485,10 +569,11 @@ class _CashierWorkspacePageState extends ConsumerState<CashierWorkspacePage> {
                     : orders.fold<double>(
                           0,
                           (sum, order) => sum + order.total,
-	                        ) /
-	                        orders.length,
-	                onCounterSale: _openCounterSale,
-	              ),
+                        ) /
+                        orders.length,
+                onCounterSale: _openCounterSale,
+                onOpenDrawer: _openCashDrawer,
+              ),
               const SizedBox(height: 16),
               if (wide)
                 Row(
@@ -520,6 +605,7 @@ class _CashierWorkspacePageState extends ConsumerState<CashierWorkspacePage> {
                         order: selected,
                         targetAmount: _paymentTargetAmount(selected),
                         usingItemScope: _selectedItemIds.isNotEmpty,
+                        autoPrintPaidReceipt: _autoPrintPaidReceipt,
                         drafts: _drafts,
                         selectedDraftIndex: _selectedDraftIndex,
                         onSelectDraft: _selectDraft,
@@ -530,6 +616,8 @@ class _CashierWorkspacePageState extends ConsumerState<CashierWorkspacePage> {
                         onKeyTap: _appendKey,
                         onBackspace: _backspaceKey,
                         onClear: _clearAmount,
+                        onAutoPrintChanged: (value) =>
+                            setState(() => _autoPrintPaidReceipt = value),
                         onSubmit: _submitPayments,
                       ),
                     ),
@@ -566,6 +654,7 @@ class _CashierWorkspacePageState extends ConsumerState<CashierWorkspacePage> {
                             order: selected,
                             targetAmount: _paymentTargetAmount(selected),
                             usingItemScope: _selectedItemIds.isNotEmpty,
+                            autoPrintPaidReceipt: _autoPrintPaidReceipt,
                             drafts: _drafts,
                             selectedDraftIndex: _selectedDraftIndex,
                             onSelectDraft: _selectDraft,
@@ -576,6 +665,8 @@ class _CashierWorkspacePageState extends ConsumerState<CashierWorkspacePage> {
                             onKeyTap: _appendKey,
                             onBackspace: _backspaceKey,
                             onClear: _clearAmount,
+                            onAutoPrintChanged: (value) =>
+                                setState(() => _autoPrintPaidReceipt = value),
                             onSubmit: _submitPayments,
                           ),
                         ),
@@ -605,6 +696,7 @@ class _CashierWorkspacePageState extends ConsumerState<CashierWorkspacePage> {
                   order: selected,
                   targetAmount: _paymentTargetAmount(selected),
                   usingItemScope: _selectedItemIds.isNotEmpty,
+                  autoPrintPaidReceipt: _autoPrintPaidReceipt,
                   drafts: _drafts,
                   selectedDraftIndex: _selectedDraftIndex,
                   onSelectDraft: _selectDraft,
@@ -615,6 +707,8 @@ class _CashierWorkspacePageState extends ConsumerState<CashierWorkspacePage> {
                   onKeyTap: _appendKey,
                   onBackspace: _backspaceKey,
                   onClear: _clearAmount,
+                  onAutoPrintChanged: (value) =>
+                      setState(() => _autoPrintPaidReceipt = value),
                   onSubmit: _submitPayments,
                 ),
               ],
@@ -632,12 +726,14 @@ class _CashierHeader extends StatelessWidget {
     required this.dueNow,
     required this.averageTicket,
     required this.onCounterSale,
+    required this.onOpenDrawer,
   });
 
   final int pendingCount;
   final double dueNow;
   final double averageTicket;
   final VoidCallback onCounterSale;
+  final VoidCallback onOpenDrawer;
 
   @override
   Widget build(BuildContext context) {
@@ -667,25 +763,34 @@ class _CashierHeader extends StatelessWidget {
             label: 'Due now',
             value: currency.format(dueNow),
           ),
-	          _HeaderMetric(
-	            label: 'Avg ticket',
-	            value: currency.format(averageTicket),
-	          ),
-	          FilledButton.icon(
-	            onPressed: onCounterSale,
-	            icon: const Icon(Icons.add_shopping_cart_outlined),
-	            label: const Text('Counter sale'),
-	          ),
-	        ],
-	      ),
+          _HeaderMetric(
+            label: 'Avg ticket',
+            value: currency.format(averageTicket),
+          ),
+          FilledButton.icon(
+            onPressed: onCounterSale,
+            icon: const Icon(Icons.add_shopping_cart_outlined),
+            label: const Text('Counter sale'),
+          ),
+          OutlinedButton.icon(
+            onPressed: onOpenDrawer,
+            icon: const Icon(Icons.point_of_sale_outlined),
+            label: const Text('Open drawer'),
+          ),
+        ],
+      ),
     );
   }
 }
 
 class _CounterSaleSheet extends StatefulWidget {
-  const _CounterSaleSheet({required this.menu});
+  const _CounterSaleSheet({
+    required this.menu,
+    required this.heldDrafts,
+  });
 
   final List<MenuCategoryData> menu;
+  final List<_CounterSaleDraft> heldDrafts;
 
   @override
   State<_CounterSaleSheet> createState() => _CounterSaleSheetState();
@@ -697,6 +802,7 @@ class _CounterSaleSheetState extends State<_CounterSaleSheet> {
   final _searchController = TextEditingController();
   final Map<int, _CounterCartLine> _cart = <int, _CounterCartLine>{};
   String _search = '';
+  int? _resumedHeldIndex;
 
   @override
   void dispose() {
@@ -716,6 +822,17 @@ class _CounterSaleSheetState extends State<_CounterSaleSheet> {
               category.name.toLowerCase().contains(query))
             (category, product),
     ];
+  }
+
+  List<(MenuCategoryData, MenuProduct)> get _allProducts {
+    return [
+      for (final category in widget.menu)
+        for (final product in category.products) (category, product),
+    ];
+  }
+
+  List<(MenuCategoryData, MenuProduct)> get _quickProducts {
+    return _allProducts.take(12).toList(growable: false);
   }
 
   double get _cartTotal => _cart.values.fold<double>(
@@ -749,6 +866,58 @@ class _CounterSaleSheetState extends State<_CounterSaleSheet> {
     });
   }
 
+  _CounterSaleDraft _draftFromCart() {
+    return _CounterSaleDraft(
+      customerName: _customerNameController.text.trim(),
+      customerPhone: _customerPhoneController.text.trim(),
+      items: _cart.values
+          .map((line) => {
+                'product_id': line.product.id,
+                'quantity': line.quantity,
+              })
+          .toList(growable: false),
+    );
+  }
+
+  void _loadDraft(_CounterSaleDraft draft, int index) {
+    final byId = {
+      for (final entry in _allProducts) entry.$2.id: entry,
+    };
+    final nextCart = <int, _CounterCartLine>{};
+
+    for (final item in draft.items) {
+      final productId = item['product_id'];
+      if (productId is! int) continue;
+      final entry = byId[productId];
+      if (entry == null) continue;
+      nextCart[productId] = _CounterCartLine(
+        category: entry.$1,
+        product: entry.$2,
+        quantity: item['quantity'] is int ? item['quantity'] as int : 1,
+      );
+    }
+
+    setState(() {
+      _customerNameController.text = draft.customerName;
+      _customerPhoneController.text = draft.customerPhone;
+      _cart
+        ..clear()
+        ..addAll(nextCart);
+      _resumedHeldIndex = index;
+    });
+  }
+
+  void _hold() {
+    if (_cart.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Add at least one item.')),
+      );
+      return;
+    }
+
+    Navigator.of(context).pop(_CounterSaleResult.hold(_draftFromCart()));
+  }
+
   void _submit() {
     if (_cart.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -758,15 +927,9 @@ class _CounterSaleSheetState extends State<_CounterSaleSheet> {
     }
 
     Navigator.of(context).pop(
-      _CounterSaleDraft(
-        customerName: _customerNameController.text.trim(),
-        customerPhone: _customerPhoneController.text.trim(),
-        items: _cart.values
-            .map((line) => {
-                  'product_id': line.product.id,
-                  'quantity': line.quantity,
-                })
-            .toList(growable: false),
+      _CounterSaleResult.submit(
+        _draftFromCart(),
+        heldIndex: _resumedHeldIndex,
       ),
     );
   }
@@ -832,6 +995,23 @@ class _CounterSaleSheetState extends State<_CounterSaleSheet> {
                   ],
                 ),
                 const SizedBox(height: 12),
+                if (widget.heldDrafts.isNotEmpty) ...[
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      for (var i = 0; i < widget.heldDrafts.length; i++)
+                        ActionChip(
+                          avatar: const Icon(Icons.restore_outlined, size: 18),
+                          label: Text(
+                            'Hold ${i + 1} / ${widget.heldDrafts[i].items.length} items',
+                          ),
+                          onPressed: () => _loadDraft(widget.heldDrafts[i], i),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                ],
                 TextField(
                   controller: _searchController,
                   onChanged: (value) => setState(() => _search = value),
@@ -841,6 +1021,23 @@ class _CounterSaleSheetState extends State<_CounterSaleSheet> {
                   ),
                 ),
                 const SizedBox(height: 16),
+                if (_quickProducts.isNotEmpty) ...[
+                  Wrap(
+                    spacing: 10,
+                    runSpacing: 10,
+                    children: [
+                      for (final entry in _quickProducts)
+                        _CounterProductButton(
+                          category: entry.$1,
+                          product: entry.$2,
+                          currency: currency,
+                          compact: true,
+                          onTap: () => _addProduct(entry.$1, entry.$2),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                ],
                 Wrap(
                   spacing: 10,
                   runSpacing: 10,
@@ -889,10 +1086,19 @@ class _CounterSaleSheetState extends State<_CounterSaleSheet> {
                             onPressed: () => _changeQuantity(line.product, 1),
                             icon: const Icon(Icons.add),
                           ),
+                          TextButton(
+                            onPressed: () => _changeQuantity(line.product, 2),
+                            child: const Text('+2'),
+                          ),
+                          TextButton(
+                            onPressed: () => _changeQuantity(line.product, 5),
+                            child: const Text('+5'),
+                          ),
                           SizedBox(
                             width: 86,
                             child: Text(
-                              currency.format(line.product.price * line.quantity),
+                              currency
+                                  .format(line.product.price * line.quantity),
                               textAlign: TextAlign.end,
                               overflow: TextOverflow.ellipsis,
                               style:
@@ -905,6 +1111,14 @@ class _CounterSaleSheetState extends State<_CounterSaleSheet> {
                 const SizedBox(height: 16),
                 Row(
                   children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: _cart.isEmpty ? null : _hold,
+                        icon: const Icon(Icons.pause_circle_outline),
+                        label: const Text('Hold'),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
                     Expanded(
                       child: Text(
                         currency.format(_cartTotal),
@@ -936,17 +1150,19 @@ class _CounterProductButton extends StatelessWidget {
     required this.product,
     required this.currency,
     required this.onTap,
+    this.compact = false,
   });
 
   final MenuCategoryData category;
   final MenuProduct product;
   final NumberFormat currency;
   final VoidCallback onTap;
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      width: 220,
+      width: compact ? 178 : 220,
       child: OutlinedButton(
         onPressed: onTap,
         style: OutlinedButton.styleFrom(
@@ -1005,6 +1221,36 @@ class _CounterSaleDraft {
   final String customerName;
   final String customerPhone;
   final List<Map<String, dynamic>> items;
+}
+
+class _CounterSaleResult {
+  const _CounterSaleResult._({
+    required this.draft,
+    required this.hold,
+    this.heldIndex,
+  });
+
+  final _CounterSaleDraft draft;
+  final bool hold;
+  final int? heldIndex;
+
+  factory _CounterSaleResult.submit(
+    _CounterSaleDraft draft, {
+    int? heldIndex,
+  }) {
+    return _CounterSaleResult._(
+      draft: draft,
+      hold: false,
+      heldIndex: heldIndex,
+    );
+  }
+
+  factory _CounterSaleResult.hold(_CounterSaleDraft draft) {
+    return _CounterSaleResult._(
+      draft: draft,
+      hold: true,
+    );
+  }
 }
 
 class _QueuePanel extends StatelessWidget {
@@ -1349,6 +1595,7 @@ class _PaymentPanel extends StatelessWidget {
     required this.order,
     required this.targetAmount,
     required this.usingItemScope,
+    required this.autoPrintPaidReceipt,
     required this.drafts,
     required this.selectedDraftIndex,
     required this.onSelectDraft,
@@ -1359,12 +1606,14 @@ class _PaymentPanel extends StatelessWidget {
     required this.onKeyTap,
     required this.onBackspace,
     required this.onClear,
+    required this.onAutoPrintChanged,
     required this.onSubmit,
   });
 
   final StaffOrderSnapshot order;
   final double targetAmount;
   final bool usingItemScope;
+  final bool autoPrintPaidReceipt;
   final List<_PaymentDraft> drafts;
   final int selectedDraftIndex;
   final ValueChanged<int> onSelectDraft;
@@ -1375,6 +1624,7 @@ class _PaymentPanel extends StatelessWidget {
   final ValueChanged<String> onKeyTap;
   final VoidCallback onBackspace;
   final VoidCallback onClear;
+  final ValueChanged<bool> onAutoPrintChanged;
   final Future<void> Function() onSubmit;
 
   @override
@@ -1504,6 +1754,14 @@ class _PaymentPanel extends StatelessWidget {
               onClear: onClear,
             ),
             const SizedBox(height: 16),
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              value: autoPrintPaidReceipt,
+              onChanged: onAutoPrintChanged,
+              title: const Text('Auto-print paid receipt'),
+              secondary: const Icon(Icons.receipt_long_outlined),
+            ),
+            const SizedBox(height: 8),
             SizedBox(
               width: double.infinity,
               child: ElevatedButton.icon(

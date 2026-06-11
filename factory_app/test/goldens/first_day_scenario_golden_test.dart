@@ -745,6 +745,19 @@ class _FirstDayScenarioRepository extends SuiteRepository {
   Future<List<TableOverview>> fetchTables() async => tables;
 
   @override
+  Future<TableFloorBundle> fetchTableFloor() async {
+    return TableFloorBundle(
+      tables: tables,
+      operationProfile: const OperationProfile(
+        mode: 'big_restaurant',
+        label: 'Big restaurant',
+        showWaiterNames: true,
+        waiterTableOwnership: true,
+      ),
+    );
+  }
+
+  @override
   Future<TableDetails> fetchTableDetails(int tableId) async {
     return const TableDetails(
       id: 217,
@@ -803,7 +816,7 @@ class _FirstDayScenarioRepository extends SuiteRepository {
   Future<List<ModifierData>> fetchModifiers() async => modifiers;
 
   @override
-  Future<List<KdsTicket>> fetchKitchenBoard() async {
+  Future<List<KdsTicket>> fetchKitchenBoard({String? station}) async {
     return const [
       KdsTicket(
         id: 244,
