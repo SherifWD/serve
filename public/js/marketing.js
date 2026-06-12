@@ -25,6 +25,29 @@
     revealItems.forEach((item) => observer.observe(item));
   }
 
+  document.querySelectorAll('[data-pricing-region]').forEach((section) => {
+    const tabs = section.querySelectorAll('[data-region-target]');
+    const prices = section.querySelectorAll('[data-region-price]');
+
+    const setRegion = (region) => {
+      section.setAttribute('data-pricing-region', region);
+      tabs.forEach((tab) => {
+        const active = tab.dataset.regionTarget === region;
+        tab.classList.toggle('is-active', active);
+        tab.setAttribute('aria-selected', active ? 'true' : 'false');
+      });
+      prices.forEach((price) => {
+        price.hidden = price.dataset.regionPrice !== region;
+      });
+    };
+
+    tabs.forEach((tab) => {
+      tab.addEventListener('click', () => setRegion(tab.dataset.regionTarget));
+    });
+
+    setRegion(section.getAttribute('data-pricing-region') || 'egypt');
+  });
+
   if (reduceMotion) {
     return;
   }

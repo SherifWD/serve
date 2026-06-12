@@ -15,6 +15,7 @@ class RestaurantSuiteApp extends ConsumerWidget {
     final router = ref.watch(appRouterProvider);
     final flavor = ref.watch(appFlavorProvider);
     final language = ref.watch(appLanguageProvider);
+    final themeMode = ref.watch(appThemeModeProvider);
     return MaterialApp.router(
       title: flavor.title,
       locale: language.locale,
@@ -28,6 +29,8 @@ class RestaurantSuiteApp extends ConsumerWidget {
         GlobalWidgetsLocalizations.delegate,
       ],
       theme: AppTheme.light,
+      darkTheme: AppTheme.dark,
+      themeMode: themeMode,
       debugShowCheckedModeBanner: false,
       routerConfig: router,
     );

@@ -4,7 +4,10 @@ namespace App\Http\Controllers;
 
 use App\Models\MarketingInquiry;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Validation\Rule;
+use Throwable;
 
 class MarketingInquiryPublicController extends Controller
 {
@@ -44,6 +47,8 @@ class MarketingInquiryPublicController extends Controller
 
         $inquiry = MarketingInquiry::query()->create($data);
 
+        $this->notifySalesInbox($inquiry);
+
         if ($request->expectsJson()) {
             return response()->json([
                 'message' => 'Inquiry received.',
@@ -54,5 +59,64 @@ class MarketingInquiryPublicController extends Controller
         return redirect()
             ->route('marketing.contact')
             ->with('status', 'Thanks. Your survey was received and the Janova team can now review your requirements.');
+    }
+
+    private function notifySalesInbox(MarketingInquiry $inquiry): void
+    {
+        try {
+            Mail::raw($this->emailBody($inquiry), function ($message) use ($inquiry): void {
+                $message
+                    ->to('pos@janovatech.com')
+                    ->replyTo($inquiry->email, $inquiry->full_name)
+                    ->subject("Janova POS survey: {$inquiry->business_name}");
+            });
+        } catch (Throwable $exception) {
+            Log::warning('Marketing inquiry email notification failed.', [
+                'marketing_inquiry_id' => $inquiry->id,
+                'error' => $exception->getMessage(),
+            ]);
+        }
+    }
+
+    private function emailBody(MarketingInquiry $inquiry): string
+    {
+        $lines = [
+            'New Janova Serve POS survey submission',
+            '',
+            "Inquiry ID: {$inquiry->id}",
+            "Business: {$inquiry->business_name}",
+            "Contact: {$inquiry->full_name}",
+            "Role: ".($inquiry->role ?: 'Not provided'),
+            "Email: {$inquiry->email}",
+            "Phone: {$inquiry->phone}",
+            "City: ".($inquiry->city ?: 'Not provided'),
+            "Website: ".($inquiry->website ?: 'Not provided'),
+            '',
+            "Business type: {$inquiry->business_type}",
+            "Branches: ".($inquiry->branch_count ?: 'Not provided'),
+            "Staff: ".($inquiry->staff_count ?: 'Not provided'),
+            "Current system: ".($inquiry->current_system ?: 'Not provided'),
+            "Order channels: ".$this->joinList($inquiry->order_channels),
+            "Interested modules: ".$this->joinList($inquiry->interest_areas),
+            "Devices: ".$this->joinList($inquiry->devices),
+            '',
+            "Timeline: {$inquiry->timeline}",
+            "Budget range: ".($inquiry->budget_range ?: 'Not provided'),
+            "Preferred contact: {$inquiry->preferred_contact_method}",
+            "Best contact time: ".($inquiry->best_contact_time ?: 'Not provided'),
+            '',
+            'Pain points:',
+            $inquiry->pain_points,
+            '',
+            'Success notes:',
+            $inquiry->success_notes ?: 'Not provided',
+        ];
+
+        return implode("\n", $lines);
+    }
+
+    private function joinList(?array $items): string
+    {
+        return empty($items) ? 'Not provided' : implode(', ', $items);
     }
 }

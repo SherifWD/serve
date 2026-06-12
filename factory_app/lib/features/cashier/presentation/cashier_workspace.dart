@@ -10,6 +10,23 @@ import '../../auth/providers/auth_providers.dart';
 import '../../suite/data/realtime_service.dart';
 import '../../suite/data/suite_repository.dart';
 
+bool _cashierDark(BuildContext context) =>
+    Theme.of(context).brightness == Brightness.dark;
+
+Color _cashierPanelAlt(BuildContext context) =>
+    _cashierDark(context) ? const Color(0xFF182235) : const Color(0xFFF7F3EE);
+
+Color _cashierSelected(BuildContext context) => _cashierDark(context)
+    ? const Color(0xFF3ECF8E).withValues(alpha: 0.16)
+    : const Color(0xFFFFEEDD);
+
+Color _cashierAccent(BuildContext context) =>
+    _cashierDark(context) ? const Color(0xFF3ECF8E) : const Color(0xFFE86C2F);
+
+Color _cashierMuted(BuildContext context) => _cashierDark(context)
+    ? Colors.white.withValues(alpha: 0.68)
+    : const Color(0xFF6B7280);
+
 class CashierWorkspacePage extends ConsumerStatefulWidget {
   const CashierWorkspacePage({super.key});
 
@@ -492,6 +509,7 @@ class _CashierWorkspacePageState extends ConsumerState<CashierWorkspacePage> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return FutureBuilder<List<StaffOrderSnapshot>>(
       future: _future,
       builder: (context, snapshot) {
@@ -513,6 +531,7 @@ class _CashierWorkspacePageState extends ConsumerState<CashierWorkspacePage> {
           lastUpdatedAt: _lastUpdatedAt,
           hasUpdates: _hasUpdates,
           onRefresh: _refreshOrders,
+          dark: isDark,
         );
 
         if (orders.isEmpty) {
@@ -1312,13 +1331,13 @@ class _QueuePanel extends StatelessWidget {
                       padding: const EdgeInsets.all(14),
                       decoration: BoxDecoration(
                         color: selected
-                            ? const Color(0xFFFFEEDD)
-                            : const Color(0xFFF7F3EE),
+                            ? _cashierSelected(context)
+                            : _cashierPanelAlt(context),
                         borderRadius: BorderRadius.circular(22),
                         border: Border.all(
                           color: selected
-                              ? const Color(0xFFE86C2F)
-                              : Colors.transparent,
+                              ? _cashierAccent(context)
+                              : Colors.white.withValues(alpha: 0.04),
                         ),
                       ),
                       child: Column(
@@ -1337,9 +1356,10 @@ class _QueuePanel extends StatelessWidget {
                               ),
                               Text(
                                 currency.format(order.outstandingAmount),
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontWeight: FontWeight.w800,
-                                  color: Color(0xFF111827),
+                                  color:
+                                      Theme.of(context).colorScheme.onSurface,
                                 ),
                               ),
                             ],
@@ -1361,7 +1381,7 @@ class _QueuePanel extends StatelessWidget {
                           const SizedBox(height: 4),
                           Text(
                             '${order.customerName ?? 'Guest'} • ${order.items.length} items',
-                            style: const TextStyle(color: Color(0xFF6B7280)),
+                            style: TextStyle(color: _cashierMuted(context)),
                           ),
                         ],
                       ),
@@ -1513,7 +1533,8 @@ class _TicketPanel extends StatelessWidget {
                           width: 34,
                           height: 34,
                           decoration: BoxDecoration(
-                            color: const Color(0xFFFFE4CF),
+                            color:
+                                _cashierAccent(context).withValues(alpha: 0.16),
                             borderRadius: BorderRadius.circular(12),
                           ),
                           alignment: Alignment.center,
@@ -1540,16 +1561,18 @@ class _TicketPanel extends StatelessWidget {
                                 const SizedBox(height: 4),
                                 Text(
                                   item.modifiers.join(' • '),
-                                  style:
-                                      const TextStyle(color: Color(0xFF6B7280)),
+                                  style: TextStyle(
+                                    color: _cashierMuted(context),
+                                  ),
                                 ),
                               ],
                               if ((item.itemNote ?? '').isNotEmpty) ...[
                                 const SizedBox(height: 4),
                                 Text(
                                   item.itemNote!,
-                                  style:
-                                      const TextStyle(color: Color(0xFF8B5E34)),
+                                  style: TextStyle(
+                                    color: _cashierAccent(context),
+                                  ),
                                 ),
                               ],
                               const SizedBox(height: 6),
@@ -1681,7 +1704,7 @@ class _PaymentPanel extends StatelessWidget {
               '${usingItemScope ? 'Selected items' : 'Outstanding'} ${currency.format(targetAmount)}',
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.w800,
-                    color: const Color(0xFF8A4316),
+                    color: _cashierAccent(context),
                   ),
             ),
             const SizedBox(height: 14),
@@ -1819,7 +1842,7 @@ class _PaymentSummaryCard extends StatelessWidget {
           Text(
             label,
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: const Color(0xFF6B7280),
+                  color: _cashierMuted(context),
                 ),
           ),
           const SizedBox(height: 6),
@@ -1862,10 +1885,13 @@ class _TenderDraftCard extends StatelessWidget {
         duration: const Duration(milliseconds: 160),
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: selected ? const Color(0xFFFFF0E4) : const Color(0xFFF7F3EE),
+          color:
+              selected ? _cashierSelected(context) : _cashierPanelAlt(context),
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: selected ? const Color(0xFFE86C2F) : Colors.transparent,
+            color: selected
+                ? _cashierAccent(context)
+                : Colors.white.withValues(alpha: 0.04),
           ),
         ),
         child: Column(
@@ -1985,8 +2011,8 @@ class _KeypadButton extends StatelessWidget {
       height: 68,
       child: ElevatedButton(
         style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFFF7F3EE),
-          foregroundColor: const Color(0xFF111827),
+          backgroundColor: _cashierPanelAlt(context),
+          foregroundColor: Theme.of(context).colorScheme.onSurface,
         ),
         onPressed: onTap,
         child: Text(
@@ -2010,13 +2036,13 @@ class _TicketStatusBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: const Color(0xFFEAF7F2),
+        color: _cashierAccent(context).withValues(alpha: 0.14),
         borderRadius: BorderRadius.circular(16),
       ),
       child: Text(
         label,
-        style: const TextStyle(
-          color: Color(0xFF0F766E),
+        style: TextStyle(
+          color: _cashierAccent(context),
           fontWeight: FontWeight.w800,
         ),
       ),
@@ -2034,12 +2060,15 @@ class _InfoPill extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
       decoration: BoxDecoration(
-        color: const Color(0xFFF7F3EE),
+        color: _cashierPanelAlt(context),
         borderRadius: BorderRadius.circular(16),
       ),
       child: Text(
         label,
-        style: const TextStyle(fontWeight: FontWeight.w700),
+        style: TextStyle(
+          color: Theme.of(context).colorScheme.onSurface,
+          fontWeight: FontWeight.w700,
+        ),
       ),
     );
   }

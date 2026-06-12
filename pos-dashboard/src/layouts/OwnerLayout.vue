@@ -1,5 +1,5 @@
 <template>
-  <v-app class="owner-shell">
+  <v-app :class="['owner-shell', isDarkTheme ? 'theme-dark' : 'theme-light']">
     <v-navigation-drawer
       v-model="drawer"
       temporary
@@ -82,6 +82,16 @@
         </div>
 
         <div class="toolbar-actions">
+          <button
+            class="theme-button"
+            type="button"
+            :aria-label="isDarkTheme ? 'Switch to light theme' : 'Switch to dark theme'"
+            @click="toggleTheme"
+          >
+            <v-icon :icon="isDarkTheme ? 'mdi-weather-night' : 'mdi-white-balance-sunny'" />
+            <span>{{ isDarkTheme ? 'Dark' : 'Light' }}</span>
+          </button>
+
           <v-chip variant="tonal" color="primary" class="rs-pill">
             {{ auth.displayRole }}
           </v-chip>
@@ -116,6 +126,7 @@
 <script setup>
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { useTheme } from 'vuetify'
 import axios from 'axios'
 import { API_BASE_URL } from '../lib/api'
 import { useAuthStore } from '../store/auth'
@@ -123,7 +134,10 @@ import { useAuthStore } from '../store/auth'
 const auth = useAuthStore()
 const route = useRoute()
 const router = useRouter()
+const vuetifyTheme = useTheme()
 const drawer = ref(false)
+const dashboardTheme = ref(localStorage.getItem('janova-dashboard-theme') || 'dark')
+const isDarkTheme = computed(() => dashboardTheme.value !== 'light')
 
 const navSections = [
   {
@@ -213,6 +227,22 @@ watch(
   },
 )
 
+watch(
+  dashboardTheme,
+  (value) => {
+    const normalized = value === 'light' ? 'light' : 'dark'
+    vuetifyTheme.global.name.value =
+      normalized === 'dark' ? 'restaurantSuiteDark' : 'restaurantSuiteLight'
+    document.documentElement.dataset.theme = normalized
+    localStorage.setItem('janova-dashboard-theme', normalized)
+  },
+  { immediate: true },
+)
+
+function toggleTheme() {
+  dashboardTheme.value = isDarkTheme.value ? 'light' : 'dark'
+}
+
 async function logout() {
   try {
     await axios.post(
@@ -247,7 +277,7 @@ async function logout() {
   padding: 20px 18px;
   border: 1px solid var(--rs-border);
   border-radius: 30px;
-  background: linear-gradient(180deg, rgba(12, 20, 33, 0.98), rgba(8, 15, 26, 0.98));
+  background: var(--rs-drawer-gradient);
   box-shadow: var(--rs-shadow);
 }
 
@@ -283,7 +313,7 @@ async function logout() {
 .workspace-card {
   padding: 16px;
   border-radius: 22px;
-  background: linear-gradient(180deg, rgba(63, 207, 142, 0.14), rgba(23, 34, 49, 0.82));
+  background: var(--rs-workspace-gradient);
   border: 1px solid rgba(62, 207, 142, 0.18);
 }
 
@@ -363,15 +393,16 @@ async function logout() {
   justify-content: space-between;
   border: 1px solid var(--rs-border);
   border-radius: 26px;
-  background: rgba(13, 22, 35, 0.88);
+  background: var(--rs-appbar-bg);
   backdrop-filter: blur(18px);
 }
 
-.shell-toggle {
+.shell-toggle,
+.theme-button {
   width: 50px;
   height: 50px;
   border: 1px solid var(--rs-border);
-  background: rgba(17, 28, 43, 0.92);
+  background: var(--rs-control-bg);
   color: var(--rs-text);
   border-radius: 16px;
   display: grid;
@@ -382,10 +413,20 @@ async function logout() {
     transform 0.2s ease;
 }
 
-.shell-toggle:hover {
+.shell-toggle:hover,
+.theme-button:hover {
   border-color: var(--rs-border-strong);
-  background: rgba(22, 36, 55, 0.98);
+  background: var(--rs-control-hover);
   transform: translateY(-1px);
+}
+
+.theme-button {
+  width: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 14px;
+  font-weight: 700;
 }
 
 .page-title {
@@ -400,7 +441,7 @@ async function logout() {
 
 .account-button {
   border: 1px solid var(--rs-border);
-  background: rgba(17, 28, 43, 0.9);
+  background: var(--rs-control-bg);
   color: inherit;
   border-radius: 999px;
   padding: 8px 8px 8px 14px;
@@ -428,7 +469,7 @@ async function logout() {
   display: grid;
   place-items: center;
   border-radius: 50%;
-  background: linear-gradient(135deg, #28445f, #162437);
+  background: var(--rs-avatar-gradient);
   color: var(--rs-text);
   font-weight: 700;
 }
@@ -436,7 +477,7 @@ async function logout() {
 .menu-surface {
   border: 1px solid var(--rs-border);
   border-radius: 18px;
-  background: #0f1827;
+  background: var(--rs-menu-bg);
 }
 
 .shell-main {

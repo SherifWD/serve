@@ -23,6 +23,20 @@ export default createVuetify({
           info: '#5fb3ff',
         },
       },
+      restaurantSuiteLight: {
+        dark: false,
+        colors: {
+          background: '#f5f7fb',
+          surface: '#ffffff',
+          primary: '#128663',
+          secondary: '#e7eef6',
+          accent: '#2563eb',
+          error: '#dc2626',
+          warning: '#d97706',
+          success: '#16a34a',
+          info: '#2563eb',
+        },
+      },
     },
   },
 })

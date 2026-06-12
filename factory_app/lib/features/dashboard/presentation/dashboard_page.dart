@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/config/app_flavor.dart';
+import '../../../core/config/app_theme.dart';
 import '../../../core/localization/app_language.dart';
 import '../../../core/models/app_models.dart';
 import '../../../core/widgets/language_toggle.dart';
+import '../../../core/widgets/theme_mode_toggle.dart';
 import '../../auth/providers/auth_providers.dart';
 import '../../cashier/presentation/cashier_workspace.dart';
 import '../../customer/presentation/customer_workspace.dart';
@@ -35,16 +37,21 @@ class DashboardPage extends ConsumerWidget {
     };
 
     final isCustomer = session.activeRole == AppRole.customer;
-    final background = switch (session.activeRole) {
-      AppRole.customer => const Color(0xFFFFF8F1),
-      AppRole.kitchen => const Color(0xFF0D1321),
-      AppRole.cashier => const Color(0xFFF4F1EA),
-      AppRole.waiter => const Color(0xFFF7F2EA),
-      AppRole.owner => const Color(0xFF0F172A),
-    };
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final background = isDark
+        ? AppTheme.darkBackground
+        : (switch (session.activeRole) {
+            AppRole.customer => const Color(0xFFFFF8F1),
+            AppRole.kitchen => const Color(0xFF0D1321),
+            AppRole.cashier => const Color(0xFFF4F1EA),
+            AppRole.waiter => const Color(0xFFF7F2EA),
+            AppRole.owner => const Color(0xFF0F172A),
+          });
     final width = MediaQuery.sizeOf(context).width;
     final compact = width < 520;
-    final darkChrome = session.activeRole == AppRole.owner ||
+    final darkChrome = isDark ||
+        session.activeRole == AppRole.owner ||
         session.activeRole == AppRole.kitchen;
 
     return Scaffold(
@@ -102,6 +109,10 @@ class DashboardPage extends ConsumerWidget {
                   tooltip: strings.t('action.logout'),
                   onPressed: () => ref.read(authProvider.notifier).logout(),
                   icon: const Icon(Icons.logout),
+                ),
+                ThemeModeToggle(
+                  compact: true,
+                  foregroundColor: darkChrome ? Colors.white : null,
                 ),
                 if (width >= 390)
                   LanguageToggle(

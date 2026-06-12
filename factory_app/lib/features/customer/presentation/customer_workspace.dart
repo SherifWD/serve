@@ -7,6 +7,7 @@ import '../../../core/models/app_models.dart';
 import '../../../core/widgets/branded_image.dart';
 import '../../../core/widgets/language_toggle.dart';
 import '../../../core/widgets/state_views.dart';
+import '../../../core/widgets/theme_mode_toggle.dart';
 import '../../auth/providers/auth_providers.dart';
 import '../../suite/data/suite_repository.dart';
 
@@ -26,6 +27,25 @@ enum _CustomerBrowseFilter {
     }
   }
 }
+
+bool _customerDark(BuildContext context) =>
+    Theme.of(context).brightness == Brightness.dark;
+
+Color _customerPanel(BuildContext context) =>
+    _customerDark(context) ? const Color(0xFF111827) : Colors.white;
+
+Color _customerPanelAlt(BuildContext context) =>
+    _customerDark(context) ? const Color(0xFF182235) : const Color(0xFFFFF2E2);
+
+Color _customerText(BuildContext context) =>
+    _customerDark(context) ? Colors.white : const Color(0xFF24140C);
+
+Color _customerMuted(BuildContext context) => _customerDark(context)
+    ? Colors.white.withValues(alpha: 0.68)
+    : const Color(0xFF8B6B4C);
+
+Color _customerAccent(BuildContext context) =>
+    _customerDark(context) ? const Color(0xFF3ECF8E) : const Color(0xFFFF7B2C);
 
 class CustomerWorkspacePage extends ConsumerStatefulWidget {
   const CustomerWorkspacePage({super.key});
@@ -134,6 +154,8 @@ class _CustomerWorkspacePageState extends ConsumerState<CustomerWorkspacePage> {
   Widget build(BuildContext context) {
     final session = ref.watch(currentSessionProvider);
     final strings = ref.watch(appStringsProvider);
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     final isWide = MediaQuery.of(context).size.width > 1080;
     final pages = [
       _CustomerHomeTab(
@@ -157,9 +179,19 @@ class _CustomerWorkspacePageState extends ConsumerState<CustomerWorkspacePage> {
     ];
 
     return Container(
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [Color(0xFFFFFAF5), Color(0xFFFFF2E7), Color(0xFFFFFCF7)],
+          colors: isDark
+              ? const [
+                  Color(0xFF050A13),
+                  Color(0xFF0A111E),
+                  Color(0xFF0D1321),
+                ]
+              : const [
+                  Color(0xFFFFFAF5),
+                  Color(0xFFFFF2E7),
+                  Color(0xFFFFFCF7),
+                ],
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
         ),
@@ -266,7 +298,13 @@ class _CustomerTopChrome extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     final strings = ref.watch(appStringsProvider);
+    final muted = isDark ? Colors.white70 : const Color(0xFF8B6B4C);
+    final titleColor = isDark ? Colors.white : const Color(0xFF23150E);
+    final searchFill = isDark ? const Color(0xFF111827) : Colors.white;
+    final searchShadow =
+        isDark ? const Color(0x33000000) : const Color(0x12000000);
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
@@ -282,7 +320,7 @@ class _CustomerTopChrome extends ConsumerWidget {
                     Text(
                       strings.t('customer.deliveringTo'),
                       style: theme.textTheme.labelMedium?.copyWith(
-                        color: const Color(0xFF8B6B4C),
+                        color: muted,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
@@ -293,7 +331,7 @@ class _CustomerTopChrome extends ConsumerWidget {
                       overflow: TextOverflow.ellipsis,
                       style: theme.textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.w900,
-                        color: const Color(0xFF23150E),
+                        color: titleColor,
                       ),
                     ),
                   ],
@@ -303,6 +341,8 @@ class _CustomerTopChrome extends ConsumerWidget {
                 icon: Icons.notifications_none_rounded,
                 onPressed: onNotificationsTap,
               ),
+              const SizedBox(width: 10),
+              const ThemeModeToggle(compact: true),
               const SizedBox(width: 10),
               const LanguageToggle(compact: true),
               const SizedBox(width: 10),
@@ -364,13 +404,18 @@ class _CustomerTopChrome extends ConsumerWidget {
           const SizedBox(height: 10),
           DecoratedBox(
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: searchFill,
               borderRadius: BorderRadius.circular(18),
-              boxShadow: const [
+              border: Border.all(
+                color: isDark
+                    ? Colors.white.withValues(alpha: 0.08)
+                    : Colors.transparent,
+              ),
+              boxShadow: [
                 BoxShadow(
                   blurRadius: 18,
-                  offset: Offset(0, 10),
-                  color: Color(0x12000000),
+                  offset: const Offset(0, 10),
+                  color: searchShadow,
                 ),
               ],
             ),
@@ -1299,13 +1344,11 @@ class _WalletSnapshotCard extends StatelessWidget {
                       const Spacer(),
                       Text(
                         '$loyaltyPoints points',
-                        style: Theme.of(context)
-                            .textTheme
-                            .headlineSmall
-                            ?.copyWith(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w900,
-                            ),
+                        style:
+                            Theme.of(context).textTheme.headlineSmall?.copyWith(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w900,
+                                ),
                       ),
                       const SizedBox(height: 8),
                       Text(
@@ -2232,11 +2275,14 @@ class _RestaurantDetailPageState extends ConsumerState<_RestaurantDetailPage> {
   @override
   Widget build(BuildContext context) {
     final restaurant = _restaurant ?? widget.restaurant;
+    final background = _customerDark(context)
+        ? const Color(0xFF0D1321)
+        : const Color(0xFFFFFAF5);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFFFFAF5),
+      backgroundColor: background,
       appBar: AppBar(
-        backgroundColor: const Color(0xFFFFFAF5),
+        backgroundColor: background,
         surfaceTintColor: Colors.transparent,
         title: Text(
           restaurant.name,
@@ -2499,9 +2545,8 @@ class _RestaurantMenuCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final currency = NumberFormat.currency(symbol: 'USD ');
-    final branchSummary = item.branchCount > 1
-        ? '${item.branchCount} branches'
-        : item.branchName;
+    final branchSummary =
+        item.branchCount > 1 ? '${item.branchCount} branches' : item.branchName;
     final visibleBranches = item.branches.take(2).toList(growable: false);
 
     return Card(
@@ -2561,7 +2606,8 @@ class _RestaurantMenuCard extends StatelessWidget {
                               label: branch.name,
                             ),
                         ],
-                        if (item.branchCount <= 1 && item.branchLocation != null)
+                        if (item.branchCount <= 1 &&
+                            item.branchLocation != null)
                           _InfoPill(
                             icon: Icons.location_on_outlined,
                             label: item.branchLocation!,
@@ -2612,7 +2658,9 @@ class _CustomerDishDetailSheetState
   void initState() {
     super.initState();
     _branchId = widget.item.branchId ??
-        (widget.item.branches.isNotEmpty ? widget.item.branches.first.id : null);
+        (widget.item.branches.isNotEmpty
+            ? widget.item.branches.first.id
+            : null);
   }
 
   List<BranchInfo> get _branches {
@@ -2645,7 +2693,8 @@ class _CustomerDishDetailSheetState
 
     setState(() => _submitting = true);
     try {
-      final order = await ref.read(suiteRepositoryProvider).createCustomerCheckout(
+      final order =
+          await ref.read(suiteRepositoryProvider).createCustomerCheckout(
         branchId: branchId,
         items: [
           {
@@ -2800,7 +2849,8 @@ class _CustomerDishDetailSheetState
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
                 : const Icon(Icons.shopping_bag_outlined),
-            label: Text(_submitting ? 'Sending order...' : 'Checkout for pickup'),
+            label:
+                Text(_submitting ? 'Sending order...' : 'Checkout for pickup'),
           ),
         ],
       ),
@@ -3060,9 +3110,13 @@ class _CustomerSheet extends StatelessWidget {
     return FractionallySizedBox(
       heightFactor: 0.92,
       child: DecoratedBox(
-        decoration: const BoxDecoration(
-          color: Color(0xFFFFFAF5),
-          borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+        decoration: BoxDecoration(
+          color: _customerDark(context)
+              ? const Color(0xFF0D1321)
+              : const Color(0xFFFFFAF5),
+          borderRadius: const BorderRadius.vertical(
+            top: Radius.circular(32),
+          ),
         ),
         child: SafeArea(
           top: false,
@@ -3094,13 +3148,13 @@ class _SectionTitle extends StatelessWidget {
           title,
           style: Theme.of(context).textTheme.titleLarge?.copyWith(
                 fontWeight: FontWeight.w900,
-                color: const Color(0xFF24140C),
+                color: _customerText(context),
               ),
         ),
         const SizedBox(height: 4),
         Text(
           subtitle,
-          style: const TextStyle(color: Color(0xFF8B6B4C), height: 1.35),
+          style: TextStyle(color: _customerMuted(context), height: 1.35),
         ),
       ],
     );
@@ -3121,7 +3175,7 @@ class _QuickServiceChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: Colors.white,
+      color: _customerPanel(context),
       borderRadius: BorderRadius.circular(18),
       child: InkWell(
         onTap: onTap,
@@ -3133,11 +3187,14 @@ class _QuickServiceChip extends StatelessWidget {
           ),
           child: Row(
             children: [
-              Icon(icon, size: 17, color: const Color(0xFFFF7B2C)),
+              Icon(icon, size: 17, color: _customerAccent(context)),
               const SizedBox(width: 7),
               Text(
                 label,
-                style: const TextStyle(fontWeight: FontWeight.w800),
+                style: TextStyle(
+                  color: _customerText(context),
+                  fontWeight: FontWeight.w800,
+                ),
               ),
             ],
           ),
@@ -3162,20 +3219,24 @@ class _FilterPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = _customerDark(context);
+    final accent = _customerAccent(context);
     return ChoiceChip(
       selected: selected,
       onSelected: (_) => onTap(),
       avatar: Icon(
         icon,
         size: 16,
-        color: selected ? Colors.white : const Color(0xFFFF7B2C),
+        color: selected ? const Color(0xFF04111A) : accent,
       ),
       label: Text(label),
-      backgroundColor: Colors.white,
-      selectedColor: const Color(0xFFFF7B2C),
-      side: BorderSide.none,
+      backgroundColor: _customerPanel(context),
+      selectedColor: accent,
+      side: isDark
+          ? BorderSide(color: Colors.white.withValues(alpha: 0.08))
+          : BorderSide.none,
       labelStyle: TextStyle(
-        color: selected ? Colors.white : const Color(0xFF24140C),
+        color: selected ? const Color(0xFF04111A) : _customerText(context),
         fontWeight: FontWeight.w700,
       ),
     );
@@ -3196,21 +3257,23 @@ class _InfoPill extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
       decoration: BoxDecoration(
-        color: const Color(0xFFFFF2E2),
+        color: _customerPanelAlt(context),
         borderRadius: BorderRadius.circular(999),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 16, color: const Color(0xFFB45D20)),
+          Icon(icon, size: 16, color: _customerAccent(context)),
           const SizedBox(width: 6),
           Flexible(
             child: Text(
               label,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
+              style: TextStyle(
                 fontWeight: FontWeight.w700,
-                color: Color(0xFF6E3D16),
+                color: _customerDark(context)
+                    ? Colors.white.withValues(alpha: 0.82)
+                    : const Color(0xFF6E3D16),
               ),
             ),
           ),
@@ -3248,7 +3311,7 @@ class _SoftEmptyCard extends StatelessWidget {
             const SizedBox(height: 8),
             Text(
               description,
-              style: const TextStyle(color: Color(0xFF8B6B4C), height: 1.45),
+              style: TextStyle(color: _customerMuted(context), height: 1.45),
             ),
           ],
         ),
@@ -3302,7 +3365,7 @@ class _RoundIconButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: Colors.white,
+      color: _customerPanel(context),
       borderRadius: BorderRadius.circular(16),
       child: InkWell(
         onTap: onPressed,
@@ -3310,7 +3373,7 @@ class _RoundIconButton extends StatelessWidget {
         child: SizedBox(
           width: 42,
           height: 42,
-          child: Icon(icon),
+          child: Icon(icon, color: _customerAccent(context)),
         ),
       ),
     );

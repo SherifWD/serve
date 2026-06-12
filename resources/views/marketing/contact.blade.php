@@ -7,7 +7,7 @@
     <title>Contact Janova | Restaurant Fit Survey</title>
     <link rel="preconnect" href="https://fonts.bunny.net">
     <link href="https://fonts.bunny.net/css?family=instrument-sans:400,600,700,800,900" rel="stylesheet">
-    <link rel="stylesheet" href="{{ asset('css/marketing.css') }}?v=20260608b">
+    <link rel="stylesheet" href="{{ asset('css/marketing.css') }}?v=20260612a">
 </head>
 <body>
 <div class="marketing-shell">
@@ -20,7 +20,7 @@
                 <h1>Tell us what your restaurant needs before we schedule the call.</h1>
                 <p>
                     This form captures contact details, current operations, desired modules, devices, timeline,
-                    and pain points so the admin team can review your needs and contact you with the right next step.
+                    and pain points so the Janova Technologies team can review your needs and contact you with the right next step.
                 </p>
             </div>
         </section>
@@ -31,7 +31,7 @@
                     <div class="section-heading">
                         <div class="section-kicker">What The Admin Receives</div>
                         <h2 style="font-size: clamp(2rem, 3.2vw, 3.2rem);">A useful lead profile, not just a name.</h2>
-                        <p class="lead">Every submission is stored as a marketing inquiry for admin review inside the dashboard.</p>
+                        <p class="lead">Every submission is stored as a marketing inquiry for admin review and emailed to pos@janovatech.com.</p>
                     </div>
                     <div class="aside-list">
                         <div>Business size, type, location, branch count, and staff count.</div>

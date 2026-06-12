@@ -75,6 +75,7 @@ class _WaiterWorkspacePageState extends ConsumerState<WaiterWorkspacePage> {
   @override
   Widget build(BuildContext context) {
     final session = ref.watch(currentSessionProvider);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return FutureBuilder<TableFloorBundle>(
       future: _floorFuture,
@@ -109,6 +110,7 @@ class _WaiterWorkspacePageState extends ConsumerState<WaiterWorkspacePage> {
                 lastUpdatedAt: _lastUpdatedAt,
                 hasUpdates: _hasUpdates,
                 onRefresh: _refreshTables,
+                dark: isDark,
               ),
               const SizedBox(height: 16),
               _WaiterHero(
@@ -519,9 +521,20 @@ class _QuickActionCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final enabled = onTap != null;
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final surface = isDark ? const Color(0xFF111827) : Colors.white;
+    final disabledSurface =
+        isDark ? const Color(0xFF1F2937) : const Color(0xFFF3F4F6);
+    final border =
+        isDark ? Colors.white.withValues(alpha: 0.08) : const Color(0xFFE7DED2);
+    final accent = isDark ? const Color(0xFF3ECF8E) : const Color(0xFFE86C2F);
+    final iconFill =
+        isDark ? accent.withValues(alpha: 0.14) : const Color(0xFFFFE7D4);
+    final muted = isDark ? Colors.white70 : const Color(0xFF6B7280);
 
     return Material(
-      color: enabled ? Colors.white : const Color(0xFFF3F4F6),
+      color: enabled ? surface : disabledSurface,
       borderRadius: BorderRadius.circular(8),
       child: InkWell(
         onTap: onTap,
@@ -531,7 +544,7 @@ class _QuickActionCard extends StatelessWidget {
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: const Color(0xFFE7DED2)),
+            border: Border.all(color: border),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -540,16 +553,12 @@ class _QuickActionCard extends StatelessWidget {
                 width: 40,
                 height: 40,
                 decoration: BoxDecoration(
-                  color: enabled
-                      ? const Color(0xFFFFE7D4)
-                      : const Color(0xFFE5E7EB),
+                  color: enabled ? iconFill : const Color(0xFFE5E7EB),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Icon(
                   icon,
-                  color: enabled
-                      ? const Color(0xFFE86C2F)
-                      : const Color(0xFF9CA3AF),
+                  color: enabled ? accent : const Color(0xFF9CA3AF),
                 ),
               ),
               const SizedBox(height: 12),
@@ -564,9 +573,7 @@ class _QuickActionCard extends StatelessWidget {
               Text(
                 caption,
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: enabled
-                          ? const Color(0xFF6B7280)
-                          : const Color(0xFF9CA3AF),
+                      color: enabled ? muted : const Color(0xFF9CA3AF),
                     ),
               ),
             ],
@@ -592,6 +599,15 @@ class _TableTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final currency = NumberFormat.currency(symbol: 'USD ');
     final statusColor = _tableStatusColor(table.serviceStatus);
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final emptyColor = isDark ? const Color(0xFF111827) : Colors.white;
+    final occupiedColor = statusColor.withValues(alpha: isDark ? 0.18 : 0.10);
+    final iconIdleFill = isDark
+        ? const Color(0xFF3ECF8E).withValues(alpha: 0.14)
+        : const Color(0xFFE6F7F4);
+    final iconIdleColor =
+        isDark ? const Color(0xFF3ECF8E) : const Color(0xFF0F766E);
     final waiterLabel = table.waiterName == null
         ? 'Unassigned'
         : currentUserId != null && table.isOpenedBy(currentUserId!)
@@ -606,9 +622,7 @@ class _TableTile extends StatelessWidget {
         ),
       ),
       child: Card(
-        color: table.isOccupied
-            ? statusColor.withValues(alpha: 0.10)
-            : Colors.white,
+        color: table.isOccupied ? occupiedColor : emptyColor,
         child: Padding(
           padding: const EdgeInsets.all(14),
           child: Column(
@@ -622,22 +636,18 @@ class _TableTile extends StatelessWidget {
                     decoration: BoxDecoration(
                       color: table.isOccupied
                           ? statusColor.withValues(alpha: 0.18)
-                          : const Color(0xFFE6F7F4),
+                          : iconIdleFill,
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Icon(
                       Icons.table_restaurant_outlined,
-                      color: table.isOccupied
-                          ? statusColor
-                          : const Color(0xFF0F766E),
+                      color: table.isOccupied ? statusColor : iconIdleColor,
                     ),
                   ),
                   const Spacer(),
                   _MiniStatus(
                     label: table.statusLabel,
-                    color: table.isOccupied
-                        ? statusColor
-                        : const Color(0xFF0F766E),
+                    color: table.isOccupied ? statusColor : iconIdleColor,
                   ),
                 ],
               ),
