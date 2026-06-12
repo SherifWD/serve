@@ -41,4 +41,8 @@ return [
         'access_token' => env('ETA_ACCESS_TOKEN'),
     ],
 
+    'paymob' => [
+        'checkout_url' => env('PAYMOB_CHECKOUT_URL', 'https://accept.paymob.com/unifiedcheckout/'),
+    ],
+
 ];

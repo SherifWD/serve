@@ -59,6 +59,51 @@ class MarketingInquiryTest extends TestCase
             ->assertJsonPath('admin_notes', 'Call scheduled.');
     }
 
+    public function test_standard_plan_checkout_is_stored_and_redirects_to_paymob(): void
+    {
+        config(['services.paymob.checkout_url' => 'https://paymob.example/checkout']);
+
+        $response = $this->post('/checkout/standard', [
+            'plan' => 'Cafe + KDS',
+            'price' => 'USD 99/mo',
+            'region' => 'mena',
+            'full_name' => 'Youssef Owner',
+            'business_name' => 'North Coast Cafe',
+            'email' => 'checkout@example.com',
+            'phone' => '+201009998887',
+            'country' => 'Egypt',
+            'contact_method' => 'whatsapp',
+            'business_type' => 'big-cafe',
+            'branch_count' => 1,
+            'checkout_consent' => '1',
+        ]);
+
+        $response->assertRedirect();
+
+        $location = $response->headers->get('Location');
+        parse_str((string) parse_url($location, PHP_URL_QUERY), $query);
+
+        $this->assertStringStartsWith('https://paymob.example/checkout?', $location);
+        $this->assertSame('janova-serve-landing', $query['source']);
+        $this->assertSame('Cafe + KDS', $query['plan']);
+        $this->assertSame('USD 99/mo', $query['price']);
+        $this->assertSame('mena', $query['region']);
+        $this->assertArrayHasKey('lead_id', $query);
+        $this->assertArrayNotHasKey('email', $query);
+        $this->assertArrayNotHasKey('phone', $query);
+
+        $this->assertDatabaseHas('marketing_inquiries', [
+            'full_name' => 'Youssef Owner',
+            'business_name' => 'North Coast Cafe',
+            'email' => 'checkout@example.com',
+            'business_type' => 'cafe',
+            'status' => 'checkout_started',
+            'budget_range' => 'USD 99/mo (mena)',
+            'preferred_contact_method' => 'whatsapp',
+            'consent_to_contact' => true,
+        ]);
+    }
+
     private function validPayload(): array
     {
         return [

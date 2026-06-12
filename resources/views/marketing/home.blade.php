@@ -7,8 +7,8 @@
     <title>Janova Serve POS | Food And Beverage POS By Janova Technologies</title>
     <link rel="preconnect" href="https://fonts.bunny.net">
     <link href="https://fonts.bunny.net/css?family=instrument-sans:400,600,700,800,900" rel="stylesheet">
-    <link rel="stylesheet" href="{{ asset('css/marketing.css') }}?v=20260612a">
-    <script src="{{ asset('js/marketing.js') }}?v=20260612a" defer></script>
+    <link rel="stylesheet" href="{{ asset('css/marketing.css') }}?v=20260612b">
+    <script src="{{ asset('js/marketing.js') }}?v=20260612b" defer></script>
 </head>
 <body>
 @php
@@ -127,12 +127,12 @@
     ];
 
     $apps = [
-        ['name' => 'Admin dashboard', 'image' => 'owner-dashboard.png', 'copy' => 'Global control for restaurants, branches, setup, menus, employees, devices, billing, revenue, expenses, and reports.'],
-        ['name' => 'Owner app', 'image' => 'flutter-real-owner.png', 'copy' => 'Owner-only view for live revenue, expenses, branch health, active floor, stock alerts, and staff performance.'],
-        ['name' => 'Waiter app', 'image' => 'flutter-real-waiter.png', 'copy' => 'Floor operation with My Tables, quick actions, item notes, order approval, table movement, and kitchen handoff.'],
-        ['name' => 'Kitchen app', 'image' => 'flutter-real-kitchen.png', 'copy' => 'KDS lanes and stations for barista, grill, cold, dessert, returned items, and prep timing.'],
-        ['name' => 'Cashier app', 'image' => 'flutter-real-cashier.png', 'copy' => 'Fast counter service, ticket settlement, split tenders, drawers, receipts, recent orders, and customer loyalty.'],
-        ['name' => 'Customer app', 'image' => 'flutter-real-customer.png', 'copy' => 'QR or mobile ordering, pickup, takeaway, saved profile, loyalty, and order history.'],
+        ['name' => 'Admin dashboard', 'image' => 'owner-dashboard.png', 'copy' => 'Global control for restaurants, branches, setup, menus, employees, devices, billing, revenue, expenses, and reports.', 'device' => 'wide', 'status' => 'Global admin', 'tone' => 'native'],
+        ['name' => 'Owner app', 'image' => 'flutter-real-owner.png', 'copy' => 'Owner-only view for live revenue, expenses, branch health, active floor, stock alerts, and staff performance.', 'device' => 'tablet', 'status' => 'Owner finance', 'tone' => 'native'],
+        ['name' => 'Waiter app', 'image' => 'flutter-real-waiter.png', 'copy' => 'Dark floor operation with My Tables, quick actions, item notes, order approval, table movement, and kitchen handoff.', 'device' => 'tablet', 'status' => 'Floor service', 'tone' => 'converted'],
+        ['name' => 'Kitchen app', 'image' => 'flutter-real-kitchen.png', 'copy' => 'KDS lanes and stations for barista, grill, cold, dessert, returned items, and prep timing.', 'device' => 'wide', 'status' => 'KDS stations', 'tone' => 'native'],
+        ['name' => 'Cashier app', 'image' => 'flutter-real-cashier.png', 'copy' => 'Dark settlement workflow with counter sale, split tenders, drawers, receipts, recent orders, and customer loyalty.', 'device' => 'tablet', 'status' => 'Settlement', 'tone' => 'converted'],
+        ['name' => 'Customer app', 'image' => 'flutter-real-customer.png', 'copy' => 'Dark QR/mobile ordering, pickup, takeaway, saved profile, loyalty, and order history.', 'device' => 'phone', 'status' => 'Customer ordering', 'tone' => 'converted'],
     ];
 
     $plans = [
@@ -223,10 +223,20 @@
 
     <main class="landing-page">
         <section class="landing-hero">
-            <div class="hero-screen-wall" aria-hidden="true">
-                <img src="{{ asset('images/marketing/owner-dashboard.png') }}" alt="">
-                <img src="{{ asset('images/marketing/waiter-order-composer.png') }}" alt="">
-                <img src="{{ asset('images/marketing/kitchen-board.png') }}" alt="">
+            <video class="galaxy-video hero-galaxy-video" autoplay muted loop playsinline preload="metadata" aria-hidden="true">
+                <source src="{{ asset('videos/galaxy-loop.mp4') }}" type="video/mp4">
+            </video>
+            <div class="hero-product-stage" aria-hidden="true">
+                <video class="galaxy-video stage-galaxy-video" autoplay muted loop playsinline preload="metadata">
+                    <source src="{{ asset('videos/galaxy-loop.mp4') }}" type="video/mp4">
+                </video>
+                <div class="stage-orbit stage-orbit-one"></div>
+                <div class="stage-orbit stage-orbit-two"></div>
+                <div class="hero-screen-wall floating-stage">
+                    <img class="stage-screen stage-screen-main" src="{{ asset('images/marketing/owner-dashboard.png') }}" alt="">
+                    <img class="stage-screen stage-screen-left" src="{{ asset('images/marketing/waiter-order-composer.png') }}" alt="">
+                    <img class="stage-screen stage-screen-right" src="{{ asset('images/marketing/kitchen-board.png') }}" alt="">
+                </div>
             </div>
             <div class="section-inner landing-hero-inner">
                 <div class="landing-hero-copy" data-reveal>
@@ -301,26 +311,51 @@
             </div>
         </section>
 
-        <section class="section app-showcase-section" id="apps">
+        <section class="section app-showcase-section galaxy-showcase-section" id="apps">
+            <video class="galaxy-video section-galaxy-video" autoplay muted loop playsinline preload="metadata" aria-hidden="true">
+                <source src="{{ asset('videos/galaxy-loop.mp4') }}" type="video/mp4">
+            </video>
             <div class="section-inner">
                 <div class="section-heading center" data-reveal>
                     <div class="section-kicker">Real Apps And Dashboard</div>
-                    <h2>Flutter staff apps plus a dashboard for admin and owner control.</h2>
-                    <p class="lead">The interface is built around the people doing the work: owner, waiter, kitchen, cashier, customer, and admin.</p>
+                    <h2>Dark-mode apps that match the live staff workspace.</h2>
+                    <p class="lead">Waiter, cashier, customer, kitchen, owner, and admin now share the same dark visual language with light mode still available inside the apps.</p>
                 </div>
 
-                <div class="app-showcase-grid">
-                    @foreach ($apps as $app)
-                        <article class="app-showcase-card" data-reveal>
-                            <div class="app-shot" data-tilt>
-                                <img src="{{ asset('images/marketing/' . $app['image']) }}" alt="{{ $app['name'] }} screen" loading="lazy">
-                            </div>
-                            <div>
-                                <h3>{{ $app['name'] }}</h3>
-                                <p>{{ $app['copy'] }}</p>
-                            </div>
-                        </article>
-                    @endforeach
+                <div class="app-lab">
+                    <article class="app-lab-feature" data-reveal data-tilt>
+                        <div class="lab-copy">
+                            <span>Unified dark theme</span>
+                            <h3>One visual system from dashboard to every staff app.</h3>
+                            <p>Dark cards, teal actions, readable surfaces, and role-specific screens keep the brand consistent across admin, owner, waiter, kitchen, cashier, and customer flows.</p>
+                        </div>
+                        <div class="lab-device-wall" aria-hidden="true">
+                            <img class="screen-native" src="{{ asset('images/marketing/owner-dashboard.png') }}" alt="">
+                            <img class="screen-native" src="{{ asset('images/marketing/flutter-real-kitchen.png') }}" alt="">
+                            <img class="screen-converted" src="{{ asset('images/marketing/flutter-real-cashier.png') }}" alt="">
+                        </div>
+                    </article>
+
+                    <div class="app-showcase-grid app-showcase-grid-modern">
+                        @foreach ($apps as $app)
+                            <article class="app-showcase-card dark-app-card" data-reveal style="--card-index: {{ $loop->index }};">
+                                <div class="app-shot app-shot-dark app-shot-{{ $app['device'] }} app-tone-{{ $app['tone'] }}" data-tilt>
+                                    <div class="app-screen-chrome">
+                                        <span></span>
+                                        <span></span>
+                                        <span></span>
+                                    </div>
+                                    <img src="{{ asset('images/marketing/' . $app['image']) }}" alt="{{ $app['name'] }} dark themed screen" loading="lazy">
+                                    <div class="app-shot-sheen"></div>
+                                </div>
+                                <div>
+                                    <span class="app-status">{{ $app['status'] }}</span>
+                                    <h3>{{ $app['name'] }}</h3>
+                                    <p>{{ $app['copy'] }}</p>
+                                </div>
+                            </article>
+                        @endforeach
+                    </div>
                 </div>
             </div>
         </section>
@@ -362,7 +397,19 @@
                                     <li>{{ $feature }}</li>
                                 @endforeach
                             </ul>
-                            <a class="button {{ $index === 2 ? 'button-primary' : 'button-light' }}" href="{{ route('marketing.contact') }}?plan={{ urlencode($plan['name']) }}">Request This Plan</a>
+                            @if ($index === 3)
+                                <a class="button button-light" href="{{ route('marketing.contact') }}?plan={{ urlencode($plan['name']) }}">Request Custom Survey</a>
+                            @else
+                                <a
+                                    class="button {{ $index === 2 ? 'button-primary' : 'button-light' }}"
+                                    href="#checkout"
+                                    data-plan-select
+                                    data-plan-name="{{ $plan['name'] }}"
+                                    data-plan-price-egypt="{{ $plan['prices']['egypt'] }}"
+                                    data-plan-price-mena="{{ $plan['prices']['mena'] }}"
+                                    data-plan-price-international="{{ $plan['prices']['international'] }}"
+                                >Start Checkout</a>
+                            @endif
                         </article>
                     @endforeach
                 </div>
@@ -372,6 +419,112 @@
                         Prices are recommended public starting points for SaaS software. Payment processing, SMS/WhatsApp,
                         fiscal integrations, special hardware, data migration, and custom integrations can be quoted separately.
                     </p>
+                </div>
+            </div>
+        </section>
+
+        <section class="section checkout-section" id="checkout">
+            <div class="section-inner">
+                <div class="checkout-shell" data-plan-checkout>
+                    <div class="checkout-copy" data-reveal>
+                        <div class="section-kicker">Standard Plan Checkout</div>
+                        <h2>Pick a plan, enter your details, then continue to Paymob.</h2>
+                        <p class="lead">Use this for Starter Cafe, Cafe + KDS, and Restaurant Pro. Custom and multi-branch rollouts use the survey so the scope is reviewed before pricing.</p>
+                        <div class="checkout-plan-summary">
+                            <span>Selected plan</span>
+                            <strong data-checkout-plan-name>Choose a pricing plan</strong>
+                            <small data-checkout-plan-price>Pricing appears after selection.</small>
+                        </div>
+                    </div>
+
+                    <form class="checkout-form" method="POST" action="{{ route('marketing.checkout.store') }}" data-checkout-form data-reveal>
+                        @csrf
+                        <input type="hidden" name="plan" data-checkout-plan-input>
+                        <input type="hidden" name="price" data-checkout-price-input>
+                        <input type="hidden" name="region" data-checkout-region-input>
+
+                        <div class="checkout-steps" aria-label="Checkout steps">
+                            <button class="checkout-step is-active" type="button" data-checkout-step-button="1">1. Details</button>
+                            <button class="checkout-step" type="button" data-checkout-step-button="2">2. Contact</button>
+                            <button class="checkout-step" type="button" data-checkout-step-button="3">3. Paymob</button>
+                        </div>
+
+                        <div class="checkout-pane is-active" data-checkout-pane="1">
+                            <div class="form-grid compact-form-grid">
+                                <div class="field">
+                                    <label for="checkout_full_name">Full name</label>
+                                    <input id="checkout_full_name" name="full_name" autocomplete="name" required>
+                                </div>
+                                <div class="field">
+                                    <label for="checkout_business_name">Restaurant or cafe name</label>
+                                    <input id="checkout_business_name" name="business_name" required>
+                                </div>
+                                <div class="field">
+                                    <label for="checkout_email">Email</label>
+                                    <input id="checkout_email" type="email" name="email" autocomplete="email" required>
+                                </div>
+                                <div class="field">
+                                    <label for="checkout_phone">Phone or WhatsApp</label>
+                                    <input id="checkout_phone" name="phone" autocomplete="tel" required>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="checkout-pane" data-checkout-pane="2">
+                            <div class="form-grid compact-form-grid">
+                                <div class="field">
+                                    <label for="checkout_country">Country</label>
+                                    <input id="checkout_country" name="country" placeholder="Egypt, UAE, Saudi Arabia..." required>
+                                </div>
+                                <div class="field">
+                                    <label for="checkout_contact_method">Preferred contact</label>
+                                    <select id="checkout_contact_method" name="contact_method" required>
+                                        <option value="">Select</option>
+                                        <option value="whatsapp">WhatsApp</option>
+                                        <option value="phone">Phone</option>
+                                        <option value="email">Email</option>
+                                    </select>
+                                </div>
+                                <div class="field">
+                                    <label for="checkout_business_type">Business type</label>
+                                    <select id="checkout_business_type" name="business_type" required>
+                                        <option value="">Select</option>
+                                        <option value="small-cafe">Small cafe</option>
+                                        <option value="big-cafe">Big cafe</option>
+                                        <option value="small-restaurant">Small restaurant</option>
+                                        <option value="restaurant">Restaurant</option>
+                                    </select>
+                                </div>
+                                <div class="field">
+                                    <label for="checkout_branch_count">Branches</label>
+                                    <input id="checkout_branch_count" type="number" min="1" max="10" name="branch_count" value="1" required>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="checkout-pane" data-checkout-pane="3">
+                            <div class="paymob-card">
+                                <div>
+                                    <span>Secure payment handoff</span>
+                                    <strong>Paymob checkout</strong>
+                                    <p>Your selected plan and contact details are prepared for the Paymob payment step. Live payment links use the configured Paymob checkout URL.</p>
+                                </div>
+                                <div class="paymob-mark">Paymob</div>
+                            </div>
+                            <label class="consent-row checkout-consent">
+                                <input type="checkbox" name="checkout_consent" required>
+                                <span>I confirm these details are correct and agree to be contacted by Janova Technologies about this subscription.</span>
+                            </label>
+                        </div>
+
+                        <div class="checkout-actions">
+                            <button class="button button-light" type="button" data-checkout-back hidden>Back</button>
+                            <button class="button button-primary" type="button" data-checkout-next>Continue</button>
+                            <button class="button button-primary" type="submit" data-checkout-pay hidden>Continue To Paymob</button>
+                            <a class="button button-light" href="mailto:pos@janovatech.com">Contact Sales</a>
+                        </div>
+                        <p class="checkout-status {{ session('checkout_error') ? 'is-error' : '' }}" data-checkout-status aria-live="polite">{{ session('checkout_error') }}</p>
+                    </form>
                 </div>
             </div>
         </section>
@@ -403,7 +556,7 @@
                         <div class="section-kicker">Custom And Multi-Branch Plans</div>
                         <h2>Need a rollout for a chain, franchise, hotel outlet, cloud kitchen, or mixed cafe and restaurant group?</h2>
                         <p>
-                            Fill the survey with branch count, current POS, devices, modules, migration needs, timeline, and budget.
+                            Custom and multi-branch plans use the survey only. Fill it with branch count, current POS, devices, modules, migration needs, timeline, and budget.
                             The inquiry is stored for dashboard review and emailed to <strong>pos@janovatech.com</strong>.
                         </p>
                     </div>
